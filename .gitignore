@@ -94,6 +94,7 @@ backend/note_results/
 NoteFlow_frontend/noteflow.db
 note_results/
 static/
+backups/
 !.env.example
 # parcel-bundler cache (https://parceljs.org/)
 .cache
