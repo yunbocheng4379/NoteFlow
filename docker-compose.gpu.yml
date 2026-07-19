@@ -1,0 +1,104 @@
+
+services:
+  mysql:
+    container_name: bilinote-mysql
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-bilinote_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-bilinote}
+      MYSQL_USER: ${MYSQL_USER:-bilinote}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bilinote_pass}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    expose:
+      - "3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-bilinote_root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 512m
+
+  backend:
+    container_name: bilinote-backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.gpu
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io}
+        APT_MIRROR: ${APT_MIRROR:-mirrors.tuna.tsinghua.edu.cn}
+        PIP_INDEX: ${PIP_INDEX:-https://pypi.tuna.tsinghua.edu.cn/simple}
+    env_file:
+      - .env
+    environment:
+      - BACKEND_PORT=${BACKEND_PORT}
+      - BACKEND_HOST=${BACKEND_HOST}
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-bilinote}:${MYSQL_PASSWORD:-bilinote_pass}@mysql:3306/${MYSQL_DATABASE:-bilinote}
+    volumes:
+      - backend_data:/app/data
+      - backend_static:/app/static
+      - backend_uploads:/app/uploads
+      - backend_note_results:/app/note_results
+      - backend_models:/app/models
+      - backend_vector_db:/app/vector_db
+      - backend_logs:/app/logs
+    expose:
+      - "${BACKEND_PORT}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT}/api/sys_health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    mem_limit: 8g
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: "nvidia"
+              count: "all"
+              capabilities: ["gpu"]
+
+  frontend:
+    container_name: bilinote-frontend
+    build:
+      context: .
+      dockerfile: BillNote_frontend/Dockerfile
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io}
+    expose:
+      - "80"
+    restart: unless-stopped
+    mem_limit: 512m
+
+  nginx:
+    container_name: bilinote-nginx
+    image: nginx:1.25-alpine
+    ports:
+      - "${APP_PORT}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+    mem_limit: 256m
+
+volumes:
+  mysql_data:
+  backend_data:
+  backend_static:
+  backend_uploads:
+  backend_note_results:
+  backend_models:
+  backend_vector_db:
+  backend_logs:
