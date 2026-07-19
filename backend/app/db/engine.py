@@ -1,5 +1,6 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 
@@ -11,6 +12,41 @@ if not DATABASE_URL:
         "环境变量 DATABASE_URL 未配置。"
         "请在 .env 中设置，例如：DATABASE_URL=mysql+pymysql://user:pass@host:3306/noteflow"
     )
+
+
+def _quote_mysql_identifier(identifier: str) -> str:
+    return f"`{identifier.replace('`', '``')}`"
+
+
+def _ensure_mysql_database_exists(database_url: str) -> None:
+    url = make_url(database_url)
+    if not url.drivername.startswith("mysql"):
+        return
+    if not url.database:
+        return
+
+    database_name = url.database
+    server_url = url.set(database="")
+    server_engine = create_engine(
+        server_url,
+        echo=os.getenv("SQLALCHEMY_ECHO", "false").lower() == "true",
+        pool_pre_ping=True,
+        isolation_level="AUTOCOMMIT",
+    )
+    try:
+        with server_engine.connect() as conn:
+            conn.execute(
+                text(
+                    "CREATE DATABASE IF NOT EXISTS "
+                    f"{_quote_mysql_identifier(database_name)} "
+                    "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                )
+            )
+    finally:
+        server_engine.dispose()
+
+
+_ensure_mysql_database_exists(DATABASE_URL)
 
 engine = create_engine(
     DATABASE_URL,
