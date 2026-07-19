@@ -380,8 +380,8 @@ export default function AuthPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 bg-white overflow-y-auto">
-        <div className="w-full max-w-[22rem]">
+      <div className="flex-1 flex min-h-0 flex-col items-center px-8 py-8 bg-white overflow-y-auto">
+        <div className="w-full max-w-[22rem] flex-1 flex flex-col justify-center py-6">
           <div className="flex items-center justify-center gap-2.5 mb-7">
             <BrandLogo className="h-7 w-auto flex-shrink-0" />
             <span className="text-xl font-semibold tracking-tight text-gray-900">NoteFlow</span>
@@ -678,8 +678,8 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <p className="absolute bottom-6 text-[11px] text-gray-300">
-          2025 NoteFlow
+        <p className="mt-6 shrink-0 text-[11px] text-gray-300">
+          2026 NoteFlow
         </p>
       </div>
 
