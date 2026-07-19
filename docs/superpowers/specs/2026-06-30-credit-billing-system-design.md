@@ -8,7 +8,7 @@
 
 ## 1. 背景与目标
 
-BiliNote 当前为开源 AI 视频笔记工具，无商业化模型。本设计为系统引入**电力（Credit）** 概念作为统一的内部计费单位：
+NoteFlow 当前为开源 AI 视频笔记工具，无商业化模型。本设计为系统引入**电力（Credit）** 概念作为统一的内部计费单位：
 
 - 用户每次生成笔记按「视频时长 × 模型计费率」**预扣**电力，失败自动退还
 - 电力可通过**充值套餐**（一次性付款）或**会员订阅**（每月固定发放）获取
@@ -535,12 +535,12 @@ if status == TaskStatus.FAILED:
 
 ### 5.1 路由 + 侧栏
 
-`BillNote_frontend/src/App.tsx` 新增三个 Route：
+`NoteFlow_frontend/src/App.tsx` 新增三个 Route：
 - `/upgrade` → `UpgradePage`（蓝色主题）
 - `/billing` → `BillingPage`（teal 主题）
 - `/referral` → `ReferralPage`（teal 主题）
 
-`BillNote_frontend/src/pages/Index.tsx` 的 `NAV_ITEMS` 数组新增：
+`NoteFlow_frontend/src/pages/Index.tsx` 的 `NAV_ITEMS` 数组新增：
 - 升级 Pro（icon: `Zap`，路径 `/upgrade`）
 - 账单与额度（icon: `ReceiptText`，路径 `/billing`）
 - 我的推荐码（icon: `Gift`，路径 `/referral`）
@@ -620,7 +620,7 @@ if status == TaskStatus.FAILED:
 打开时已传入 `order_no, mock_qrcode_token, amount_cents`。渲染：
 - 顶部金额大字（如「¥29.00」）
 - 支付方式 tab：支付宝（蓝色） / 微信支付（绿色）— 视觉切换，都走 mock
-- 中间二维码图（用 `qrcode.react` 生成，内容 `bilinote-mock://order/{order_no}`，hover 显示「测试模式 · 点击模拟支付」）
+- 中间二维码图（用 `qrcode.react` 生成，内容 `noteflow-mock://order/{order_no}`，hover 显示「测试模式 · 点击模拟支付」）
 - 「我已支付」按钮 → POST `/api/order/mock_pay` → 成功 toast「支付成功，电力已到账」+ 关闭 + 刷新余额 + 刷新订阅状态
 - 「取消订单」按钮 → 关闭 dialog（订单保持 PENDING，24h 后定时任务清理）
 - 边距、圆角、按钮位置参考 shadcn Dialog 默认样式
@@ -645,10 +645,10 @@ if status == TaskStatus.FAILED:
 - **主区域两栏**（左侧 2/3 + 右侧 1/3）：
   - 左侧主卡片（teal 渐变背景）：
     - 顶部「专属邀请」橘色 ribbon + 复制按钮
-    - 「分享 BiliNote Pro，一起获得更多 AI Credits」大标题
+    - 「分享 NoteFlow Pro，一起获得更多 AI Credits」大标题
     - 副文：好友通过你的链接注册后，**好友获得 200 电力**，**你获得 20 电力返利**。
     - 邀请码大字 monospace 显示：`BNREF-XXXXXX`
-    - 邀请链接 readonly input + 复制按钮（`https://bilinote.app/register?invite=XXXXXX`）
+    - 邀请链接 readonly input + 复制按钮（`https://noteflow.app/register?invite=XXXXXX`）
     - 提示「微信、朋友圈、微博、社群都可以直接发送这个链接。」
     - 底部统计：N 人 已邀请 · M 电力 累计获得
   - 右侧「奖励规则」卡片：
@@ -707,7 +707,7 @@ if status == TaskStatus.FAILED:
 
 `init_db.py` 同步：将所有新模型 import 进去；新部署环境 `Base.metadata.create_all` 一次性建好。
 
-迁移前置：`mysqldump bilinote users > backup_users_2026_06_30.sql`（人工执行）。
+迁移前置：`mysqldump noteflow users > backup_users_2026_06_30.sql`（人工执行）。
 
 ---
 

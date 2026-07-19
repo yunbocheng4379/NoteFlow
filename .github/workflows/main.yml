@@ -59,7 +59,7 @@ jobs:
           node-version: '20'
 
       - name: Install frontend dependencies
-        working-directory: BillNote_frontend
+        working-directory: NoteFlow_frontend
         run: pnpm install
 
       # 设置 Rust 环境
@@ -75,8 +75,8 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            BillNote_frontend/src-tauri/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('BillNote_frontend/src-tauri/Cargo.lock') }}
+            NoteFlow_frontend/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('NoteFlow_frontend/src-tauri/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
       # 从 tag 注入版本号到 tauri.conf.json：Tauri 取该文件的静态 version 作为
@@ -84,7 +84,7 @@ jobs:
       # github.ref_name 形如 v2.3.2，去掉前缀 v。workflow_dispatch（无 tag）时跳过，保留静态值。
       - name: Sync version from tag
         if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: BillNote_frontend
+        working-directory: NoteFlow_frontend
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -94,7 +94,7 @@ jobs:
 
       # 打包 Tauri 应用
       - name: Build Tauri App
-        working-directory: BillNote_frontend
+        working-directory: NoteFlow_frontend
         run: pnpm tauri build
 
       # 收集产物到统一目录
@@ -102,7 +102,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-artifacts
-          BUNDLE_DIR="BillNote_frontend/src-tauri/target/release/bundle"
+          BUNDLE_DIR="NoteFlow_frontend/src-tauri/target/release/bundle"
 
           # macOS: .dmg
           find "$BUNDLE_DIR" -name "*.dmg" -exec cp {} release-artifacts/ \; 2>/dev/null || true
@@ -156,7 +156,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: BiliNote ${{ github.ref_name }}
+          name: NoteFlow ${{ github.ref_name }}
           draft: false
           prerelease: false
           generate_release_notes: true

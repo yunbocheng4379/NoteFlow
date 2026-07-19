@@ -1,13 +1,13 @@
 
 services:
   mysql:
-    container_name: bilinote-mysql
+    container_name: noteflow-mysql
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-bilinote_root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-bilinote}
-      MYSQL_USER: ${MYSQL_USER:-bilinote}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bilinote_pass}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-noteflow_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-noteflow}
+      MYSQL_USER: ${MYSQL_USER:-noteflow}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-noteflow_pass}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -15,7 +15,7 @@ services:
       - "3306"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-bilinote_root}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-noteflow_root}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -23,7 +23,7 @@ services:
     mem_limit: 512m
 
   backend:
-    container_name: bilinote-backend
+    container_name: noteflow-backend
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -37,7 +37,7 @@ services:
     environment:
       - BACKEND_PORT=${BACKEND_PORT}
       - BACKEND_HOST=${BACKEND_HOST}
-      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-bilinote}:${MYSQL_PASSWORD:-bilinote_pass}@mysql:3306/${MYSQL_DATABASE:-bilinote}
+      - DATABASE_URL=mysql+pymysql://${MYSQL_USER:-noteflow}:${MYSQL_PASSWORD:-noteflow_pass}@mysql:3306/${MYSQL_DATABASE:-noteflow}
     volumes:
       - backend_data:/app/data
       - backend_static:/app/static
@@ -61,10 +61,10 @@ services:
     mem_limit: 4g
 
   frontend:
-    container_name: bilinote-frontend
+    container_name: noteflow-frontend
     build:
       context: .
-      dockerfile: BillNote_frontend/Dockerfile
+      dockerfile: NoteFlow_frontend/Dockerfile
       args:
         BASE_REGISTRY: ${BASE_REGISTRY:-docker.io}
     expose:
@@ -73,7 +73,7 @@ services:
     mem_limit: 512m
 
   nginx:
-    container_name: bilinote-nginx
+    container_name: noteflow-nginx
     image: nginx:1.25-alpine
     ports:
       - "${APP_PORT}:80"

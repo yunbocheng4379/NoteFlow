@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import bcrypt
 import jwt
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "bilinote-pro-secret-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "noteflow-pro-secret-change-in-production")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "10080"))
 

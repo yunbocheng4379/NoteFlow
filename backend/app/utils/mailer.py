@@ -76,7 +76,7 @@ def send_task_completed_email(to: str, title: str, task_id: str) -> bool:
       <h2 style="color: #167a6e;">你的笔记已生成完成</h2>
       <p><strong>{title or '未命名视频'}</strong> 的笔记已经生成好了。</p>
       <p><a href="{link}" style="color: #167a6e;">点击查看笔记</a></p>
-      <p style="color: #999; font-size: 12px;">来自 BiliNote AI 笔记系统</p>
+      <p style="color: #999; font-size: 12px;">来自 NoteFlow AI 笔记系统</p>
     </div>
     """
     return send_email(to=to, subject=subject, html_body=html_body)
@@ -94,7 +94,7 @@ def send_update_log_email(to: str, title: str, summary: str, version: str = None
       {version_html}
       <p>{summary or ''}</p>
       <p><a href="{link}" style="color: #167a6e;">查看完整更新日志</a></p>
-      <p style="color: #999; font-size: 12px;">来自 BiliNote AI 笔记系统</p>
+      <p style="color: #999; font-size: 12px;">来自 NoteFlow AI 笔记系统</p>
     </div>
     """
     return send_email(to=to, subject=subject, html_body=html_body)
@@ -102,13 +102,13 @@ def send_update_log_email(to: str, title: str, summary: str, version: str = None
 
 def send_verification_code_email(to: str, code: str) -> bool:
     """登录/绑定验证码邮件。"""
-    subject = "BiliNote 验证码"
+    subject = "NoteFlow 验证码"
     html_body = f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
       <h2 style="color: #167a6e;">你的验证码</h2>
       <p style="font-size: 28px; font-weight: 600; letter-spacing: 4px; color: #0f172a;">{code}</p>
       <p style="color: #666; font-size: 13px;">验证码 5 分钟内有效，请勿告知他人。</p>
-      <p style="color: #999; font-size: 12px;">来自 BiliNote AI 笔记系统</p>
+      <p style="color: #999; font-size: 12px;">来自 NoteFlow AI 笔记系统</p>
     </div>
     """
     return send_email(to=to, subject=subject, html_body=html_body)

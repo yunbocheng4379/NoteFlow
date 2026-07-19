@@ -9,7 +9,7 @@ lerna-debug.log*
 .DS_Store
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
-BiliNote/pnpm-lock.yaml
+NoteFlow/pnpm-lock.yaml
 # Runtime data
 pids
 *.pid
@@ -62,7 +62,7 @@ web_modules/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
-.BiliNote-dev/*
+.NoteFlow-dev/*
 # Optional REPL history
 .node_repl_history
 
@@ -91,7 +91,7 @@ backend/models/
 backend/uploads/
 backend/*.db
 backend/note_results/
-BillNote_frontend/bili_note.db
+NoteFlow_frontend/noteflow.db
 note_results/
 static/
 !.env.example
@@ -332,14 +332,14 @@ cython_debug/
 /backend/note_results
 /backend/models
 /backend/.idea/*
-/backend/bili_note.db
-/backend/app/db/bili_note.db
+/backend/noteflow.db
+/backend/app/db/noteflow.db
 /backend/uploads/*
 /backend/.idea/*
 /backend/config/*
 /backend/vector_db/
-/BiliNote_frontend/.idea/*
-/BiliNote_frontend/src-tauri/bin/
+/NoteFlow_frontend/.idea/*
+/NoteFlow_frontend/src-tauri/bin/
 
 # FFmpeg 构建文件（不应该提交到仓库）
 ffmpeg*/

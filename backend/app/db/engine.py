@@ -9,7 +9,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError(
         "环境变量 DATABASE_URL 未配置。"
-        "请在 .env 中设置，例如：DATABASE_URL=mysql+pymysql://user:pass@host:3306/bilinote"
+        "请在 .env 中设置，例如：DATABASE_URL=mysql+pymysql://user:pass@host:3306/noteflow"
     )
 
 engine = create_engine(

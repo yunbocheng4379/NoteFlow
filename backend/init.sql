@@ -1,6 +1,6 @@
--- BiliNote MySQL 初始化脚本
--- 使用方式：mysql -u root -p bilinote < init.sql
--- 或在 Docker 中：docker exec -i bilinote-mysql mysql -uroot -p$MYSQL_ROOT_PASSWORD bilinote < init.sql
+-- NoteFlow MySQL 初始化脚本
+-- 使用方式：mysql -u root -p noteflow < init.sql
+-- 或在 Docker 中：docker exec -i noteflow-mysql mysql -uroot -p$MYSQL_ROOT_PASSWORD noteflow < init.sql
 --
 -- 本文件为一次性建表脚本，面向全新 (空库) 部署；不是幂等迁移脚本。
 -- 覆盖当前线上/本地实际存在的全部 19 张表 (以本地库结构为准，已核对 SQLAlchemy 模型)，
@@ -13,8 +13,8 @@
 
 SET FOREIGN_KEY_CHECKS = 0;
 
-CREATE DATABASE IF NOT EXISTS bilinote DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE bilinote;
+CREATE DATABASE IF NOT EXISTS noteflow DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE noteflow;
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '用户 ID，主键，自增',

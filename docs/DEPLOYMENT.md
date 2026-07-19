@@ -1,4 +1,4 @@
-# BiliNote / NoteFlow 正式环境部署说明
+# NoteFlow 正式环境部署说明
 
 本文档用于在 Linux 服务器上通过 Docker Compose 部署完整的 NoteFlow Web 系统。
 
@@ -105,8 +105,8 @@ IMAGE_BASE_URL=/static/screenshots
 DATA_DIR=data
 
 MYSQL_ROOT_PASSWORD=请填写强密码
-MYSQL_DATABASE=bilinote
-MYSQL_USER=bilinote
+MYSQL_DATABASE=noteflow
+MYSQL_USER=noteflow
 MYSQL_PASSWORD=请填写强密码
 
 JWT_SECRET_KEY=请填写高强度随机字符串
@@ -178,7 +178,7 @@ docker compose -f docker-compose.gpu.yml up -d --build
 检查后端容器中是否能看到 GPU：
 
 ```bash
-docker exec -it bilinote-backend nvidia-smi
+docker exec -it noteflow-backend nvidia-smi
 ```
 
 如果该命令失败，通常是 NVIDIA Container Toolkit 没有安装好，或 Docker 没有正确启用 GPU runtime。
@@ -252,11 +252,11 @@ docker compose down -v
 
 ```bash
 mkdir -p backups
-docker run --rm -v bilinote_mysql_data:/data -v "$PWD/backups:/backup" alpine \
+docker run --rm -v noteflow_mysql_data:/data -v "$PWD/backups:/backup" alpine \
   tar czf /backup/mysql_data.tgz -C /data .
 ```
 
-如果还需要备份截图、笔记结果、模型缓存等数据，可以把命令中的 `bilinote_mysql_data` 替换成其他 volume 名称重复执行。
+如果还需要备份截图、笔记结果、模型缓存等数据，可以把命令中的 `noteflow_mysql_data` 替换成其他 volume 名称重复执行。
 
 ## 10. 不需要上传到服务器的文件
 
@@ -266,9 +266,9 @@ docker run --rm -v bilinote_mysql_data:/data -v "$PWD/backups:/backup" alpine \
 - `.DS_Store`
 - `.pnpm-store/`
 - `.superpowers/`
-- `BillNote_frontend/node_modules/`
-- `BillNote_frontend/dist/`
-- `BillNote_frontend/bili_note.db`
+- `NoteFlow_frontend/node_modules/`
+- `NoteFlow_frontend/dist/`
+- `NoteFlow_frontend/noteflow.db`
 - `backend/*.db`
 - `backend/dump.rdb`
 - `backend/logs/`

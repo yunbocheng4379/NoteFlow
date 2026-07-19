@@ -1,11 +1,11 @@
 -- =============================================================================
--- BiliNote 更新日志表迁移 (2026-07-13)
+-- NoteFlow 更新日志表迁移 (2026-07-13)
 -- 用法:
---   mysql -uroot -p bilinote < backend/sql/migrate_add_update_logs.sql
+--   mysql -uroot -p noteflow < backend/sql/migrate_add_update_logs.sql
 -- 或在已经启动的容器里:
---   docker exec -i bilinote-mysql mysql -uroot -p$MYSQL_ROOT_PASSWORD bilinote < sql/migrate_add_update_logs.sql
+--   docker exec -i noteflow-mysql mysql -uroot -p$MYSQL_ROOT_PASSWORD noteflow < sql/migrate_add_update_logs.sql
 -- =============================================================================
-USE bilinote;
+USE noteflow;
 
 -- 主表 (含生成列 + UNIQUE 索引实现「任意时刻只允许一条 active」语义)
 CREATE TABLE IF NOT EXISTS update_logs (

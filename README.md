@@ -1,9 +1,9 @@
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px;
 ">
     <p align="center">
-  <img src="./doc/icon.svg" alt="BiliNote Banner" width="50" height="50"  />
+  <img src="./doc/icon.svg" alt="NoteFlow Banner" width="50" height="50"  />
 </p>
-<h1 align="center" > BiliNote v2.3.4</h1>
+<h1 align="center" > NoteFlow v1.0.0</h1>
 </div>
 
 <p align="center"><i>AI 视频笔记生成工具 让 AI 为你的视频做笔记</i></p>
@@ -15,22 +15,22 @@
   <img src="https://img.shields.io/badge/GPT-openai%20%7C%20deepseek%20%7C%20qwen-ff69b4" />
   <img src="https://img.shields.io/badge/docker-ghcr.io-blue" />
   <img src="https://img.shields.io/badge/status-active-success" />
-  <img src="https://img.shields.io/github/stars/jefferyhcool/BiliNote?style=social" />
+  <img src="https://img.shields.io/github/stars/yunbocheng4379/NoteFlow?style=social" />
 </p>
 
 <p align="center">
-  <a href="https://www.bilinote.app/"><b>🚀 BiliNote Pro · 在线版</b></a>
+  <a href="https://www.noteflow.app/"><b>🚀 NoteFlow Pro · 在线版</b></a>
 </p>
 
 <p align="center">
-  <b>不想折腾部署？</b>访问 <a href="https://www.bilinote.app/"><b>www.bilinote.app</b></a> 即开即用 —— 免安装、免配置环境、免下模型，注册即可把视频转成笔记。
+  <b>不想折腾部署？</b>访问 <a href="https://www.noteflow.app/"><b>www.noteflow.app</b></a> 即开即用 —— 免安装、免配置环境、免下模型，注册即可把视频转成笔记。
   <br/>
   本地部署遇到的依赖、代理、模型下载这些坑，云端版统统不用管。
 </p>
 
 <p align="center">
-  <a href="https://www.bilinote.app/">
-    <img src="https://img.shields.io/badge/%E7%AB%8B%E5%8D%B3%E4%BD%93%E9%AA%8C-BiliNote%20Pro-ff5c5c?style=for-the-badge" alt="立即体验 BiliNote Pro" />
+  <a href="https://www.noteflow.app/">
+    <img src="https://img.shields.io/badge/%E7%AB%8B%E5%8D%B3%E4%BD%93%E9%AA%8C-NoteFlow%20Pro-ff5c5c?style=for-the-badge" alt="立即体验 NoteFlow Pro" />
   </a>
 </p>
 
@@ -38,28 +38,28 @@
 
 ## ✨ 项目简介
 
-BiliNote 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，自动提取内容并生成结构清晰、重点明确的 Markdown 格式笔记。支持插入截图、原片跳转、AI 问答等功能。
+NoteFlow 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，自动提取内容并生成结构清晰、重点明确的 Markdown 格式笔记。支持插入截图、原片跳转、AI 问答等功能。
 
-> 💡 **想直接用、不想本地部署？** —— [BiliNote Pro 在线版 www.bilinote.app](https://www.bilinote.app/) 已上线，云端托管、开箱即用，省去依赖安装 / 代理配置 / 模型下载的全部麻烦。
+> 💡 **想直接用、不想本地部署？** —— [NoteFlow Pro 在线版 www.noteflow.app](https://www.noteflow.app/) 已上线，云端托管、开箱即用，省去依赖安装 / 代理配置 / 模型下载的全部麻烦。
 
 ## 🌐 在线使用（推荐）
 
-直接访问 **[www.bilinote.app](https://www.bilinote.app/)** 即可使用 BiliNote Pro 在线版，无需本地部署。
+直接访问 **[www.noteflow.app](https://www.noteflow.app/)** 即可使用 NoteFlow Pro 在线版，无需本地部署。
 
 ## 📝 使用文档
-详细文档可以查看[这里](https://docs.bilinote.app/)
+详细文档可以查看[这里](https://github.com/yunbocheng4379/NoteFlow/)
 ## 📦 桌面版下载
-本项目提供了 Windows 和 macOS 桌面客户端，可在 [Releases](https://github.com/JefferyHcool/BiliNote/releases) 页面下载最新版本。
+本项目提供了 Windows 和 macOS 桌面客户端，可在 [Releases](https://github.com/yunbocheng4379/NoteFlow/releases) 页面下载最新版本。
 
 > Windows 用户请注意：一定要在没有中文路径的环境下运行。
 
-## 💎 BiliNote AI笔记系统一对一搭建服务
+## 💎 NoteFlow AI笔记系统一对一搭建服务
 
-提供 **BiliNote AI笔记系统一对一搭建服务**：专人一对一远程协助，从环境部署、模型配置到上手使用全程陪跑，帮你快速跑通整套系统。扫码添加微信，备注「搭建服务」即可咨询：
+提供 **NoteFlow AI笔记系统一对一搭建服务**：专人一对一远程协助，从环境部署、模型配置到上手使用全程陪跑，帮你快速跑通整套系统。扫码添加微信，备注「搭建服务」即可咨询：
 
 <table align="center">
   <tr>
-    <td align="center"><img src="./doc/remote-install-wechat.png" alt="BiliNote AI笔记系统一对一搭建服务" width="220" /><br/>BiliNote AI笔记系统一对一搭建服务</td>
+    <td align="center"><img src="./doc/remote-install-wechat.png" alt="NoteFlow AI笔记系统一对一搭建服务" width="220" /><br/>NoteFlow AI笔记系统一对一搭建服务</td>
   </tr>
 </table>
 
@@ -169,15 +169,15 @@ BiliNote 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、Y
 确保已安装 Docker，直接拉取预构建镜像运行：
 
 ```bash
-docker pull ghcr.io/jefferyhcool/bilinote:latest
+docker pull ghcr.io/yunbocheng4379/noteflow:latest
 
 docker run -d -p 80:80 \
-  -v bilinote-data:/app/backend/data \
-  -v bilinote-config:/app/backend/config \
-  -v bilinote-static:/app/backend/static \
-  -v bilinote-models:/app/backend/models \
-  --name bilinote \
-  ghcr.io/jefferyhcool/bilinote:latest
+  -v noteflow-data:/app/backend/data \
+  -v noteflow-config:/app/backend/config \
+  -v noteflow-static:/app/backend/static \
+  -v noteflow-models:/app/backend/models \
+  --name noteflow \
+  ghcr.io/yunbocheng4379/noteflow:latest
 ```
 
 上面四个卷分别持久化：`data`（SQLite 数据库 + 生成的笔记）、`config`（LLM 供应商配置 / Cookie / 转写设置）、`static`（笔记引用的视频截图）、`models`（Whisper 模型缓存，可选，避免每次重新下载）。这样 `docker pull` 升级新镜像、删旧容器重建后，配置和历史都不会丢。
@@ -204,7 +204,7 @@ docker-compose -f docker-compose.gpu.yml up --build -d
 
 `docker-compose build` 拉 `python:3.11-slim` / `node:20-alpine` / `nginx:1.25-alpine` 时连 `auth.docker.io` 超时。三种解法，按推荐顺序：
 
-- **方法 A：直接用预构建镜像（最省事）**——不要本地 build，跳到上面的 `docker pull ghcr.io/jefferyhcool/bilinote:latest` 路径，ghcr.io 在国内通常比 docker.io 顺。
+- **方法 A：直接用预构建镜像（最省事）**——不要本地 build，跳到上面的 `docker pull ghcr.io/yunbocheng4379/noteflow:latest` 路径，ghcr.io 在国内通常比 docker.io 顺。
 - **方法 B：配置 Docker daemon 镜像加速器**——编辑 `~/.docker/daemon.json`（Linux 在 `/etc/docker/daemon.json`），加：
   ```json
   {
@@ -225,7 +225,7 @@ docker-compose -f docker-compose.gpu.yml up --build -d
 
 先看后端日志：
 ```bash
-docker logs -f bilinote-backend
+docker logs -f noteflow-backend
 ```
 后端启动会按顺序打印 `[startup 1/5] ... [startup 5/5] 启动完成`。若日志卡在某一步或出现 `[startup FAILED]`，就是那一步的问题，常见：
 - **卡在 `[startup 3/5]`**：转写器配置读不到。检查 `.env` 里 `TRANSCRIBER_TYPE` 是否写错，`mlx-whisper` 只能在 Apple Silicon 用，Linux/Docker 请用 `fast-whisper` 或 `groq`。
@@ -242,12 +242,12 @@ docker logs -f bilinote-backend
 **3. 数据存在哪？删容器会丢吗？**
 
 `docker-compose` 用的是 `./backend:/app` 绑挂，下面这些文件都在宿主机的 `./backend/` 目录里、删容器不会丢：
-- `./backend/bili_note.db` —— SQLite 库（含 LLM 供应商配置、笔记历史）
+- `./backend/noteflow.db` —— SQLite 库（含 LLM 供应商配置、笔记历史）
 - `./backend/config/transcriber.json` —— 转写器运行时配置
 - `./backend/static/screenshots/` —— 视频截图
 - `./backend/uploads/` —— 上传的本地视频
 
-要彻底重置就 `docker-compose down && rm backend/bili_note.db backend/config/transcriber.json`。
+要彻底重置就 `docker-compose down && rm backend/noteflow.db backend/config/transcriber.json`。
 
 **4. 前端打开是空白页 / 报 502**
 
@@ -262,8 +262,8 @@ docker logs -f bilinote-backend
 #### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/JefferyHcool/BiliNote.git
-cd BiliNote
+git clone https://github.com/yunbocheng4379/NoteFlow.git
+cd NoteFlow
 mv .env.example .env
 ```
 
@@ -278,7 +278,7 @@ python main.py
 #### 3. 启动前端（Vite + React）
 
 ```bash
-cd BillNote_frontend
+cd NoteFlow_frontend
 pnpm install
 pnpm dev
 ```
@@ -314,16 +314,16 @@ sudo apt install ffmpeg
 
 ```bash
 # 拉取最新镜像
-docker pull ghcr.io/jefferyhcool/bilinote:latest
+docker pull ghcr.io/yunbocheng4379/noteflow:latest
 
 # 运行容器
 docker run -d -p 80:80 \
-  -v bilinote-data:/app/backend/data \
-  -v bilinote-config:/app/backend/config \
-  -v bilinote-static:/app/backend/static \
-  -v bilinote-models:/app/backend/models \
-  --name bilinote \
-  ghcr.io/jefferyhcool/bilinote:latest
+  -v noteflow-data:/app/backend/data \
+  -v noteflow-config:/app/backend/config \
+  -v noteflow-static:/app/backend/static \
+  -v noteflow-models:/app/backend/models \
+  --name noteflow \
+  ghcr.io/yunbocheng4379/noteflow:latest
 ```
 
 上面四个卷分别持久化：`data`（SQLite 数据库 + 生成的笔记）、`config`（LLM 供应商配置 / Cookie / 转写设置）、`static`（笔记引用的视频截图）、`models`（Whisper 模型缓存，可选，避免每次重新下载）。这样 `docker pull` 升级新镜像、删旧容器重建后，配置和历史都不会丢。
@@ -354,17 +354,17 @@ docker-compose -f docker-compose.gpu.yml up -d
 
 ### Contact and Join-联系和加入社区
 
-扫码加入 BiliNote 交流微信群（共 5 个群，任选一个即可；二维码会定期更新，如已失效请到 [Issues](https://github.com/JefferyHcool/BiliNote/issues) 反馈）：
+扫码加入 NoteFlow 交流微信群（共 5 个群，任选一个即可；二维码会定期更新，如已失效请到 [Issues](https://github.com/yunbocheng4379/NoteFlow/issues) 反馈）：
 
 <table align="center">
   <tr>
-    <td align="center"><img src="./doc/wechat-group-1.png" alt="BiliNote 交流群 1" width="200" /><br/>交流群 1</td>
-    <td align="center"><img src="./doc/wechat-group-2.png" alt="BiliNote 交流群 2" width="200" /><br/>交流群 2</td>
-    <td align="center"><img src="./doc/wechat-group-3.png" alt="BiliNote 交流群 3" width="200" /><br/>交流群 3</td>
+    <td align="center"><img src="./doc/wechat-group-1.png" alt="NoteFlow 交流群 1" width="200" /><br/>交流群 1</td>
+    <td align="center"><img src="./doc/wechat-group-2.png" alt="NoteFlow 交流群 2" width="200" /><br/>交流群 2</td>
+    <td align="center"><img src="./doc/wechat-group-3.png" alt="NoteFlow 交流群 3" width="200" /><br/>交流群 3</td>
   </tr>
   <tr>
-    <td align="center"><img src="./doc/wechat-group-4.png" alt="BiliNote 交流群 4" width="200" /><br/>交流群 4</td>
-    <td align="center"><img src="./doc/wechat-group-5.png" alt="BiliNote 交流群 5" width="200" /><br/>交流群 5</td>
+    <td align="center"><img src="./doc/wechat-group-4.png" alt="NoteFlow 交流群 4" width="200" /><br/>交流群 4</td>
+    <td align="center"><img src="./doc/wechat-group-5.png" alt="NoteFlow 交流群 5" width="200" /><br/>交流群 5</td>
     <td></td>
   </tr>
 </table>
@@ -390,4 +390,4 @@ MIT License
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=JefferyHcool/BiliNote&type=Date)](https://www.star-history.com/#JefferyHcool/BiliNote&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=yunbocheng4379/NoteFlow&type=Date)](https://www.star-history.com/#yunbocheng4379/NoteFlow&Date)
