@@ -111,6 +111,10 @@ MYSQL_PASSWORD=请填写强密码
 JWT_SECRET_KEY=请填写高强度随机字符串
 COOKIE_ENCRYPT_KEY=请填写 Fernet Key
 FRONTEND_URL=http://YOUR_SERVER_IP:3015
+
+TRANSCRIBER_TYPE=fast-whisper
+WHISPER_MODEL_SIZE=tiny
+HF_ENDPOINT=https://huggingface.co
 ```
 
 生成 `COOKIE_ENCRYPT_KEY`：
@@ -126,6 +130,7 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 - `docker-compose.yml` 会把后端数据库地址覆盖为容器内地址：`mysql:3306/${MYSQL_DATABASE}`。
 - Docker 前端镜像默认使用 `/api` 和 `/static/screenshots`，由 `noteflow-nginx` 反向代理到后端。
 - 正式环境不要把前端 API 地址写成 `http://127.0.0.1:8483`，否则线上用户浏览器会请求用户自己电脑的 127.0.0.1。
+- `HF_ENDPOINT` 用于 Whisper 模型下载，默认使用 `https://huggingface.co`。只有当服务器无法访问官方源时，才改成实际可用的镜像源。
 
 如果服务器拉取 Docker Hub 较慢或失败，可以在 `.env` 中增加：
 
@@ -274,7 +279,63 @@ docker compose logs --tail=100 backend
 docker compose logs -f backend
 ```
 
-## 4. 导入已有 MySQL 数据
+## 4. Whisper 模型下载排查
+
+首次使用 `fast-whisper` 时，需要下载所选 Whisper 模型。默认 `tiny` 模型较小，但仍依赖后端容器访问 Hugging Face。
+
+查看当前模型状态：
+
+```bash
+curl http://127.0.0.1:3015/api/sys_health
+```
+
+如果返回中看到：
+
+```json
+{
+  "whisper_model": {
+    "size": "tiny",
+    "type": "fast-whisper",
+    "downloaded": false
+  }
+}
+```
+
+可以在页面「设置 → 音频转写配置」中点击下载，也可以进入容器测试网络：
+
+```bash
+docker exec -it noteflow-backend python - <<'PY'
+import urllib.request
+for url in ["https://huggingface.co", "https://hf-mirror.com"]:
+    try:
+        with urllib.request.urlopen(url, timeout=8) as r:
+            print(url, r.status)
+    except Exception as e:
+        print(url, type(e).__name__, e)
+PY
+```
+
+如果日志中出现：
+
+```text
+Distant resource does not seem to be on huggingface.co
+```
+
+通常是当前 `huggingface_hub` 版本和某个镜像源的文件下载校验不兼容。优先把 `.env` 中的模型源改回官方源：
+
+```env
+HF_ENDPOINT=https://huggingface.co
+```
+
+然后重新构建并启动：
+
+```bash
+docker compose up -d --build
+```
+
+如果服务器必须使用镜像源，请确认该镜像源兼容 `huggingface_hub` 的 `snapshot_download` 文件下载，而不只是首页能访问。
+
+## 5. 导入已有 MySQL 数据
 
 如果你有旧系统导出的 SQL 文件，例如 `bilinote.sql`，可以导入到 Docker 中的 `noteflow` 数据库。
 
@@ -331,7 +392,7 @@ The value specified for generated column 'active_marker' is not allowed
 
 SQL 文件本身是 UTF-8 时，缺少这个参数可能会导致 MySQL CLI 按 `latin1` 读取输入，最终把乱码写入 `utf8mb4` 表中。
 
-## 5. 常用运维命令
+## 6. 常用运维命令
 
 查看容器状态：
 
@@ -374,7 +435,7 @@ docker compose down -v
 
 警告：`docker compose down -v` 会删除 MySQL 数据、生成结果、模型缓存、上传文件等正式数据。除非确定要清空系统，否则不要执行。
 
-## 6. 数据持久化说明
+## 7. 数据持久化说明
 
 当前 Docker Compose 顶层项目名是 `noteflow`，因此实际 Docker volume 名称会带 `noteflow_` 前缀。
 
@@ -401,7 +462,7 @@ docker run --rm \
 
 还原前请先停止服务，并确认目标 volume 可以被覆盖。
 
-## 7. 本地 Docker Desktop 验证
+## 8. 本地 Docker Desktop 验证
 
 在本地项目目录执行：
 
