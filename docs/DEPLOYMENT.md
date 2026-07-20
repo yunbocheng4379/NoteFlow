@@ -232,6 +232,7 @@ set +a
 ```bash
 mkdir -p backups
 docker exec noteflow-mysql mysqldump \
+  --default-character-set=utf8mb4 \
   -uroot -p"$MYSQL_ROOT_PASSWORD" \
   --databases "$MYSQL_DATABASE" > "backups/noteflow_$(date +%Y%m%d_%H%M%S).sql"
 ```
@@ -286,6 +287,7 @@ set -a
 set +a
 mkdir -p backups
 docker exec noteflow-mysql mysqldump \
+  --default-character-set=utf8mb4 \
   -uroot -p"$MYSQL_ROOT_PASSWORD" \
   --databases "$MYSQL_DATABASE" > "backups/noteflow_before_import_$(date +%Y%m%d_%H%M%S).sql"
 ```
@@ -295,7 +297,9 @@ docker exec noteflow-mysql mysqldump \
 ```bash
 docker compose stop nginx backend
 
-docker exec -i noteflow-mysql mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
+docker exec -i noteflow-mysql mysql \
+  --default-character-set=utf8mb4 \
+  -uroot -p"$MYSQL_ROOT_PASSWORD" -e "
 DROP DATABASE IF EXISTS ${MYSQL_DATABASE};
 CREATE DATABASE ${MYSQL_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
@@ -303,6 +307,7 @@ FLUSH PRIVILEGES;
 "
 
 docker exec -i noteflow-mysql mysql \
+  --default-character-set=utf8mb4 \
   -uroot -p"$MYSQL_ROOT_PASSWORD" \
   "$MYSQL_DATABASE" < /path/to/your.sql
 
@@ -317,6 +322,14 @@ The value specified for generated column 'active_marker' is not allowed
 ```
 
 说明 SQL 中显式插入了 MySQL 生成列。需要从对应 `INSERT` 语句里移除生成列字段和值，再重新导入。
+
+如果导入后页面出现中文乱码，优先确认导入命令是否包含：
+
+```bash
+--default-character-set=utf8mb4
+```
+
+SQL 文件本身是 UTF-8 时，缺少这个参数可能会导致 MySQL CLI 按 `latin1` 读取输入，最终把乱码写入 `utf8mb4` 表中。
 
 ## 5. 常用运维命令
 
