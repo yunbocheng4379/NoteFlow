@@ -353,7 +353,7 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
       </div>
 
       {/* 输入区域 */}
-      <div className="border-t px-3 py-2">
+      <div className="noteflow-chat-sender border-t px-3 py-2">
         <Sender
           value={input}
           onChange={setInput}

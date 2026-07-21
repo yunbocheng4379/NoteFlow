@@ -156,3 +156,26 @@ html, body, #root {
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .noteflow-chat-sender .ant-sender-actions-btn.ant-btn-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 0 rgba(22, 122, 110, 0.1);
+  }
+
+  .noteflow-chat-sender .ant-sender-actions-btn.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover,
+  .noteflow-chat-sender .ant-sender-actions-btn.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):focus-visible {
+    background-color: #0f6b60 !important;
+    border-color: #0f6b60 !important;
+  }
+
+  .noteflow-chat-sender .ant-sender-actions-btn.ant-btn-primary:disabled,
+  .noteflow-chat-sender .ant-sender-actions-btn.ant-btn-primary.ant-btn-disabled {
+    background-color: color-mix(in srgb, var(--primary) 56%, white) !important;
+    border-color: color-mix(in srgb, var(--primary) 56%, white) !important;
+    color: #fff !important;
+    opacity: 0.72;
+  }
+}
