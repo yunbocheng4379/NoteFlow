@@ -56,6 +56,47 @@ docker compose version
 
 如果是云服务器，需要在安全组、防火墙或面板中放行 `.env` 中的 `APP_PORT`，默认是 `3015`。
 
+### 1.1 配置国内 Docker 镜像源
+
+如果服务器拉取 Docker Hub 经常超时，建议先配置 Docker daemon 的 registry mirror。这个配置会影响 `docker pull mysql:8.0`、`docker pull nginx:1.25-alpine` 这类直接拉取的镜像。
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json >/dev/null <<'EOF'
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://docker.1ms.run"
+  ]
+}
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+验证镜像源是否生效：
+
+```bash
+docker info | sed -n '/Registry Mirrors:/,/Live Restore/p'
+```
+
+正常应看到：
+
+```text
+Registry Mirrors:
+ https://docker.m.daocloud.io/
+ https://docker.1ms.run/
+```
+
+项目构建基础镜像还支持通过 `.env` 指定国内 registry 前缀：
+
+```env
+BASE_REGISTRY=docker.m.daocloud.io
+```
+
+这会让后端、前端 Dockerfile 中的基础镜像从 `docker.m.daocloud.io/library/...` 拉取。建议 daemon mirror 和 `BASE_REGISTRY` 同时配置。
+
 ## 2. 首次部署步骤
 
 ### 2.1 拉取代码
@@ -143,6 +184,8 @@ BASE_REGISTRY=docker.m.daocloud.io
 ```bash
 BASE_REGISTRY=docker.m.daocloud.io docker compose up -d --build
 ```
+
+如果连 `mysql:8.0`、`nginx:1.25-alpine` 这类 Compose 直接引用的镜像也拉取超时，请先按上面的“配置国内 Docker 镜像源”修改 `/etc/docker/daemon.json` 并重启 Docker。
 
 ### 2.3 CPU 版本启动
 
