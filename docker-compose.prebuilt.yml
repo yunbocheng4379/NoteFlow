@@ -1,0 +1,7 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: NoteFlow_frontend/Dockerfile.prebuilt
+      args:
+        BASE_REGISTRY: ${BASE_REGISTRY:-docker.io}
