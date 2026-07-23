@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS `video_tasks` (
   `platform` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '视频来源平台，用于选择对应下载器：bilibili、youtube、douyin、kuaishou、local',
   `task_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '任务唯一标识，UUID 字符串，前端凭此轮询 /task_status/{task_id}',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '任务创建时间',
+  `batch_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '批量任务分组 ID；由 /generate_notes_batch 统一生成，单个任务为 NULL',
   `video_url` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '原始视频链接',
   `model_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '生成笔记使用的模型名称',
   `status` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING' COMMENT '任务状态：PENDING/DOWNLOADING/TRANSCRIBING/GENERATING/SUCCESS/FAILED',
@@ -85,7 +86,8 @@ CREATE TABLE IF NOT EXISTS `video_tasks` (
   `completed_at` datetime DEFAULT NULL COMMENT '任务完成时间（SUCCESS 或 FAILED 时写入）',
   PRIMARY KEY (`id`),
   UNIQUE KEY `task_id` (`task_id`),
-  KEY `ix_video_tasks_user_id` (`user_id`)
+  KEY `ix_video_tasks_user_id` (`user_id`),
+  KEY `ix_video_tasks_batch_id` (`batch_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `user_transcriber_configs` (
@@ -170,6 +172,70 @@ CREATE TABLE IF NOT EXISTS `note_shares` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_note_shares_share_token` (`share_token`),
   UNIQUE KEY `ix_note_shares_task_id` (`task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `note_collections` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '合集 ID，主键，自增',
+  `user_id` int NOT NULL COMMENT '创建者用户 ID',
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '合集名称',
+  `description` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '合集描述，可为空',
+  `cover_url` varchar(512) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '合集封面图片 URL，可为空，前端为空时展示默认文件夹图标',
+  `created_at` datetime DEFAULT (now()) COMMENT '创建时间',
+  `updated_at` datetime DEFAULT (now()) COMMENT '最近更新时间（含笔记增删）',
+  PRIMARY KEY (`id`),
+  KEY `ix_note_collections_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `note_collection_items` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '关联记录 ID，主键，自增',
+  `collection_id` int NOT NULL COMMENT '关联的合集 ID，对应 note_collections.id',
+  `task_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '关联的笔记任务 ID，对应 video_tasks.task_id',
+  `created_at` datetime DEFAULT (now()) COMMENT '加入合集时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_collection_task` (`collection_id`,`task_id`),
+  KEY `ix_note_collection_items_collection_id` (`collection_id`),
+  KEY `ix_note_collection_items_task_id` (`task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `collection_shares` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `collection_id` int NOT NULL COMMENT '关联的合集 ID，对应 note_collections.id',
+  `user_id` int NOT NULL COMMENT '合集所有者用户 ID',
+  `share_token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '分享凭证，UUID 去掉连字符',
+  `is_active` tinyint(1) NOT NULL COMMENT 'True=分享开启，False=已关闭',
+  `view_count` int NOT NULL COMMENT '无需登录访问次数',
+  `created_at` datetime DEFAULT (now()),
+  `updated_at` datetime DEFAULT (now()),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ix_collection_shares_share_token` (`share_token`),
+  UNIQUE KEY `ix_collection_shares_collection_id` (`collection_id`),
+  KEY `ix_collection_shares_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `flashcard_sets` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '卡组 ID，主键，自增',
+  `user_id` int NOT NULL COMMENT '创建者用户 ID',
+  `task_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '源笔记 task_id，对应 video_tasks.task_id',
+  `title` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '卡组标题，默认取自源笔记标题',
+  `custom_prompt` text COLLATE utf8mb4_unicode_ci COMMENT '用户自定义出题要求，可为空',
+  `card_count` int NOT NULL COMMENT '生成的卡片数量',
+  `provider_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '生成时使用的模型提供者 ID',
+  `model_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '生成时使用的模型名称',
+  `created_at` datetime DEFAULT (now()) COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `ix_flashcard_sets_user_id` (`user_id`),
+  KEY `ix_flashcard_sets_task_id` (`task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `flashcards` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '卡片 ID，主键，自增',
+  `set_id` int NOT NULL COMMENT '所属卡组 ID，对应 flashcard_sets.id',
+  `question` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '卡片问题',
+  `answer` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '卡片答案',
+  `order_index` int NOT NULL COMMENT '卡片顺序，从 0 开始',
+  PRIMARY KEY (`id`),
+  KEY `ix_flashcards_set_id` (`set_id`),
+  CONSTRAINT `flashcards_ibfk_1` FOREIGN KEY (`set_id`) REFERENCES `flashcard_sets` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `feedbacks` (
