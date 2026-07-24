@@ -13,6 +13,7 @@ export interface TaskSummary {
   title: string
   cover_url: string
   duration: number
+  batch_id?: string | null
 }
 
 export const getTasks = async (): Promise<TaskSummary[]> => {

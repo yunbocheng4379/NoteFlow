@@ -61,7 +61,10 @@ class CookieConfigManager:
         """
         try:
             from app.services.cookie_pool_manager import CookiePoolManager
-            picked = CookiePoolManager.instance().pick(platform)
+            # 这里只是读取配置给下载器/字幕探测等轻量路径使用, 不进入任务生命周期.
+            # pick() 会增加 in_use_count, 但这些调用点没有对应的 report_success/failure,
+            # 会导致 Cookie 被长期占用; 真正的下载重试流程使用 use_cookie() 管理计数.
+            picked = next(CookiePoolManager.instance().pick_round(platform, max_attempts=1), None)
             if picked is None:
                 return None
             return CookieWithMeta(
@@ -99,7 +102,7 @@ class CookieConfigManager:
             summary = platform_cookie_dao.summary_by_platform()
             for platform in summary.keys():
                 from app.services.cookie_pool_manager import CookiePoolManager
-                picked = CookiePoolManager.instance().pick(platform)
+                picked = next(CookiePoolManager.instance().pick_round(platform, max_attempts=1), None)
                 if picked:
                     result[platform] = picked.cookie
         except Exception as e:

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from app.db.models.video_tasks import VideoTask
 from app.db.engine import get_db
@@ -17,6 +17,7 @@ def insert_video_task(
     model_name: Optional[str] = None,
     status: str = "PENDING",
     credits_used: int = 20,
+    batch_id: Optional[str] = None,
 ):
     db = next(get_db())
     try:
@@ -29,6 +30,7 @@ def insert_video_task(
             model_name=model_name,
             status=status,
             credits_used=credits_used,
+            batch_id=batch_id,
         )
         db.add(task)
         db.commit()
@@ -79,13 +81,29 @@ def get_task_by_task_id(task_id: str):
         db.close()
 
 
+def get_task_ids_by_batch_id(batch_id: str, user_id: Optional[int] = None) -> list:
+    db = next(get_db())
+    try:
+        q = db.query(VideoTask).filter_by(batch_id=batch_id)
+        if user_id is not None:
+            q = q.filter(VideoTask.user_id == user_id)
+        return [t.task_id for t in q.order_by(VideoTask.created_at.asc()).all()]
+    except Exception as e:
+        logger.error(f"Failed to get tasks by batch_id: {e}")
+        return []
+    finally:
+        db.close()
+
+
 def delete_task_by_video(video_id: str, platform: str, user_id: Optional[int] = None):
     db = next(get_db())
+    task_ids: List[str] = []
     try:
         q = db.query(VideoTask).filter_by(video_id=video_id, platform=platform)
         if user_id is not None:
             q = q.filter(VideoTask.user_id == user_id)
         for task in q.all():
+            task_ids.append(task.task_id)
             db.delete(task)
         db.commit()
         logger.info(f"Task(s) deleted for video_id={video_id}, platform={platform}")
@@ -93,3 +111,11 @@ def delete_task_by_video(video_id: str, platform: str, user_id: Optional[int] = 
         logger.error(f"Failed to delete task by video: {e}")
     finally:
         db.close()
+
+    if task_ids:
+        try:
+            from app.db.note_collection_dao import remove_task_from_all_collections
+            for task_id in task_ids:
+                remove_task_from_all_collections(task_id)
+        except Exception as e:
+            logger.warning(f"清理合集关联失败 (video_id={video_id}, platform={platform}): {e}")

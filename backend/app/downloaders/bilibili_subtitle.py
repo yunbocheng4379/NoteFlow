@@ -13,6 +13,7 @@
 AI 字幕需要登录态 cookie（SESSDATA）；通过 CookieConfigManager 注入。
 """
 
+import re
 from typing import List, Optional
 
 import requests
@@ -48,7 +49,7 @@ class BilibiliSubtitleFetcher:
             h["Cookie"] = self._cookie
         return h
 
-    def _get_cid(self, bvid: str) -> Optional[int]:
+    def _get_cid(self, bvid: str, page: Optional[int] = None) -> Optional[int]:
         url = "https://api.bilibili.com/x/web-interface/view"
         try:
             resp = requests.get(url, params={"bvid": bvid}, headers=self._headers(), timeout=10)
@@ -59,7 +60,17 @@ class BilibiliSubtitleFetcher:
         if data.get("code") != 0:
             logger.warning(f"view API 返回错误: code={data.get('code')}, msg={data.get('message')}")
             return None
-        cid = data.get("data", {}).get("cid")
+        info = data.get("data", {})
+        # 分P视频（?p=N）：顶层 cid 只对应第1P，需要从 pages 里按页码取对应 cid
+        if page and page > 1:
+            pages = info.get("pages") or []
+            for p in pages:
+                if p.get("page") == page:
+                    cid = p.get("cid")
+                    return int(cid) if cid else None
+            logger.warning(f"{bvid} 找不到第 {page} P，pages 共 {len(pages)} 条")
+            return None
+        cid = info.get("cid")
         return int(cid) if cid else None
 
     def _list_subtitles(self, bvid: str, cid: int) -> List[dict]:
@@ -117,7 +128,10 @@ class BilibiliSubtitleFetcher:
             logger.info("无法从 URL 提取 BV id")
             return None
 
-        cid = self._get_cid(bvid)
+        page_match = re.search(r"[?&]p=(\d+)", video_url)
+        page = int(page_match.group(1)) if page_match else None
+
+        cid = self._get_cid(bvid, page)
         if not cid:
             logger.info(f"{bvid} 没有取到 cid")
             return None

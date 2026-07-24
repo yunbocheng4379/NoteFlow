@@ -14,6 +14,7 @@ import {
   Gift,
   Info,
   Megaphone,
+  Folder,
 } from 'lucide-react'
 import logo from '@/assets/icon.svg'
 import { useUserStore } from '@/store/userStore'
@@ -26,6 +27,7 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: '工作台', to: '/' },
   { icon: ListTodo, label: '任务列表', to: '/tasks' },
+  { icon: Folder, label: '笔记合集', to: '/collections' },
   { icon: Palette, label: '笔记风格', to: '/note-style' },
   { icon: Megaphone, label: '更新日志', to: '/update-logs' },
   { icon: Zap, label: '升级 Pro', to: '/upgrade' },
@@ -129,9 +131,9 @@ const Index = () => {
         <div className="flex flex-col gap-0.5 px-1 py-2">
           {/* 关于: 所有用户可见（位于主导航底部，「问题反馈」上方） */}
           <Link
-            to="/settings/about"
+            to="/about"
             className={`flex h-9 w-full items-center rounded-lg transition-colors ${
-              location.pathname === '/settings/about'
+              location.pathname === '/about'
                 ? 'bg-primary/10 text-primary'
                 : 'text-muted-foreground hover:bg-neutral-100 hover:text-foreground'
             }`}

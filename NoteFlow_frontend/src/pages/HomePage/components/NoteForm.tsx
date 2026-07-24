@@ -18,17 +18,26 @@ import {
   Clock,
   Loader2,
   Upload,
+  X,
   Zap,
 } from 'lucide-react'
 import { Link as RouterLink } from 'react-router-dom'
 import { billingApi } from '@/services/billing'
 import { platformAPI } from '@/services/platform'
 import { useUserStore } from '@/store/userStore'
-import { generateNote, getVideoInfo, type VideoInfo } from '@/services/note.ts'
+import {
+  generateNote,
+  generateNotesBatch,
+  getChannelVideos,
+  getVideoInfo,
+  type ChannelVideoItem,
+  type VideoInfo,
+} from '@/services/note.ts'
 import { uploadFile } from '@/services/upload.ts'
 import { useTaskStore } from '@/store/taskStore'
 import { useModelStore } from '@/store/modelStore'
 import { useNoteStyleStore } from '@/store/noteStyleStore'
+import { useCollectionStore } from '@/store/collectionStore'
 import { Button } from '@/components/ui/button.tsx'
 import {
   Select,
@@ -62,8 +71,12 @@ const formSchema = z
       .tuple([z.coerce.number().min(1).max(10), z.coerce.number().min(1).max(10)])
       .default([2, 2])
       .optional(),
+    collection_id: z.string().optional(),
+    // 批量模式下跳过 video_url 必填校验；提交时另走 handleBatchSubmit 的选中列表校验
+    _batch_mode: z.boolean().optional(),
   })
-  .superRefine(({ video_url, platform }, ctx) => {
+  .superRefine(({ video_url, platform, _batch_mode }, ctx) => {
+    if (_batch_mode) return
     if (!video_url) {
       ctx.addIssue({
         code: 'custom',
@@ -383,9 +396,20 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   // 平台禁用提示（从后端 /platforms 获取）
   const [platformDisabled, setPlatformDisabled] = useState<string | null>(null)
 
+  // ==== 批量模式 ====
+  const [batchMode, setBatchMode] = useState(false)
+  const [channelUrl, setChannelUrl] = useState('')
+  const [batchUrlsText, setBatchUrlsText] = useState('')
+  const [batchResolving, setBatchResolving] = useState(false)
+  const [batchPreview, setBatchPreview] = useState<
+    Array<ChannelVideoItem & { platform: string; checked: boolean }>
+  >([])
+  const [batchSubmitting, setBatchSubmitting] = useState(false)
+
   const { addPendingTask, currentTaskId, getCurrentTask, retryTask } = useTaskStore()
   const { loadEnabledModels, modelList } = useModelStore()
   const { loadStyles, styles: noteStyles } = useNoteStyleStore()
+  const { loadCollections, collections } = useCollectionStore()
 
   const form = useForm<NoteFormValues>({
     resolver: zodResolver(formSchema),
@@ -398,6 +422,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       video_interval: 6,
       grid_size: [2, 2],
       format: [],
+      _batch_mode: false,
     },
   })
   const currentTask = getCurrentTask()
@@ -471,6 +496,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   useEffect(() => {
     loadEnabledModels()
     loadStyles()
+    loadCollections()
     // 加载平台列表，检查当前平台是否被禁用
     platformAPI.list().then(platforms => {
       const cur = platforms.find((p: any) => p.platform_id === platform)
@@ -661,12 +687,152 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
     }
   }
 
+  const CHANNEL_RESOLVABLE_PLATFORMS = ['bilibili', 'youtube']
+
+  // 解析 UP主/频道链接，把结果合并进预览列表（按 video_url 去重）
+  const handleResolveChannel = async () => {
+    const url = channelUrl.trim()
+    if (!url) return
+    const detected = detectPlatform(url)
+    if (!CHANNEL_RESOLVABLE_PLATFORMS.includes(detected)) {
+      toast.error('频道/合集自动解析仅支持 B站和 YouTube，其余平台请手动粘贴视频链接')
+      return
+    }
+    setBatchResolving(true)
+    try {
+      const videos = await getChannelVideos(url, detected)
+      if (videos.length === 0) {
+        toast.error('未解析到任何视频，请检查链接')
+        return
+      }
+      setBatchPreview(prev => {
+        const existing = new Set(prev.map(v => v.video_url))
+        const added = videos
+          .filter(v => !existing.has(v.video_url))
+          .map(v => ({ ...v, platform: detected, checked: true }))
+        return [...prev, ...added]
+      })
+      toast.success(`解析到 ${videos.length} 个视频`)
+    } catch (e) {
+      console.error('解析频道/合集失败：', e)
+      toast.error('解析失败，请检查链接或稍后重试')
+    } finally {
+      setBatchResolving(false)
+    }
+  }
+
+  // 解析手动粘贴的多个视频链接（逗号或换行分隔），逐条调用 /video_info 预览
+  const handleResolveManualUrls = async () => {
+    const urls = batchUrlsText
+      .split(/[\n,，]/)
+      .map(s => s.trim())
+      .filter(Boolean)
+    if (urls.length === 0) return
+
+    const existing = new Set(batchPreview.map(v => v.video_url))
+    const uniqueUrls = [...new Set(urls)].filter(u => !existing.has(u))
+    if (uniqueUrls.length === 0) return
+
+    setBatchResolving(true)
+    try {
+      const results = await Promise.all(
+        uniqueUrls.map(async url => {
+          const detected = detectPlatform(url)
+          const info = await getVideoInfo(url, detected)
+          return {
+            video_url: url,
+            title: info?.title || url,
+            cover_url: info?.cover_url || '',
+            duration: info?.duration || 0,
+            platform: detected,
+            checked: true,
+          }
+        }),
+      )
+      setBatchPreview(prev => [...prev, ...results])
+      setBatchUrlsText('')
+    } finally {
+      setBatchResolving(false)
+    }
+  }
+
+  const toggleBatchItem = (videoUrl: string) => {
+    setBatchPreview(prev =>
+      prev.map(v => (v.video_url === videoUrl ? { ...v, checked: !v.checked } : v)),
+    )
+  }
+
+  const removeBatchItem = (videoUrl: string) => {
+    setBatchPreview(prev => prev.filter(v => v.video_url !== videoUrl))
+  }
+
+  const handleBatchSubmit = async (values: NoteFormValues) => {
+    const selected = batchPreview.filter(v => v.checked)
+    if (selected.length === 0) {
+      toast.error('请至少选择一个视频')
+      return
+    }
+    if (selected.length > 30) {
+      toast.error('单批最多支持 30 个视频，请减少选择数量')
+      return
+    }
+    setBatchSubmitting(true)
+    try {
+      const { batch_id, results } = await generateNotesBatch({
+        items: selected.map(v => ({ video_url: v.video_url, platform: v.platform })),
+        quality: values.quality,
+        model_name: values.model_name,
+        provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
+        format: values.format,
+        style: values.style,
+        extras: values.extras,
+        video_understanding: values.video_understanding,
+        video_interval: values.video_interval,
+        grid_size: values.grid_size as unknown as number[],
+        collection_id: values.collection_id ? Number(values.collection_id) : undefined,
+      })
+
+      let successCount = 0
+      for (const r of results) {
+        if (r.success && r.task_id) {
+          const source = selected.find(v => v.video_url === r.video_url)
+          addPendingTask(
+            r.task_id,
+            source?.platform || 'bilibili',
+            { video_url: r.video_url, platform: source?.platform, quality: values.quality, model_name: values.model_name },
+            source ? { title: source.title, cover_url: source.cover_url, duration: source.duration, platform: source.platform } : undefined,
+            batch_id,
+          )
+          successCount++
+        }
+      }
+      const failCount = results.length - successCount
+      if (failCount > 0) {
+        toast.error(`${successCount} 个任务已提交，${failCount} 个失败`)
+      } else {
+        toast.success(`已提交 ${successCount} 个批量生成任务`)
+      }
+      setBatchPreview([])
+      onSubmitSuccess?.()
+    } catch (e) {
+      console.error('批量提交失败：', e)
+      toast.error('批量提交失败，请稍后重试')
+    } finally {
+      setBatchSubmitting(false)
+    }
+  }
+
   const onSubmit = async (values: NoteFormValues) => {
+    if (batchMode) {
+      await handleBatchSubmit(values)
+      return
+    }
     const isRegenerate = mode === 'regenerate' && !!currentTaskId
-    const payload: NoteFormValues = {
+    const payload = {
       ...values,
       provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
       task_id: isRegenerate ? currentTaskId : '',
+      collection_id: values.collection_id ? Number(values.collection_id) : undefined,
     }
     if (isRegenerate) {
       retryTask(currentTaskId, payload)
@@ -727,10 +893,14 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
             <div className="mb-3 flex border-b border-neutral-200">
               <button
                 type="button"
-                onClick={() => form.setValue('platform', 'bilibili')}
+                onClick={() => {
+                  setBatchMode(false)
+                  form.setValue('_batch_mode', false)
+                  form.setValue('platform', 'bilibili')
+                }}
                 className={cn(
                   'px-4 pb-2 text-sm font-medium transition-colors',
-                  !isLocal
+                  !isLocal && !batchMode
                     ? 'border-b-2 border-primary text-primary -mb-px'
                     : 'text-neutral-500 hover:text-neutral-700',
                 )}
@@ -739,19 +909,135 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
               </button>
               <button
                 type="button"
-                onClick={() => form.setValue('platform', 'local')}
+                onClick={() => {
+                  setBatchMode(false)
+                  form.setValue('_batch_mode', false)
+                  form.setValue('platform', 'local')
+                }}
                 className={cn(
                   'px-4 pb-2 text-sm font-medium transition-colors',
-                  isLocal
+                  isLocal && !batchMode
                     ? 'border-b-2 border-primary text-primary -mb-px'
                     : 'text-neutral-500 hover:text-neutral-700',
                 )}
               >
                 本地文件
               </button>
+              {mode === 'create' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBatchMode(true)
+                    form.setValue('_batch_mode', true)
+                  }}
+                  className={cn(
+                    'px-4 pb-2 text-sm font-medium transition-colors',
+                    batchMode
+                      ? 'border-b-2 border-primary text-primary -mb-px'
+                      : 'text-neutral-500 hover:text-neutral-700',
+                  )}
+                >
+                  批量模式
+                </button>
+              )}
             </div>
 
-            {isLocal ? (
+            {batchMode ? (
+              /* Batch: channel/collection URL + manual multi-URL textarea + preview list */
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-neutral-600">
+                    UP主/频道/合集链接（仅支持 B站、YouTube 自动解析）
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="粘贴 UP主空间 / 合集 / 收藏夹 / YouTube 频道链接…"
+                      value={channelUrl}
+                      onChange={e => setChannelUrl(e.target.value)}
+                      className="h-9 flex-1 shadow-none"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={batchResolving || !channelUrl.trim()}
+                      onClick={handleResolveChannel}
+                    >
+                      {batchResolving ? <Loader2 className="h-4 w-4 animate-spin" /> : '解析'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-neutral-600">
+                    或粘贴多个视频链接（每行一个，或使用逗号分隔）
+                  </label>
+                  <Textarea
+                    placeholder="https://... &#10;https://..."
+                    value={batchUrlsText}
+                    onChange={e => setBatchUrlsText(e.target.value)}
+                    className="min-h-20 shadow-none text-sm"
+                  />
+                  <div className="mt-1.5 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={batchResolving || !batchUrlsText.trim()}
+                      onClick={handleResolveManualUrls}
+                    >
+                      {batchResolving ? <Loader2 className="h-4 w-4 animate-spin" /> : '添加到预览列表'}
+                    </Button>
+                  </div>
+                </div>
+
+                {batchPreview.length > 0 && (
+                  <div className="rounded-lg border border-neutral-200">
+                    <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
+                      <p className="text-xs text-neutral-500">
+                        预览列表（{batchPreview.filter(v => v.checked).length}/{batchPreview.length} 已选，最多 30 个）
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setBatchPreview([])}
+                        className="text-xs text-neutral-400 hover:text-red-500"
+                      >
+                        清空
+                      </button>
+                    </div>
+                    <div className="max-h-64 divide-y divide-neutral-50 overflow-y-auto">
+                      {batchPreview.map(v => (
+                        <div key={v.video_url} className="flex items-center gap-2 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={v.checked}
+                            onChange={() => toggleBatchItem(v.video_url)}
+                            className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium text-neutral-800">
+                              {v.title || v.video_url}
+                            </p>
+                            <p className="truncate text-[11px] text-neutral-400">{v.video_url}</p>
+                          </div>
+                          {v.duration > 0 && (
+                            <span className="shrink-0 text-[11px] text-neutral-400">
+                              {formatDuration(v.duration)}
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeBatchItem(v.video_url)}
+                            className="shrink-0 text-neutral-300 hover:text-red-500"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : isLocal ? (
               /* Local: file drop zone */
               <FormField
                 control={form.control}
@@ -1067,6 +1353,36 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
             )}
           />
 
+          {/* ── 输出与归类 section ── */}
+          {mode !== 'regenerate' && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">输出与归类</p>
+              <FormField
+                control={form.control}
+                name="collection_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <label className="mb-1 block text-sm font-medium text-neutral-700">存入合集（可选）</label>
+                    <Select value={field.value || '__none__'} onValueChange={v => field.onChange(v === '__none__' ? '' : v)}>
+                      <FormControl>
+                        <SelectTrigger className="w-full shadow-none">
+                          <SelectValue placeholder="生成后自动归入该合集" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">不存入合集</SelectItem>
+                        {collections.map(c => (
+                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+
         </div>
 
         {/* 固定底部：成本预览 + 提交按钮 */}
@@ -1109,10 +1425,18 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
             <Button
             type="submit"
             className="w-full"
-            disabled={generating || (costPreview !== null && !costPreview.sufficient) || !!platformDisabled}
+            disabled={
+              batchMode
+                ? batchSubmitting || batchPreview.filter(v => v.checked).length === 0
+                : generating || (costPreview !== null && !costPreview.sufficient) || !!platformDisabled
+            }
           >
-            {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {generating
+            {(batchMode ? batchSubmitting : generating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {batchMode
+              ? batchSubmitting
+                ? '正在提交…'
+                : `批量生成 (${batchPreview.filter(v => v.checked).length})`
+              : generating
               ? '正在生成…'
               : costPreview
               ? `消耗 ${costPreview.required} 电力生成笔记`

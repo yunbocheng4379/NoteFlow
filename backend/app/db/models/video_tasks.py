@@ -21,3 +21,4 @@ class VideoTask(Base):
     credits_used = Column(Integer, nullable=False, server_default="20", comment="本次任务消耗的电力，默认 20")
     completed_at = Column(DateTime, nullable=True, comment="任务完成时间（SUCCESS 或 FAILED 时写入）")
     created_at = Column(DateTime, server_default=func.now(), comment="任务创建时间")
+    batch_id = Column(String(64), nullable=True, index=True, comment="批量任务分组 ID；由 /generate_notes_batch 统一生成，单个任务为 NULL")

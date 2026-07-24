@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import {
   RefreshCw,
   CheckCircle2,
@@ -9,6 +9,8 @@ import {
   Zap,
   ExternalLink,
   Trash2,
+  FolderPlus,
+  Sparkles,
 } from 'lucide-react'
 import { getTasks, type TaskSummary } from '@/services/task'
 import { useTaskStore } from '@/store/taskStore'
@@ -24,6 +26,7 @@ import {
 } from '@/components/ui/dialog'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import AddToCollectionDialog from '@/components/AddToCollectionDialog'
 
 const PLATFORM_LABELS: Record<string, string> = {
   bilibili: 'Bilibili',
@@ -31,6 +34,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   douyin: '抖音',
   kuaishou: '快手',
   local: '本地文件',
+  merged: '笔记融合',
 }
 
 const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
@@ -116,7 +120,14 @@ function PlatformBadge({ platform }: { platform: string }) {
   )
 }
 
-function CoverFallback() {
+function CoverFallback({ platform }: { platform: string }) {
+  if (platform === 'merged') {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary/70 text-white/80">
+        <Sparkles className="h-5 w-5" />
+      </div>
+    )
+  }
   return (
     <div className="flex h-full w-full items-center justify-center text-neutral-300">
       <PlayCircle className="h-5 w-5" />
@@ -135,7 +146,7 @@ function CoverImage({ src, platform }: { src: string; platform: string }) {
       {proxied ? (
         <img src={proxied} alt="" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
       ) : (
-        <CoverFallback />
+        <CoverFallback platform={platform} />
       )}
     </div>
   )
@@ -150,6 +161,9 @@ export default function TaskListPage() {
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  // 加入合集 dialog（单篇传 1 个 id，批量传多个）
+  const [addCollectionTaskIds, setAddCollectionTaskIds] = useState<string[]>([])
+
   // batch delete
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
@@ -158,6 +172,7 @@ export default function TaskListPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const navigate = useNavigate()
   const removeTask = useTaskStore(state => state.removeTask)
+  const setCurrentTask = useTaskStore(state => state.setCurrentTask)
 
   const hasRunning = (list: TaskSummary[]) => list.some(t => RUNNING_STATUSES.has(t.status))
 
@@ -251,8 +266,17 @@ export default function TaskListPage() {
     return t.status === activeTab
   })
 
+  // 按 batch_id 分组统计（用于在批量任务的首行渲染分组标签）
+  const batchCounts = new Map<string, number>()
+  filtered.forEach(t => {
+    if (t.batch_id) batchCounts.set(t.batch_id, (batchCounts.get(t.batch_id) || 0) + 1)
+  })
+  const seenBatchIds = new Set<string>()
+
   const allFilteredSelected = filtered.length > 0 && filtered.every(t => selectedIds.has(t.task_id))
   const someFilteredSelected = filtered.some(t => selectedIds.has(t.task_id))
+  // 只有已完成的笔记才能加入合集
+  const selectedSuccessIds = tasks.filter(t => selectedIds.has(t.task_id) && t.status === 'SUCCESS').map(t => t.task_id)
 
   const toggleSelectAll = () => {
     if (allFilteredSelected) {
@@ -290,14 +314,25 @@ export default function TaskListPage() {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setBatchDialogOpen(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              批量删除 ({selectedIds.size})
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={selectedSuccessIds.length === 0}
+                onClick={() => setAddCollectionTaskIds(selectedSuccessIds)}
+              >
+                <FolderPlus className="mr-1.5 h-3.5 w-3.5" />
+                批量加入合集 ({selectedSuccessIds.length})
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBatchDialogOpen(true)}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                批量删除 ({selectedIds.size})
+              </Button>
+            </>
           )}
           <Button variant="outline" size="sm" onClick={() => load(true)} disabled={loading}>
             <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -365,9 +400,19 @@ export default function TaskListPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-50">
-              {filtered.map(task => (
+              {filtered.map(task => {
+                const isBatchStart = !!task.batch_id && !seenBatchIds.has(task.batch_id)
+                if (task.batch_id) seenBatchIds.add(task.batch_id)
+                return (
+                <Fragment key={task.task_id}>
+                {isBatchStart && (
+                  <tr key={`batch-${task.batch_id}`} className="bg-neutral-50/80">
+                    <td colSpan={9} className="px-4 py-1.5 text-[11px] font-medium text-neutral-400">
+                      批量任务 · {batchCounts.get(task.batch_id!)} 个视频
+                    </td>
+                  </tr>
+                )}
                 <tr
-                  key={task.task_id}
                   className={`group transition-colors hover:bg-neutral-50/60 ${selectedIds.has(task.task_id) ? 'bg-primary/5' : ''}`}
                 >
                   {/* 勾选 */}
@@ -444,14 +489,26 @@ export default function TaskListPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       {task.status === 'SUCCESS' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => navigate('/', { state: { taskId: task.task_id } })}
-                        >
-                          查看笔记
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                setCurrentTask(task.task_id)
+                navigate('/')
+              }}
+                          >
+                            查看笔记
+                          </Button>
+                          <button
+                            onClick={() => setAddCollectionTaskIds([task.task_id])}
+                            className="flex h-7 w-7 items-center justify-center rounded text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-blue-50 hover:text-blue-500"
+                            title="加入合集"
+                          >
+                            <FolderPlus className="h-3.5 w-3.5" />
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => setDeleteDialogId(task.task_id)}
@@ -463,7 +520,9 @@ export default function TaskListPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                </Fragment>
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -524,6 +583,13 @@ export default function TaskListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddToCollectionDialog
+        taskIds={addCollectionTaskIds}
+        open={addCollectionTaskIds.length > 0}
+        onOpenChange={open => { if (!open) setAddCollectionTaskIds([]) }}
+        onAdded={() => setSelectedIds(new Set())}
+      />
     </div>
   )
 }

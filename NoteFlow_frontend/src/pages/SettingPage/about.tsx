@@ -1,31 +1,20 @@
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Github, Star, ExternalLink, Download } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { ShieldCheck, Building2, Headphones, Github } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import logo from '@/assets/icon.svg'
-import loginShot from '@/assets/screenshots/01-login.png'
-import workspaceShot from '@/assets/screenshots/02-workspace.png'
-import tasksShot from '@/assets/screenshots/03-tasks.png'
-import settingsShot from '@/assets/screenshots/04-settings-model.png'
-
-// 二维码统一走 GitHub 在线地址：后续在仓库替换图片后，已打包的 App 会自动更新，无需重新发版
-const GITHUB_DOC_RAW = 'https://raw.githubusercontent.com/yunbocheng4379/NoteFlow/main/doc'
-const wechatQr = `${GITHUB_DOC_RAW}/wechat-group-1.png`
-const remoteInstallQr = `${GITHUB_DOC_RAW}/remote-install-wechat.png`
+import wechatQr from '@/assets/wechat-community-qr.png'
+import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
 
 export default function AboutPage() {
   const appVersion = __APP_VERSION__
-  const images: { src: string; alt: string }[] = [
-    { src: loginShot, alt: '登录页' },
-    { src: workspaceShot, alt: '工作台' },
-    { src: tasksShot, alt: '任务列表' },
-    { src: settingsShot, alt: '模型设置' },
-  ]
+  const [previewQr, setPreviewQr] = useState<{ src: string; alt: string } | null>(null)
   return (
-    <ScrollArea className={'h-full overflow-y-auto bg-white'}>
-      <div className="container mx-auto px-4 py-12">
+    <ScrollArea className={'h-full w-full overflow-y-auto bg-white'}>
+      <div className="w-full px-8 py-12 lg:px-16 xl:px-24">
         {/* Hero Section */}
         <div className="mb-16 flex flex-col items-center justify-center text-center">
           <div className="mb-4 flex items-center gap-4">
@@ -43,51 +32,57 @@ export default function AboutPage() {
           </p>
 
           <div className="mb-8 flex flex-wrap justify-center gap-2">
-            <Badge variant="secondary">MIT License</Badge>
-            <Badge variant="secondary">React</Badge>
-            <Badge variant="secondary">FastAPI</Badge>
-            <Badge variant="secondary">Docker Compose</Badge>
-            <Badge variant="secondary">Active</Badge>
+            <Badge variant="secondary">AI 视频笔记</Badge>
+            <Badge variant="secondary">多平台支持</Badge>
+            <Badge variant="secondary">企业级部署</Badge>
+            <Badge variant="secondary">持续更新</Badge>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-4">
-            <Button asChild>
-              <a href="https://www.noteflow.app" target="_blank">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                体验 NoteFlow
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href="https://github.com/yunbocheng4379/NoteFlow" target="_blank">
-                <Github className="mr-2 h-4 w-4" />
-                GitHub 仓库
-              </a>
-            </Button>
-            <Button variant="outline" asChild>
-              <a href="https://github.com/yunbocheng4379/NoteFlow/releases" target="_blank">
-                <Download className="mr-2 h-4 w-4" />
-                下载桌面版
-              </a>
-            </Button>
-          </div>
+          <Button variant="outline" asChild>
+            <a href="https://github.com/yunbocheng4379" target="_blank" rel="noreferrer">
+              <Github className="mr-2 h-4 w-4" />
+              作者主页
+            </a>
+          </Button>
         </div>
 
-        {/* Project Introduction */}
+        {/* Product Introduction */}
         <section className="mb-16">
-          <h2 className="mb-6 text-center text-3xl font-bold">✨ 项目简介</h2>
-          <div className="mx-auto max-w-3xl text-center">
+          <h2 className="mb-6 text-center text-3xl font-bold">✨ 产品简介</h2>
+          <div className="mx-auto max-w-4xl text-center">
             <p className="text-lg">
-              NoteFlow 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，
+              NoteFlow 是一款 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，
               自动提取内容并生成结构清晰、重点明确的 Markdown
-              格式笔记。支持插入截图、原片跳转等功能。
+              格式笔记。支持插入截图、原片跳转等功能，帮助你更高效地学习和整理视频内容。
             </p>
+          </div>
+        </section>
+
+        {/* Trust Section */}
+        <section className="mb-16">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-3">
+            <div className="flex flex-col items-center text-center">
+              <ShieldCheck className="mb-3 h-8 w-8 text-primary" />
+              <h3 className="mb-1 font-semibold">数据安全</h3>
+              <p className="text-muted-foreground text-sm">笔记与转写数据独立存储，账号间严格隔离</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <Building2 className="mb-3 h-8 w-8 text-primary" />
+              <h3 className="mb-1 font-semibold">企业级部署</h3>
+              <p className="text-muted-foreground text-sm">支持私有化部署与定制集成，满足团队场景需求</p>
+            </div>
+            <div className="flex flex-col items-center text-center">
+              <Headphones className="mb-3 h-8 w-8 text-primary" />
+              <h3 className="mb-1 font-semibold">专属服务</h3>
+              <p className="text-muted-foreground text-sm">会员与企业客户享一对一专属技术支持</p>
+            </div>
           </div>
         </section>
 
         {/* Features Section */}
         <section className="mb-16">
           <h2 className="mb-8 text-center text-3xl font-bold">🔧 功能特性</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
               { title: '多平台支持', desc: '支持 Bilibili、YouTube、本地视频、抖音等多个平台' },
               { title: '笔记格式选择', desc: '支持返回多种笔记格式，满足不同需求' },
@@ -109,141 +104,61 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Screenshots Section */}
+        {/* Community & Service Section */}
         <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">📸 截图预览</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {images.map(({ src, alt }) => (
-              <div key={src} className="overflow-hidden rounded-lg border shadow-sm">
-                <img
-                  src={src}
-                  alt={`NoteFlow Screenshot - ${alt}`}
-                  width={600}
-                  height={400}
-                  className="w-full object-cover transition-transform hover:scale-105"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Quick Start Section */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">🚀 快速开始</h2>
-          <Tabs defaultValue="manual" className="mx-auto max-w-3xl">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="manual">手动安装</TabsTrigger>
-              <TabsTrigger value="docker">Docker 部署</TabsTrigger>
-            </TabsList>
-            <TabsContent value="manual" className="mt-6 space-y-6">
-              <div>
-                <h3 className="mb-3 text-xl font-semibold">1. 克隆仓库</h3>
-                <div className="bg-muted rounded-md p-4 font-mono text-sm">
-                  git clone https://github.com/yunbocheng4379/NoteFlow.git
-                  <br />
-                  cd NoteFlow
-                  <br />
-                  mv .env.example .env
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-3 text-xl font-semibold">2. 启动后端（FastAPI）</h3>
-                <div className="bg-muted rounded-md p-4 font-mono text-sm">
-                  cd backend
-                  <br />
-                  pip install -r requirements.txt
-                  <br />
-                  python main.py
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-3 text-xl font-semibold">3. 启动前端（Vite + React）</h3>
-                <div className="bg-muted rounded-md p-4 font-mono text-sm">
-                  cd NoteFlow_frontend
-                  <br />
-                  pnpm install
-                  <br />
-                  pnpm dev
-                </div>
-              </div>
-              <p>
-                访问：<code className="bg-muted rounded px-2 py-1">http://localhost:5173</code>
-              </p>
-            </TabsContent>
-            <TabsContent value="docker" className="mt-6 space-y-6">
-              <div>
-                <h3 className="mb-3 text-xl font-semibold">1. 克隆仓库</h3>
-                <div className="bg-muted rounded-md p-4 font-mono text-sm">
-                  git clone https://github.com/yunbocheng4379/NoteFlow.git
-                  <br />
-                  cd NoteFlow
-                  <br />
-                  mv .env.example .env
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-3 text-xl font-semibold">2. 启动 Docker Compose</h3>
-                <div className="bg-muted rounded-md p-4 font-mono text-sm">
-                  docker compose up --build
-                </div>
-              </div>
-              <p>
-                默认端口：
-                <br />
-                前端：http://localhost:${'{FRONTEND_PORT}'}
-                <br />
-                后端：http://localhost:${'{BACKEND_PORT}'}
-                <br />
-                <span className="text-muted-foreground text-sm">
-                  .env 文件中可自定义端口与环境配置
-                </span>
-              </p>
-            </TabsContent>
-          </Tabs>
-        </section>
-
-        {/* Community Section */}
-        <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">联系和加入社区</h2>
+          <h2 className="mb-8 text-center text-3xl font-bold">联系我们</h2>
           <div className="mx-auto max-w-3xl">
             <div className="flex flex-col items-center justify-center gap-10 md:flex-row md:items-start">
               <div className="text-center">
-                <h3 className="mb-3 text-xl font-semibold">NoteFlow 交流微信群</h3>
-                <div className="bg-muted mx-auto flex h-52 w-52 items-center justify-center rounded-md">
-                  <img src={wechatQr} alt="NoteFlow 交流微信群" className="h-full w-full object-contain" />
-                </div>
+                <h3 className="mb-3 text-xl font-semibold">NoteFlow 用户交流群</h3>
+                <button
+                  type="button"
+                  onClick={() => setPreviewQr({ src: wechatQr, alt: 'NoteFlow 用户交流群' })}
+                  className="bg-muted mx-auto flex h-52 w-52 cursor-zoom-in items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                >
+                  <img src={wechatQr} alt="NoteFlow 用户交流群" className="h-full w-full object-contain" />
+                </button>
                 <p className="text-muted-foreground mt-3 text-sm">扫码加入交流群，一起讨论使用问题</p>
               </div>
               <div className="text-center">
-                <h3 className="mb-3 text-xl font-semibold">NoteFlow AI笔记系统一对一搭建服务</h3>
-                <div className="bg-muted mx-auto flex h-52 w-52 items-center justify-center rounded-md">
+                <h3 className="mb-3 text-xl font-semibold">企业定制 / 私有化部署</h3>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPreviewQr({ src: enterpriseServiceQr, alt: '企业定制 / 私有化部署咨询' })
+                  }
+                  className="bg-muted mx-auto flex h-52 w-52 cursor-zoom-in items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                >
                   <img
-                    src={remoteInstallQr}
-                    alt="NoteFlow AI笔记系统一对一搭建服务"
+                    src={enterpriseServiceQr}
+                    alt="企业定制 / 私有化部署咨询"
                     className="h-full w-full object-contain"
                   />
-                </div>
+                </button>
                 <p className="text-muted-foreground mt-3 text-sm">
-                  专人一对一远程协助，从部署到上手全程陪跑
+                  提供企业专属部署、定制集成与一对一技术支持
                   <br />
-                  扫码加微信，备注「搭建服务」即可咨询
+                  扫码加微信，备注「企业定制」即可咨询
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* License Section */}
-        <section className="mb-8 text-center">
-          <h2 className="mb-4 text-3xl font-bold">📜 License</h2>
-          <p>MIT License</p>
-        </section>
-
         {/* Footer */}
         <footer className="border-t pt-8 text-center">
-          <p className="mb-4">💬 你的支持与反馈是我持续优化的动力！欢迎 PR、提 issue、Star ⭐️</p>
+          <p className="mb-4">💬 你的支持与反馈是我们持续优化产品的动力，欢迎随时提出使用建议！</p>
         </footer>
       </div>
+
+      <Dialog open={!!previewQr} onOpenChange={open => !open && setPreviewQr(null)}>
+        <DialogContent className="flex max-w-sm flex-col items-center gap-4">
+          <DialogTitle className="sr-only">{previewQr?.alt}</DialogTitle>
+          {previewQr && (
+            <img src={previewQr.src} alt={previewQr.alt} className="h-full w-full object-contain" />
+          )}
+        </DialogContent>
+      </Dialog>
     </ScrollArea>
   )
 }

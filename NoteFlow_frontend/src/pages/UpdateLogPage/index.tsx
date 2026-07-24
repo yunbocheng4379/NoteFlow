@@ -70,7 +70,7 @@ export default function UpdateLogPage() {
   )
 
   return (
-    <div className="h-full w-full overflow-auto bg-neutral-50">
+    <div className="h-full w-full overflow-auto bg-[#f5f5f5]">
       <div className="mx-auto max-w-4xl p-6">
         {/* 标题 */}
         <div className="mb-6 flex items-center gap-2">

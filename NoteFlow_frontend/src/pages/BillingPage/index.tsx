@@ -70,7 +70,7 @@ const BillingPage = () => {
   }
 
   return (
-    <div className="h-full w-full overflow-auto bg-neutral-50">
+    <div className="h-full w-full overflow-auto bg-[#f5f5f5]">
       <div className="mx-auto max-w-5xl p-6">
         <div className="mb-6 flex items-center gap-2">
           <ReceiptText className="h-5 w-5 text-primary" />

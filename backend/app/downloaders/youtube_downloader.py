@@ -119,6 +119,38 @@ class YoutubeDownloader(Downloader, ABC):
 
         return video_path
 
+    def list_channel_videos(self, channel_url: str, limit: int = 30) -> List[dict]:
+        """
+        解析 YouTube 频道/播放列表链接，列出其中的视频（不下载）。
+        使用 extract_flat 仅拉取列表元信息。
+        返回 [{video_url, title, cover_url, duration}, ...]，最多 limit 条。
+        """
+        ydl_opts = {
+            'extract_flat': True,
+            'quiet': True,
+            'playlistend': limit,
+        }
+        _apply_proxy(ydl_opts, "youtube")
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(channel_url, download=False)
+
+        entries = info.get('entries') or ([info] if info.get('id') else [])
+        videos = []
+        for entry in entries[:limit]:
+            if not entry:
+                continue
+            video_id = entry.get('id')
+            if not video_id:
+                continue
+            videos.append({
+                'video_url': entry.get('url') or entry.get('webpage_url') or f"https://www.youtube.com/watch?v={video_id}",
+                'title': entry.get('title') or '',
+                'cover_url': entry.get('thumbnail') or (entry.get('thumbnails') or [{}])[-1].get('url', ''),
+                'duration': entry.get('duration') or 0,
+            })
+        return videos
+
     def download_subtitles(self, video_url: str, output_dir: str = None,
                            langs: List[str] = None) -> Optional[TranscriptResult]:
         """

@@ -888,7 +888,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status, currentTaskId, onNewN
               </div>
               {showTranscribe && (
                 <div className="overflow-hidden">
-                  <TranscriptViewer />
+                  <TranscriptViewer onSeek={handleSeek} />
                 </div>
               )}
               {showChat === 'half' && currentTask && (

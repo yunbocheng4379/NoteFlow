@@ -261,7 +261,10 @@ export function MarkdownHeader({
             </div>
 
             <Button
-              onClick={() => setShowTranscribe(!showTranscribe)}
+              onClick={() => {
+                setShowTranscribe(!showTranscribe)
+                if (!showTranscribe) setShowChat?.(false)
+              }}
               variant="ghost"
               size="sm"
               className={`h-8 px-2 font-normal ${showTranscribe ? 'text-primary' : ''}`}
@@ -271,7 +274,11 @@ export function MarkdownHeader({
 
             {setShowChat && (
               <Button
-                onClick={() => setShowChat(showChat ? false : 'half')}
+                onClick={() => {
+                  const next = showChat ? false : 'half'
+                  setShowChat(next)
+                  if (next) setShowTranscribe(false)
+                }}
                 variant="ghost"
                 size="sm"
                 className={`h-8 px-2 font-normal ${showChat ? 'text-primary' : ''}`}

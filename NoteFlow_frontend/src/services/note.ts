@@ -14,6 +14,7 @@ export const generateNote = async (data: {
   video_understand?: boolean
   video_interval?: number
   grid_size: Array<number>
+  collection_id?: number
 }) => {
   try {
     console.log('generateNote', data)
@@ -111,4 +112,58 @@ export const updateNoteContent = async (
   content: string,
 ): Promise<{ task_id: string; markdown: string }> => {
   return await request.put(`/note/${task_id}`, { content }, { suppressToast: true })
+}
+
+export interface ChannelVideoItem {
+  video_url: string
+  title: string
+  cover_url: string
+  duration: number
+}
+
+/**
+ * 解析 UP主空间/合集/收藏夹 (B站) 或频道/播放列表 (YouTube) 链接，列出其中的视频。
+ * 仅支持 bilibili / youtube。解析失败时抛出异常，由调用方决定如何提示。
+ */
+export const getChannelVideos = async (
+  channel_url: string,
+  platform: string,
+): Promise<ChannelVideoItem[]> => {
+  const data = (await request.post(
+    '/channel_videos',
+    { channel_url, platform },
+    { timeout: 30000 },
+  )) as unknown as { platform: string; videos: ChannelVideoItem[] }
+  return data?.videos ?? []
+}
+
+export interface BatchVideoItem {
+  video_url: string
+  platform: string
+}
+
+export interface BatchGenerateResultItem {
+  video_url: string
+  task_id: string | null
+  success: boolean
+  message: string
+}
+
+/**
+ * 批量提交笔记生成任务，共享同一份生成设置（模型/风格/quality/format 等）。
+ */
+export const generateNotesBatch = async (data: {
+  items: BatchVideoItem[]
+  quality: string
+  model_name: string
+  provider_id: string
+  format: Array<string>
+  style: string
+  extras?: string
+  video_understanding?: boolean
+  video_interval?: number
+  grid_size: Array<number>
+  collection_id?: number
+}): Promise<{ batch_id: string; results: BatchGenerateResultItem[] }> => {
+  return await request.post('/generate_notes_batch', data)
 }

@@ -1,10 +1,11 @@
 "use client"
 
-import { useTaskStore } from "@/store/taskStore"
+import { useTaskStore, type AudioMeta } from "@/store/taskStore"
 import { useEffect, useState, useRef } from "react"
 import { Play } from "lucide-react"
 import { cn } from "@/lib/utils"
-import {ScrollArea} from "@/components/ui/scroll-area.tsx";
+import { ScrollArea } from "@/components/ui/scroll-area.tsx"
+import { isEmbeddable } from "@/pages/HomePage/components/EmbeddedVideoPlayer.tsx"
 
 interface Segment {
   start: number
@@ -17,9 +18,26 @@ interface Task {
   transcript?: {
     segments?: Segment[]
   }
+  audioMeta?: AudioMeta
 }
 
-const TranscriptViewer = () => {
+interface TranscriptViewerProps {
+  /** 可嵌入平台（B站/YouTube）：在页面内播放器定位播放 */
+  onSeek?: (seconds: number) => void
+}
+
+/** 不支持页面内嵌入的平台，构建外部跳转链接（新标签页打开并定位到指定时间） */
+function buildExternalTimestampUrl(audioMeta: AudioMeta, seconds: number): string | null {
+  const t = Math.max(0, Math.floor(seconds))
+  if (!audioMeta.video_id) return null
+
+  if (audioMeta.platform === 'douyin') {
+    return `https://www.douyin.com/video/${audioMeta.video_id}?start_time=${t}`
+  }
+  return null
+}
+
+const TranscriptViewer = ({ onSeek }: TranscriptViewerProps) => {
   const getCurrentTask = useTaskStore((state) => state.getCurrentTask)
   const currentTaskId = useTaskStore((state) => state.currentTaskId)
   const [task, setTask] = useState<Task | null>(null)
@@ -36,9 +54,20 @@ const TranscriptViewer = () => {
     return `${mins}:${secs.toString().padStart(2, "0")}`
   }
 
-  const handleSegmentClick = (index: number) => {
+  const canEmbed = isEmbeddable(task?.audioMeta)
+
+  const jumpToTimestamp = (seconds: number) => {
+    if (canEmbed) {
+      onSeek?.(seconds)
+      return
+    }
+    const url = task?.audioMeta ? buildExternalTimestampUrl(task.audioMeta, seconds) : null
+    if (url) window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const handleSegmentClick = (index: number, seconds: number) => {
     setActiveSegment(index)
-    // Here you could add functionality to play the audio from this segment
+    jumpToTimestamp(seconds)
   }
 
   const scrollToSegment = (index: number) => {
@@ -64,7 +93,9 @@ const TranscriptViewer = () => {
             <ScrollArea className="w-full overflow-y-auto">
 
               <div className="space-y-1">
-                {task.transcript.segments.map((segment, index) => (
+                {task.transcript.segments.map((segment, index) => {
+                  const jumpable = canEmbed || (task.audioMeta && !!buildExternalTimestampUrl(task.audioMeta, segment.start))
+                  return (
                     <div
                         key={index}
                         ref={(el) => (segmentRefs.current[index] = el)}
@@ -72,18 +103,21 @@ const TranscriptViewer = () => {
                             "group grid grid-cols-[80px_1fr] gap-2 rounded-md p-2 transition-colors hover:bg-slate-50",
                             activeSegment === index && "bg-slate-100",
                         )}
-                        onClick={() => handleSegmentClick(index)}
+                        onClick={() => handleSegmentClick(index, segment.start)}
                     >
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
-                        <button
-                            className="invisible rounded-full p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-700 group-hover:visible"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              // Add play functionality here
-                            }}
-                        >
-                          {/*<Play className="h-3 w-3" />*/}
-                        </button>
+                      <div
+                          className={cn(
+                              "flex items-center gap-1 text-xs text-slate-500",
+                              jumpable && "cursor-pointer hover:text-teal-600",
+                          )}
+                          title={jumpable ? "跳转到视频对应位置" : undefined}
+                      >
+                        <Play
+                            className={cn(
+                                "h-3 w-3 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100",
+                                !jumpable && "invisible",
+                            )}
+                        />
                         <span>{formatTime(segment.start)}</span>
                       </div>
 
@@ -96,7 +130,8 @@ const TranscriptViewer = () => {
                         {segment.text}
                       </div>
                     </div>
-                ))}
+                  )
+                })}
               </div>
             </ScrollArea>
 

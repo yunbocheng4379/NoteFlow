@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 import tempfile
 from abc import ABC
 from typing import Union, Optional, List
@@ -22,11 +23,26 @@ class BilibiliDownloader(Downloader, ABC):
     def __init__(self, user_id: Optional[int] = None):
         super().__init__()
         self._cookie_mgr = CookieConfigManager(user_id=user_id)
+        self._load_cookie(force_reload=False)
+
+    def _load_cookie(self, force_reload: bool = False) -> None:
+        if force_reload:
+            try:
+                from app.services.cookie_pool_manager import CookiePoolManager
+                CookiePoolManager.instance().reload()
+            except Exception as e:
+                logger.warning("B站 Cookie 池刷新失败: %s", e)
         meta = self._cookie_mgr.get_with_meta('bilibili')
         self._active_cookie_id = meta.cookie_id
         self._active_cookie_source = meta.source
         self._cookie = meta.cookie
         self._cookiefile = self._write_netscape_cookie_file()
+
+    def _ensure_cookie_ready(self) -> None:
+        if self._cookie and self._cookiefile:
+            return
+        logger.warning("B站 Cookie 当前为空，强制刷新 Cookie 池后重试读取")
+        self._load_cookie(force_reload=True)
 
     def set_cookie_meta(self, meta) -> None:
         """换 cookie: 重新写 Netscape 文件 + 更新 active id.
@@ -60,6 +76,8 @@ class BilibiliDownloader(Downloader, ABC):
         need_video: Optional[bool] = False,
         skip_download: bool = False,
     ) -> AudioDownloadResult:
+        self._ensure_cookie_ready()
+
         if output_dir is None:
             output_dir = get_data_dir()
         if not output_dir:
@@ -131,18 +149,21 @@ class BilibiliDownloader(Downloader, ABC):
         """
         下载视频，返回视频文件路径
         """
+        self._ensure_cookie_ready()
 
         if output_dir is None:
             output_dir = get_data_dir()
         os.makedirs(output_dir, exist_ok=True)
-        print("video_url",video_url)
-        video_id=extract_video_id(video_url, "bilibili")
+
+        # 分P视频（?p=N）yt-dlp 落盘时用的是 "{bvid}_p{N}"，不能直接用
+        # extract_video_id() 得到的裸 BV 号做缓存路径，否则所有分P都会
+        # 被误判成同一个已下载文件，导致后续分P复用第1P的内容
+        p_match = re.search(r"[?&]p=(\d+)", video_url)
+        bvid = extract_video_id(video_url, "bilibili")
+        video_id = f"{bvid}_p{p_match.group(1)}" if p_match and bvid else bvid
         video_path = os.path.join(output_dir, f"{video_id}.mp4")
         if os.path.exists(video_path):
             return video_path
-
-        # 检查是否已经存在
-
 
         output_path = os.path.join(output_dir, "%(id)s.%(ext)s")
 
@@ -170,6 +191,56 @@ class BilibiliDownloader(Downloader, ABC):
             raise FileNotFoundError(f"视频文件未找到: {video_path}")
 
         return video_path
+
+    def list_channel_videos(self, channel_url: str, limit: int = 30) -> List[dict]:
+        """
+        解析 UP主空间/合集/收藏夹链接，列出其中的视频（不下载）。
+        使用 extract_flat 仅拉取列表元信息，speed 远快于逐条 download(skip_download=True)。
+        返回 [{video_url, title, cover_url, duration}, ...]，最多 limit 条。
+        """
+        self._ensure_cookie_ready()
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Referer': 'https://www.bilibili.com',
+            'Origin': 'https://www.bilibili.com',
+        }
+        if self._cookie:
+            for pair in self._cookie.split('; '):
+                if pair.startswith('buvid3='):
+                    headers['buvid3'] = pair.split('=', 1)[1]
+                    break
+
+        ydl_opts = {
+            'extract_flat': True,
+            'http_headers': headers,
+            'quiet': True,
+            'playlistend': limit,
+        }
+        if self._cookiefile:
+            ydl_opts['cookiefile'] = self._cookiefile
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(channel_url, download=False)
+
+        entries = info.get('entries') or ([info] if info.get('id') else [])
+        videos = []
+        for entry in entries[:limit]:
+            if not entry:
+                continue
+            entry_url = entry.get('url') or entry.get('webpage_url') or ''
+            # extract_flat 对分P合集（同一 BV 号内多个 p）只返回 url，没有 id/title，
+            # 需要从 url 里兜底解析出 BV 号，否则该条目会被误判为无效而丢弃
+            video_id = entry.get('id') or extract_video_id(entry_url, 'bilibili')
+            if not video_id or not entry_url:
+                continue
+            videos.append({
+                'video_url': entry_url,
+                'title': entry.get('title') or '',
+                'cover_url': entry.get('thumbnail') or entry.get('thumbnails', [{}])[-1].get('url', '') if entry.get('thumbnails') else '',
+                'duration': entry.get('duration') or 0,
+            })
+        return videos
 
     def delete_video(self, video_path: str) -> str:
         """

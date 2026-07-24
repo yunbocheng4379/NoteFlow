@@ -3,11 +3,11 @@ import json
 import os
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Depends, Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from dataclasses import asdict
 
 from app.auth.dependencies import get_current_user
@@ -21,6 +21,7 @@ from app.exceptions.note import NoteError
 from app.exceptions.provider import ProviderError
 from app.services.note import NoteGenerator, logger
 from app.services.task_serial_executor import task_serial_executor
+from app.utils.error_messages import translate_download_error
 from app.utils.response import ResponseWrapper as R
 from app.utils.url_parser import extract_video_id
 from app.validators.video_url_validator import is_supported_video_url
@@ -54,6 +55,7 @@ class VideoRequest(BaseModel):
     grid_size: Optional[list] = []
     prefetched_transcript: Optional[dict] = None
     free_generate: Optional[bool] = False
+    collection_id: Optional[int] = None
 
     @field_validator("video_url")
     def validate_supported_url(cls, v):
@@ -109,7 +111,8 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
                   link: bool = False, screenshot: bool = False, model_name: str = None,
                   provider_id: str = None, _format: list = None, style: str = None,
                   extras: str = None, video_understanding: bool = False,
-                  video_interval=0, grid_size=[], user_id: Optional[int] = None):
+                  video_interval=0, grid_size=[], user_id: Optional[int] = None,
+                  collection_id: Optional[int] = None):
 
     if not model_name or not provider_id:
         raise HTTPException(status_code=400, detail="请选择模型和提供者")
@@ -141,6 +144,10 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
         return
     save_note_to_file(task_id, note)
 
+    if collection_id and user_id:
+        from app.db import note_collection_dao
+        note_collection_dao.add_task_to_collection_on_generate(collection_id, user_id, task_id)
+
     try:
         from app.services.vector_store import VectorStoreManager
         VectorStoreManager().index_task(task_id)
@@ -167,6 +174,13 @@ def delete_task(task_id: str, current_user: User = Depends(get_current_user)):
         return R.error(msg='删除失败，请稍后重试')
     finally:
         db.close()
+
+    # 1.5 从所有笔记合集中移出该笔记，避免合集笔记数悬空不更新
+    try:
+        from app.db.note_collection_dao import remove_task_from_all_collections
+        remove_task_from_all_collections(task_id)
+    except Exception as e:
+        logger.warning(f"清理合集关联失败 (task_id={task_id}): {e}")
 
     # 2. 删除 note_results 下所有相关文件
     deleted_files = []
@@ -325,6 +339,7 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks,
             data.link, data.screenshot, data.model_name, data.provider_id,
             data.format, data.style, data.extras, data.video_understanding,
             data.video_interval, data.grid_size, current_user.id,
+            data.collection_id,
         )
         return R.success({"task_id": task_id})
     except NoteError as e:
@@ -495,6 +510,7 @@ def list_tasks(current_user: User = Depends(get_current_user)):
             "title": title,
             "cover_url": cover_url,
             "duration": duration,
+            "batch_id": row.batch_id,
         })
 
     return R.success(results)
@@ -532,6 +548,189 @@ class VideoInfoRequest(BaseModel):
     platform: str
 
 
+CHANNEL_RESOLVABLE_PLATFORMS = {"bilibili", "youtube"}
+BATCH_MAX_ITEMS = 30
+
+
+class ChannelVideosRequest(BaseModel):
+    channel_url: str
+    platform: str
+
+
+@router.post("/channel_videos")
+def channel_videos(data: ChannelVideosRequest, current_user: User = Depends(get_current_user)):
+    """
+    解析 UP主空间/合集/收藏夹 (B站) 或频道/播放列表 (YouTube) 链接，
+    列出其中的视频供批量生成前预览选择。仅支持 B站 + YouTube。
+    """
+    if data.platform not in CHANNEL_RESOLVABLE_PLATFORMS:
+        return R.error(msg="该平台暂不支持频道/合集自动解析，请改用手动粘贴视频链接", code=NoteErrorEnum.PLATFORM_NOT_SUPPORTED.code)
+
+    url = str(data.channel_url).strip()
+    if not url:
+        return R.error(msg="频道/合集链接不能为空")
+
+    from app.enmus.platform_status import check_platform_enabled, PlatformDisabledError
+    try:
+        check_platform_enabled(data.platform)
+    except PlatformDisabledError as e:
+        return R.error(msg=e.message, code=NoteErrorEnum.PLATFORM_NOT_SUPPORTED.code)
+
+    try:
+        downloader = NoteGenerator(user_id=current_user.id)._get_downloader(data.platform)
+        videos = downloader.list_channel_videos(url, limit=BATCH_MAX_ITEMS)
+        return R.success({"platform": data.platform, "videos": videos})
+    except Exception as e:
+        logger.warning(f"channel_videos 解析异常 ({data.platform}): {e}")
+        return R.error(msg="无法解析该频道/合集链接，请检查链接或稍后重试")
+
+
+class BatchVideoItem(BaseModel):
+    video_url: str
+    platform: str
+
+
+class GenerateNotesBatchRequest(BaseModel):
+    items: List[BatchVideoItem] = Field(..., min_length=1, max_length=BATCH_MAX_ITEMS)
+    quality: DownloadQuality
+    model_name: str
+    provider_id: str
+    format: Optional[list] = []
+    style: str = None
+    extras: Optional[str] = None
+    video_understanding: Optional[bool] = False
+    video_interval: Optional[int] = 0
+    grid_size: Optional[list] = []
+    collection_id: Optional[int] = None
+
+    @field_validator("items")
+    def validate_items(cls, items):
+        for item in items:
+            url = str(item.video_url)
+            parsed = urlparse(url)
+            if parsed.scheme in ("http", "https") and not is_supported_video_url(url):
+                raise NoteError(code=NoteErrorEnum.PLATFORM_NOT_SUPPORTED.code,
+                                message=NoteErrorEnum.PLATFORM_NOT_SUPPORTED.message)
+        return items
+
+
+@router.post("/generate_notes_batch")
+def generate_notes_batch(data: GenerateNotesBatchRequest, background_tasks: BackgroundTasks,
+                         current_user: User = Depends(get_current_user),
+                         db: Session = Depends(get_db)):
+    """
+    批量提交笔记生成任务：逐条探测时长 -> 计费 -> 扣费 -> 建任务 -> 丢进现有执行队列。
+    共享同一 batch_id 分组；遇到余额不足时停止后续处理，剩余项标记为失败。
+    """
+    try:
+        from app.db import transcriber_config_dao
+        from app.routers.config import _check_whisper_model_exists, _check_mlx_whisper_model_exists, _downloading
+
+        cfg = transcriber_config_dao.get_transcriber_config(current_user.id)
+        ttype = cfg["transcriber_type"]
+        size = cfg["whisper_model_size"]
+        if ttype == "fast-whisper":
+            ready = _check_whisper_model_exists(size, "whisper")
+            downloading = _downloading.get(size) == "downloading"
+        elif ttype == "mlx-whisper":
+            ready = _check_mlx_whisper_model_exists(size)
+            downloading = _downloading.get(f"mlx-{size}") == "downloading"
+        else:
+            ready = True
+            downloading = False
+
+        if not ready:
+            reason = (
+                f"转写模型 {ttype} / {size} 尚未下载就绪"
+                + ("，正在下载中，请稍候" if downloading else "，请先在「设置 → 音频转写配置」页下载")
+            )
+            logger.warning(f"拒绝 generate_notes_batch：{reason}")
+            return R.error(
+                msg=reason, code=300102,
+                data={"reason": "transcriber_model_not_ready", "transcriber_type": ttype,
+                      "model_size": size, "downloading": downloading},
+            )
+
+        from app.enmus.platform_status import check_platform_enabled
+        from app.services.model import ModelService
+        try:
+            ModelService.assert_model_accessible(data.provider_id, data.model_name, current_user)
+        except ProviderError as e:
+            return R.error(msg=e.message, code=e.code)
+
+        from app.services.billing import pricing as billing_pricing, credit_ledger
+        from app.services.billing.exceptions import InsufficientCreditError
+
+        batch_id = str(uuid.uuid4())
+        results = []
+        stopped = False
+
+        for item in data.items:
+            if stopped:
+                results.append({"video_url": item.video_url, "task_id": None,
+                                "success": False, "message": "余额不足，已停止后续任务"})
+                continue
+
+            try:
+                check_platform_enabled(item.platform)
+                video_id = extract_video_id(item.video_url, item.platform)
+                task_id = str(uuid.uuid4())
+
+                downloader = NoteGenerator(user_id=current_user.id)._get_downloader(item.platform)
+                preview_meta = downloader.download(item.video_url, skip_download=True)
+                duration_sec = float(getattr(preview_meta, "duration", 0) or 0)
+
+                required = billing_pricing.calculate_required_credits(db, data.model_name, duration_sec)
+                try:
+                    credit_ledger.consume(
+                        db, user_id=current_user.id, amount=required, task_id=task_id,
+                        model_name=data.model_name, note=f"批量生成笔记: {(item.video_url or '')[:80]}",
+                    )
+                    db.commit()
+                except InsufficientCreditError as ic:
+                    db.rollback()
+                    results.append({"video_url": item.video_url, "task_id": None,
+                                    "success": False, "message": ic.message})
+                    stopped = True
+                    continue
+
+                NoteGenerator(user_id=current_user.id)._update_status(task_id, TaskStatus.PENDING)
+
+                if video_id:
+                    insert_video_task(
+                        video_id=video_id, platform=item.platform, task_id=task_id,
+                        user_id=current_user.id, video_url=item.video_url,
+                        model_name=data.model_name, credits_used=required, batch_id=batch_id,
+                    )
+
+                background_tasks.add_task(
+                    run_note_task, task_id, item.video_url, item.platform, data.quality,
+                    False, False, data.model_name, data.provider_id,
+                    data.format, data.style, data.extras, data.video_understanding,
+                    data.video_interval, data.grid_size, current_user.id,
+                    data.collection_id,
+                )
+                results.append({"video_url": item.video_url, "task_id": task_id,
+                                "success": True, "message": ""})
+            except Exception as e:
+                db.rollback()
+                logger.warning(f"generate_notes_batch 单条处理失败 ({item.video_url}): {e}")
+                results.append({"video_url": item.video_url, "task_id": None,
+                                "success": False, "message": f"处理失败: {e}"})
+
+        return R.success({"batch_id": batch_id, "results": results})
+    except NoteError as e:
+        logger.error(f"generate_notes_batch 参数错误: {e.message}", exc_info=True)
+        return R.error(msg=e.message, code=e.code)
+    except Exception as e:
+        from app.enmus.platform_status import PlatformDisabledError
+        if isinstance(e, PlatformDisabledError):
+            logger.warning(f"平台 {e.platform} 已禁用，拒绝批量生成请求")
+            return R.error(msg=e.message, code=NoteErrorEnum.PLATFORM_NOT_SUPPORTED.code)
+        logger.error(f"generate_notes_batch 异常: {e}", exc_info=True)
+        return R.error(msg="批量提交任务失败，请稍后重试")
+
+
 @router.post("/video_info")
 def video_info(data: VideoInfoRequest, current_user: User = Depends(get_current_user)):
     """
@@ -567,5 +766,7 @@ def video_info(data: VideoInfoRequest, current_user: User = Depends(get_current_
         logger.warning(f"video_info 解析失败: {e.message}")
         return R.error(msg=e.message, code=e.code)
     except Exception as e:
-        logger.warning(f"video_info 解析异常 ({data.platform}): {e}")
-        return R.error(msg="无法解析该视频，请检查链接或稍后重试")
+        logger.warning(f"video_info 解析异常 ({data.platform}): {e}", exc_info=True)
+        friendly = translate_download_error(e, platform=data.platform)
+        code = NoteErrorEnum.COOKIE_REQUIRED.code if "[NEED_COOKIE" in friendly else 500
+        return R.error(msg=friendly, code=code)

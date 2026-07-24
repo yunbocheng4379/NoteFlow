@@ -10,12 +10,15 @@ DAO 层职责:
 DAO 不缓存; 缓存由 ``CookiePoolManager`` 在更上层做.
 """
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional, Tuple
 
 from app.db.engine import get_db
 from app.db.models.platform_cookies import PlatformCookie
 from app.utils.encryption import CookieEncryption
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_tier_list(raw) -> List[str]:
@@ -71,8 +74,15 @@ def _to_dict(row: PlatformCookie, include_plaintext_cookie: bool = True) -> dict
     if include_plaintext_cookie:
         try:
             d["cookie"] = CookieEncryption.decrypt(row.cookie_value_encrypted)
-        except Exception:
+        except Exception as e:
             # 解密失败时用 None 顶, 不让上游 try/except 撞坏; 调用方按 None 走.
+            logger.warning(
+                "platform cookie 解密失败: id=%s platform=%s name=%s error=%s",
+                row.id,
+                row.platform,
+                row.name,
+                type(e).__name__,
+            )
             d["cookie"] = None
     return d
 
@@ -254,7 +264,10 @@ def list_available(platform: str, *, tier: Optional[str] = None) -> List[dict]:
             in_use = getattr(r, "in_use_count", 0) or 0
             if quota > 0 and in_use >= quota:
                 continue
-            result.append(_to_dict(r))
+            item = _to_dict(r)
+            if not item.get("cookie"):
+                continue
+            result.append(item)
         return result
     finally:
         db.close()

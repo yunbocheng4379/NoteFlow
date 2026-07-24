@@ -474,7 +474,7 @@ export default function NoteStylePage() {
   }
 
   return (
-    <div className="flex h-full w-full min-h-0 flex-col bg-white">
+    <div className="flex h-full w-full min-h-0 flex-col bg-[#f5f5f5]">
       {/* Top: category tabs */}
       <div className="flex items-center gap-2 border-b border-neutral-100 px-6 py-3">
         <span className="mr-1 text-xs font-medium text-gray-400 uppercase tracking-widest">

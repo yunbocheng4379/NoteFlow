@@ -67,7 +67,7 @@ const UpgradePage = () => {
   }
 
   return (
-    <div className="theme-pro relative min-h-full w-full overflow-auto bg-gradient-to-b from-blue-50/40 via-white to-white">
+    <div className="theme-pro relative min-h-full w-full overflow-auto bg-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
         {/* 顶部 brand chip + 标题 */}
         <div className="mb-8 flex flex-col items-center text-center">

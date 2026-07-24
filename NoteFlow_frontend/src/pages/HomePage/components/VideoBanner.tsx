@@ -12,6 +12,7 @@ const platformLabel: Record<string, string> = {
   youtube: 'YouTube',
   douyin: '抖音',
   xiaohongshu: '小红书',
+  merged: '笔记融合',
 }
 
 export default function VideoBanner({ audioMeta, videoUrl }: VideoBannerProps) {
@@ -40,7 +41,7 @@ export default function VideoBanner({ audioMeta, videoUrl }: VideoBannerProps) {
             className="h-full w-full object-cover blur-md brightness-[0.4] scale-110"
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-r from-indigo-600 to-indigo-800" />
+          <div className="h-full w-full bg-gradient-to-r from-primary to-primary/70" />
         )}
       </div>
 

@@ -5,6 +5,9 @@ from app.db.models.video_tasks import VideoTask
 from app.db.models.user_transcriber_configs import UserTranscriberConfig
 from app.db.models.note_style import NoteStyle
 from app.db.models.note_share import NoteShare
+from app.db.models.note_collections import NoteCollection, NoteCollectionItem
+from app.db.models.collection_share import CollectionShare
+from app.db.models.flashcards import FlashcardSet, Flashcard
 from app.db.models.feedbacks import Feedback
 from app.db.models.platform_cookies import PlatformCookie
 from app.db.models.notifications import Notification

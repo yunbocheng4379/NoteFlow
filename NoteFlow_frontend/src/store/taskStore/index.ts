@@ -48,6 +48,8 @@ export interface Task {
   createdAt: string
   /** Backend-translated failure message; only set when status === 'FAILED' */
   errorMessage?: string
+  /** 批量生成任务的分组 ID；单个任务为 undefined */
+  batchId?: string | null
   formData: {
     video_url: string
     link?: boolean
@@ -69,7 +71,7 @@ interface TaskStore {
   tasks: Task[]
   currentTaskId: string | null
   historyLoaded: boolean
-  addPendingTask: (taskId: string, platform: string, formData: any, meta?: Partial<AudioMeta>) => void
+  addPendingTask: (taskId: string, platform: string, formData: any, meta?: Partial<AudioMeta>, batchId?: string | null) => void
   updateTaskContent: (id: string, data: Partial<Omit<Task, 'id' | 'createdAt'>>) => void
   // Overwrites the content of the given version in place (no new version created).
   // Pass verId=null when the task's markdown is a plain string (no version history yet).
@@ -118,11 +120,13 @@ function summaryToTask(s: {
   title: string
   cover_url: string
   duration: number
+  batch_id?: string | null
 }): Task {
   return {
     id: s.task_id,
     status: (s.status as TaskStatus) || 'PENDING',
     createdAt: s.created_at,
+    batchId: s.batch_id ?? null,
     markdown: '',
     transcript: { full_text: '', language: '', raw: null, segments: [] },
     audioMeta: {
@@ -181,8 +185,16 @@ export const useTaskStore = create<TaskStore>()(
               // 优先使用内存中的内容，其次使用存储的版本数据
               const markdown = memoryContent?.markdown || storedVersions || t.markdown
               const transcript = memoryContent?.transcript || t.transcript
-              // audioMeta 优先使用内存中的，否则使用后端返回的
-              const audioMeta = memoryContent?.audioMeta || t.audioMeta
+              // cover_url/title/duration 以后端最新数据为准（避免旧的空封面缓存一直覆盖新数据）；
+              // raw_info/file_path 等后端摘要接口不返回的字段则保留内存中已有的
+              const audioMeta = memoryContent?.audioMeta
+                ? {
+                    ...memoryContent.audioMeta,
+                    cover_url: t.audioMeta.cover_url || memoryContent.audioMeta.cover_url,
+                    title: t.audioMeta.title || memoryContent.audioMeta.title,
+                    duration: t.audioMeta.duration || memoryContent.audioMeta.duration,
+                  }
+                : t.audioMeta
 
               return {
                 ...t,
@@ -199,7 +211,7 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      addPendingTask: (taskId: string, _platform: string, formData: any, meta?: Partial<AudioMeta>) =>
+      addPendingTask: (taskId: string, _platform: string, formData: any, meta?: Partial<AudioMeta>, batchId?: string | null) =>
         set(state => ({
           tasks: [
             {
@@ -207,6 +219,7 @@ export const useTaskStore = create<TaskStore>()(
               id: taskId,
               status: 'PENDING',
               markdown: '',
+              batchId: batchId ?? null,
               transcript: { full_text: '', language: '', raw: null, segments: [] },
               createdAt: new Date().toISOString(),
               audioMeta: {

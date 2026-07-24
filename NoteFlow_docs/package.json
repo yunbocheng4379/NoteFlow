@@ -1,0 +1,14 @@
+{
+  "name": "noteflow-docs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NoteFlow 产品功能文档站",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
