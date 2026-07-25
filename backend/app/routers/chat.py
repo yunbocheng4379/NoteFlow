@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_current_user
+from app.db.kb_index_status_dao import get_status as get_index_status, set_status as set_index_status
 from app.db.models.users import User
 from app.db.video_task_dao import get_task_by_task_id
 from app.services.chat_service import chat as chat_service, chat_stream as chat_stream_service
@@ -13,8 +14,6 @@ from app.utils.response import ResponseWrapper as R
 logger = get_logger(__name__)
 
 router = APIRouter()
-
-_index_status: dict[str, str] = {}
 
 
 class IndexRequest(BaseModel):
@@ -36,13 +35,13 @@ class AskRequest(BaseModel):
 
 def _do_index(task_id: str):
     try:
-        _index_status[task_id] = "indexing"
+        set_index_status(task_id, "indexing")
         store = VectorStoreManager()
         store.index_task(task_id)
-        _index_status[task_id] = "indexed"
+        set_index_status(task_id, "indexed")
         logger.info(f"索引完成: {task_id}")
     except Exception as e:
-        _index_status[task_id] = "failed"
+        set_index_status(task_id, "failed")
         logger.error(f"索引失败: {task_id}, {e}")
 
 
@@ -53,15 +52,15 @@ def index_task(data: IndexRequest, background_tasks: BackgroundTasks, current_us
     if task and task.user_id is not None and task.user_id != current_user.id:
         return R.error(msg="无权访问该任务", code=403)
 
-    if _index_status.get(data.task_id) == "indexing":
+    if get_index_status(data.task_id) == "indexing":
         return R.success(msg="正在索引中")
 
     store = VectorStoreManager()
     if store.is_indexed(data.task_id):
-        _index_status[data.task_id] = "indexed"
+        set_index_status(data.task_id, "indexed")
         return R.success(msg="已完成索引")
 
-    _index_status[data.task_id] = "indexing"
+    set_index_status(data.task_id, "indexing")
     background_tasks.add_task(_do_index, data.task_id)
     return R.success(msg="开始索引")
 
@@ -73,14 +72,14 @@ def chat_status(task_id: str, current_user: User = Depends(get_current_user)):
         if task and task.user_id is not None and task.user_id != current_user.id:
             return R.error(msg="无权访问该任务", code=403)
 
-        status = _index_status.get(task_id)
+        status = get_index_status(task_id)
         if status:
             return R.success(data={"status": status, "indexed": status == "indexed"})
 
         store = VectorStoreManager()
         indexed = store.is_indexed(task_id)
         if indexed:
-            _index_status[task_id] = "indexed"
+            set_index_status(task_id, "indexed")
         return R.success(data={"status": "indexed" if indexed else "idle", "indexed": indexed})
     except Exception as e:
         logger.error(f"查询索引状态失败: {e}")
