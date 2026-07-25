@@ -3,6 +3,7 @@ from app.db.models.models import Model
 from app.db.models.providers import Provider
 from app.db.models.video_tasks import VideoTask
 from app.db.models.kb_index_status import KbIndexStatus
+from app.db.models.kb_conversations import KbConversation, KbMessage
 from app.db.models.user_transcriber_configs import UserTranscriberConfig
 from app.db.models.note_style import NoteStyle
 from app.db.models.note_share import NoteShare
