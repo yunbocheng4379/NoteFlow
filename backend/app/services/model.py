@@ -79,6 +79,7 @@ class ModelService:
                 "provider_id": model.get("provider_id"),
                 "model_name": model.get("model_name"),
                 "tier": model.get("tier", "normal"),
+                "supports_reasoning": bool(model.get("supports_reasoning", False)),
                 "created_at": model.get("created_at", None),
             })
         return formatted
@@ -200,6 +201,11 @@ class ModelService:
         if tier not in ("normal", "pro"):
             raise ValueError("tier 只能是 normal 或 pro")
         return update_model_tier(model_id, tier)
+
+    @staticmethod
+    def set_model_supports_reasoning(model_id: int, enabled: bool) -> bool:
+        from app.db.model_dao import update_model_supports_reasoning
+        return update_model_supports_reasoning(model_id, enabled)
 
     @staticmethod
     def assert_model_accessible(provider_id: str, model_name: str, user: "User") -> None:

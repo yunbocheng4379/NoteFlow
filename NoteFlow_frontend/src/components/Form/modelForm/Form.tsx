@@ -60,6 +60,7 @@ interface IEnabledModel {
   id: string
   model_name: string
   tier?: 'normal' | 'pro'
+  supports_reasoning?: boolean
 }
 const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
   let { id } = useParams()
@@ -81,6 +82,8 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
   const [modelLoading, setModelLoading] = useState(false)
   const updateModelTierInStore = useModelStore(state => state.updateModelTier)
   const [tierUpdatingId, setTierUpdatingId] = useState<string | null>(null)
+  const updateModelSupportsReasoningInStore = useModelStore(state => state.updateModelSupportsReasoning)
+  const [reasoningUpdatingId, setReasoningUpdatingId] = useState<string | null>(null)
   const randomColor = ()=>{
     return '#' + Math.floor(Math.random() * 16777215).toString(16)
   }
@@ -172,6 +175,23 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
       toast.error('更新模型等级失败')
     } finally {
       setTierUpdatingId(null)
+    }
+  }
+  // 切换模型是否支持深度思考
+  const handleToggleSupportsReasoning = async (model: IEnabledModel) => {
+    const next = !model.supports_reasoning
+    setReasoningUpdatingId(model.id)
+    try {
+      const ok = await updateModelSupportsReasoningInStore(Number(model.id), next)
+      if (ok) {
+        setModels(prev =>
+          prev.map(m => (m.id === model.id ? { ...m, supports_reasoning: next } : m)),
+        )
+      } else {
+        toast.error('更新失败，请重试')
+      }
+    } finally {
+      setReasoningUpdatingId(null)
     }
   }
   // 测试连通性
@@ -374,6 +394,20 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
                         title="点击切换普通/Pro"
                       >
                         {isPro ? 'Pro' : '普通'}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSupportsReasoning(model)}
+                        disabled={reasoningUpdatingId === model.id}
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium transition-colors ${
+                          model.supports_reasoning
+                            ? 'bg-indigo-200 hover:bg-indigo-300 text-indigo-700'
+                            : 'bg-neutral-200 hover:bg-neutral-300 text-neutral-600'
+                        }`}
+                      >
+                        {model.supports_reasoning ? '支持思考' : '不支持思考'}
                       </button>
                     )}
                     {!isAdmin && isPro && (

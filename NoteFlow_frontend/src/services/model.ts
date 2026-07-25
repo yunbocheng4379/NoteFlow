@@ -47,6 +47,14 @@ export const updateModelTier = async (
   return await request.post(`/models/${modelId}/tier`, { tier }, cfg(opts))
 }
 
+export const updateModelSupportsReasoning = async (
+  modelId: number,
+  supportsReasoning: boolean,
+  opts?: CallOpts,
+) => {
+  return await request.post(`/models/${modelId}/supports_reasoning`, { supports_reasoning: supportsReasoning }, cfg(opts))
+}
+
 export const fetchEnableModels = async () => {
   return await request.get('/model_list')
 }
