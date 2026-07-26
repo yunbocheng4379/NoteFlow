@@ -1,18 +1,18 @@
-"""VectorStoreManager.query_multi 集成测试 - 走真实 ChromaDB (VECTOR_DB_DIR)"""
+"""VectorStoreManager.query_multi 集成测试 - 使用 tmp_path 隔离的 ChromaDB/笔记目录，
+不触碰真实的 VECTOR_DB_DIR / NOTE_OUTPUT_DIR。"""
 import json
 import os
 import uuid
 
 import pytest
 
+from app.services import vector_store as vector_store_module
 from app.services.vector_store import VectorStoreManager
 
-NOTE_OUTPUT_DIR = os.getenv("NOTE_OUTPUT_DIR", "note_results")
 
-
-def _write_fake_note(task_id: str, title: str, markdown_body: str):
-    os.makedirs(NOTE_OUTPUT_DIR, exist_ok=True)
-    path = os.path.join(NOTE_OUTPUT_DIR, f"{task_id}.json")
+def _write_fake_note(note_dir: str, task_id: str, title: str, markdown_body: str):
+    os.makedirs(note_dir, exist_ok=True)
+    path = os.path.join(note_dir, f"{task_id}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump({
             "markdown": f"## {title}\n\n{markdown_body}",
@@ -23,19 +23,33 @@ def _write_fake_note(task_id: str, title: str, markdown_body: str):
 
 
 @pytest.fixture
-def two_indexed_tasks():
+def two_indexed_tasks(tmp_path, monkeypatch):
+    """在 tmp_path 下隔离出笔记目录和向量库目录，避免污染真实数据。"""
+    note_dir = str(tmp_path / "note_results")
+    vector_dir = str(tmp_path / "vector_db")
+    # NOTE_OUTPUT_DIR / VECTOR_DB_DIR 是模块级常量，在 import 时读取一次 os.getenv，
+    # VectorStoreManager.__init__ 直接引用模块全局变量，因此需要 monkeypatch.setattr
+    # 到模块对象上，而不是 monkeypatch.setenv（后者对已导入的模块无效）。
+    monkeypatch.setattr(vector_store_module, "NOTE_OUTPUT_DIR", note_dir)
+    monkeypatch.setattr(vector_store_module, "VECTOR_DB_DIR", vector_dir)
+
     store = VectorStoreManager()
     task_a = f"test-{uuid.uuid4().hex[:8]}"
     task_b = f"test-{uuid.uuid4().hex[:8]}"
-    path_a = _write_fake_note(task_a, "Python 教程", "Python 是一门解释型编程语言，适合初学者入门。")
-    path_b = _write_fake_note(task_b, "养猫指南", "猫咪每天需要充足的水和优质猫粮，定期驱虫很重要。")
-    store.index_task(task_a)
-    store.index_task(task_b)
-    yield store, task_a, task_b
-    store.delete_index(task_a)
-    store.delete_index(task_b)
-    os.remove(path_a)
-    os.remove(path_b)
+    _write_fake_note(note_dir, task_a, "Python 教程", "Python 是一门解释型编程语言，适合初学者入门。")
+    _write_fake_note(note_dir, task_b, "养猫指南", "猫咪每天需要充足的水和优质猫粮，定期驱虫很重要。")
+
+    try:
+        store.index_task(task_a)
+        store.index_task(task_b)
+        yield store, task_a, task_b
+    finally:
+        # 保证即使 index_task 中途失败，已建立的 collection 也会被清理；
+        # delete_index 内部已对不存在的 collection 静默忽略异常。
+        # 由于 vector_dir/note_dir 均在 tmp_path 内，pytest 会自动回收目录本身，
+        # 这里仍显式清理 ChromaDB collection 以防止其状态残留在进程内的 client 缓存中。
+        store.delete_index(task_a)
+        store.delete_index(task_b)
 
 
 def test_query_multi_tags_task_id_and_merges_results(two_indexed_tasks):
