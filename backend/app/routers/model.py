@@ -32,6 +32,10 @@ class UpdateModelTierRequest(BaseModel):
     tier: str
 
 
+class UpdateModelSupportsReasoningRequest(BaseModel):
+    supports_reasoning: bool
+
+
 class ModelItem(BaseModel):
     id: int
     model_name: str
@@ -106,6 +110,20 @@ def update_model_tier(
     except Exception as e:
         logger.error(f"更新模型 {model_id} 等级失败: {e}", exc_info=True)
         return R.error("更新模型等级失败，请重试")
+
+
+@router.post("/models/{model_id}/supports_reasoning")
+def update_model_supports_reasoning(
+    model_id: int, data: UpdateModelSupportsReasoningRequest, current_user: User = Depends(get_current_admin)
+):
+    try:
+        success = ModelService.set_model_supports_reasoning(model_id, data.supports_reasoning)
+        if not success:
+            return R.error("模型不存在或无权修改")
+        return R.success(msg="深度思考支持状态已更新")
+    except Exception as e:
+        logger.error(f"更新模型 {model_id} 深度思考支持状态失败: {e}", exc_info=True)
+        return R.error("更新失败，请重试")
 
 
 @router.get("/model_enable/{provider_id}")

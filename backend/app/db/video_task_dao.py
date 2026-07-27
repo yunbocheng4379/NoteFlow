@@ -95,6 +95,18 @@ def get_task_ids_by_batch_id(batch_id: str, user_id: Optional[int] = None) -> li
         db.close()
 
 
+def get_task_ids_by_user(user_id: int) -> list:
+    db = next(get_db())
+    try:
+        rows = db.query(VideoTask).filter_by(user_id=user_id).order_by(VideoTask.created_at.desc()).all()
+        return [t.task_id for t in rows]
+    except Exception as e:
+        logger.error(f"Failed to get task ids by user: {e}")
+        return []
+    finally:
+        db.close()
+
+
 def delete_task_by_video(video_id: str, platform: str, user_id: Optional[int] = None):
     db = next(get_db())
     task_ids: List[str] = []

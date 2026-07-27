@@ -16,6 +16,7 @@ def get_model_by_provider_and_name(provider_id: int, model_name: str):
                 "provider_id": model.provider_id,
                 "model_name": model.model_name,
                 "tier": model.tier,
+                "supports_reasoning": bool(model.supports_reasoning),
                 "created_at": model.created_at,
             }
         return None
@@ -23,11 +24,13 @@ def get_model_by_provider_and_name(provider_id: int, model_name: str):
         db.close()
 
 
-def insert_model(provider_id: int, model_name: str, tier: str = "normal", created_by: Optional[int] = None):
+def insert_model(provider_id: int, model_name: str, tier: str = "normal", supports_reasoning: int = 0,
+                  created_by: Optional[int] = None):
     """新增全局模型（仅管理员可调用）；created_by 记录创建人 id，仅用于追溯，不参与查询过滤"""
     db = next(get_db())
     try:
-        model = Model(provider_id=provider_id, model_name=model_name, user_id=created_by, tier=tier)
+        model = Model(provider_id=provider_id, model_name=model_name, user_id=created_by, tier=tier,
+                      supports_reasoning=supports_reasoning)
         db.add(model)
         db.commit()
         db.refresh(model)
@@ -36,6 +39,7 @@ def insert_model(provider_id: int, model_name: str, tier: str = "normal", create
             "provider_id": model.provider_id,
             "model_name": model.model_name,
             "tier": model.tier,
+            "supports_reasoning": bool(model.supports_reasoning),
             "created_at": model.created_at,
         }
     finally:
@@ -68,6 +72,20 @@ def update_model_tier(model_id: int, tier: str) -> bool:
         db.close()
 
 
+def update_model_supports_reasoning(model_id: int, enabled: bool) -> bool:
+    """更新模型是否支持深度思考（仅管理员可调用）"""
+    db = next(get_db())
+    try:
+        model = db.query(Model).filter_by(id=model_id).first()
+        if not model:
+            return False
+        model.supports_reasoning = 1 if enabled else 0
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+
 def delete_model(model_id: int):
     """删除模型（仅管理员可调用）"""
     db = next(get_db())
@@ -88,7 +106,13 @@ def get_all_models(tier_filter: Optional[list] = None):
             q = q.filter(Model.tier.in_(tier_filter))
         models = q.all()
         return [
-            {"id": m.id, "provider_id": m.provider_id, "model_name": m.model_name, "tier": m.tier}
+            {
+                "id": m.id,
+                "provider_id": m.provider_id,
+                "model_name": m.model_name,
+                "tier": m.tier,
+                "supports_reasoning": bool(m.supports_reasoning),
+            }
             for m in models
         ]
     finally:

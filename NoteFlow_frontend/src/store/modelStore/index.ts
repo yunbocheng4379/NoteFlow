@@ -6,7 +6,8 @@ import {
   fetchEnableModels,
   fetchEnableModelById,
   deleteModelById,
-  updateModelTier
+  updateModelTier,
+  updateModelSupportsReasoning
 } from '@/services/model'
 
 interface IModel {
@@ -23,6 +24,7 @@ interface IModelListItem {
   provider_id: string
   model_name: string
   tier?: 'normal' | 'pro'
+  supports_reasoning?: boolean
   created_at?: string
 }
 
@@ -38,6 +40,7 @@ interface ModelStore {
   addNewModel: (providerId: string, modelId: string, tier?: 'normal' | 'pro') => Promise<void>
   deleteModel: (modelId: number) => Promise<void>
   updateModelTier: (modelId: number, tier: 'normal' | 'pro') => Promise<boolean>
+  updateModelSupportsReasoning: (modelId: number, enabled: boolean) => Promise<boolean>
   setSelectedModel: (modelId: string) => void
   clearModels: () => void
 }
@@ -147,6 +150,17 @@ export const useModelStore = create<ModelStore>()(
         return res.code === 0
       } catch (error) {
         console.error('更新模型等级失败', error)
+        return false
+      }
+    },
+
+    //  更新模型是否支持深度思考
+    updateModelSupportsReasoning: async (modelId: number, enabled: boolean) => {
+      try {
+        const res = await updateModelSupportsReasoning(modelId, enabled)
+        return res.code === 0
+      } catch (error) {
+        console.error('更新深度思考支持状态失败', error)
         return false
       }
     },

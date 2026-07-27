@@ -13,4 +13,6 @@ class Model(Base):
     model_name = Column(String(128), nullable=False, comment="模型名称，如 'gpt-4o'、'deepseek-chat'，直接传给 API 的 model 参数")
     tier = Column(String(16), nullable=False, default="normal", server_default="normal",
                   comment="模型等级：normal=普通用户可用，pro=仅 Pro 会员可用")
+    supports_reasoning = Column(Integer, nullable=False, default=0, server_default="0",
+                                 comment="是否原生支持深度思考(reasoning)：1=支持，0=不支持；仅管理员可勾选")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")

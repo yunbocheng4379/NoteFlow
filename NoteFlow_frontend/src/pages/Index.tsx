@@ -15,6 +15,7 @@ import {
   Info,
   Megaphone,
   Folder,
+  BookOpen,
 } from 'lucide-react'
 import logo from '@/assets/icon.svg'
 import { useUserStore } from '@/store/userStore'
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard, label: '工作台', to: '/' },
   { icon: ListTodo, label: '任务列表', to: '/tasks' },
   { icon: Folder, label: '笔记合集', to: '/collections' },
+  { icon: BookOpen, label: '知识库', to: '/knowledge-base' },
   { icon: Palette, label: '笔记风格', to: '/note-style' },
   { icon: Megaphone, label: '更新日志', to: '/update-logs' },
   { icon: Zap, label: '升级 Pro', to: '/upgrade' },
@@ -116,11 +118,16 @@ const Index = () => {
                   <Icon className="h-5 w-5" />
                 </span>
                 <span
-                  className={`overflow-hidden whitespace-nowrap text-sm transition-[opacity,max-width] duration-200 ${
+                  className={`flex items-center gap-1 overflow-hidden whitespace-nowrap text-sm transition-[opacity,max-width] duration-200 ${
                     collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
                   } ${isUpgrade ? 'font-semibold' : ''}`}
                 >
                   {label}
+                  {to === '/knowledge-base' && (
+                    <span className="rounded bg-amber-200 px-1 text-[10px] font-medium text-amber-800">
+                      Pro
+                    </span>
+                  )}
                 </span>
               </Link>
             )

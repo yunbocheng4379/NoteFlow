@@ -203,6 +203,32 @@ class VectorStoreManager:
 
         return all_chunks
 
+    def query_multi(self, task_ids: list[str], query_text: str, per_task_n: int = 4, top_k: int = 8) -> list[dict]:
+        """
+        对多个 task_id 的 collection 分别检索（每个最多 per_task_n 条，不做来源配额区分），
+        合并后按 distance 升序排序，取全局 top_k。每条结果的 metadata 补充 task_id 字段。
+        """
+        all_chunks = []
+
+        for task_id in task_ids:
+            col_name = self._collection_name(task_id)
+            try:
+                collection = self._client.get_collection(col_name)
+            except Exception:
+                continue
+
+            try:
+                results = collection.query(query_texts=[query_text], n_results=per_task_n)
+            except Exception:
+                continue
+
+            for chunk in self._parse_results(results):
+                chunk["metadata"] = {**chunk["metadata"], "task_id": task_id}
+                all_chunks.append(chunk)
+
+        all_chunks.sort(key=lambda c: c["distance"] if c["distance"] is not None else float("inf"))
+        return all_chunks[:top_k]
+
     def delete_index(self, task_id: str) -> None:
         """删除指定任务的向量索引。"""
         col_name = self._collection_name(task_id)

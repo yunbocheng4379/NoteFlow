@@ -26,3 +26,6 @@ class StatusCode(IntEnum):
     RATE_LIMITED = 42901        # 发送过于频繁
     SEND_CODE_FAILED = 50001    # 验证码发送失败(短信/邮件服务异常)
     TICKET_INVALID = 40105      # 换绑凭证缺失/失效, 需先重新验证原手机号或邮箱
+
+    # 知识库相关
+    KB_REQUIRES_PRO = 40601      # 知识库为 Pro 会员专属功能
