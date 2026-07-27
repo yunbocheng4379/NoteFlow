@@ -76,6 +76,7 @@ const UpdateLogsAdminPage = lazy(() => import('@/pages/SettingPage/UpdateLogs'))
 const CollectionPage = lazy(() => import('@/pages/CollectionPage'))
 const CollectionDetailPage = lazy(() => import('@/pages/CollectionPage/Detail'))
 const FlashcardPage = lazy(() => import('@/pages/FlashcardPage'))
+const KnowledgeBasePage = lazy(() => import('@/pages/KnowledgeBasePage'))
 
 function App() {
   useTaskPolling(3000)
@@ -160,6 +161,7 @@ function App() {
               <Route path="tasks" element={<TaskListPage />} />
               <Route path="collections" element={<CollectionPage />} />
               <Route path="collections/:id" element={<CollectionDetailPage />} />
+              <Route path="knowledge-base" element={<KnowledgeBasePage />} />
               <Route path="flashcards/:setId" element={<FlashcardPage />} />
               <Route path="note-style" element={<NoteStylePage />} />
               <Route path="profile" element={<ProfilePage />} />
