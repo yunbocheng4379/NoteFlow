@@ -1,12 +1,50 @@
-<svg width="415" height="412" viewBox="0 0 415 412" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 28C0 12.536 12.536 0 28 0H387C402.464 0 415 12.536 415 28V384C415 399.464 402.464 412 387 412H28C12.536 412 0 399.464 0 384V28Z" fill="#3C77FB"/>
-<rect x="60" y="64" width="296" height="283" rx="37" fill="white"/>
-<path d="M268.422 175.657C276.308 180.298 276.308 191.702 268.422 196.343L186.335 244.641C178.336 249.348 168.25 243.58 168.25 234.298V137.702C168.25 128.42 178.336 122.652 186.335 127.359L268.422 175.657Z" fill="#3C77FB"/>
-<path d="M17 282C17 270.954 25.9543 262 37 262H83C94.0457 262 103 270.954 103 282V282C103 293.046 94.0457 302 83 302H37C25.9543 302 17 293.046 17 282V282Z" fill="#3C77FB"/>
-<path d="M38 281.5C38 274.044 44.0442 268 51.5 268H82.5C89.9558 268 96 274.044 96 281.5V281.5C96 288.956 89.9558 295 82.5 295H51.5C44.0442 295 38 288.956 38 281.5V281.5Z" fill="white"/>
-<path d="M17 206C17 194.954 25.9543 186 37 186H83C94.0457 186 103 194.954 103 206V206C103 217.046 94.0457 226 83 226H37C25.9543 226 17 217.046 17 206V206Z" fill="#3C77FB"/>
-<path d="M38 205.5C38 198.044 44.0442 192 51.5 192H82.5C89.9558 192 96 198.044 96 205.5V205.5C96 212.956 89.9558 219 82.5 219H51.5C44.0442 219 38 212.956 38 205.5V205.5Z" fill="white"/>
-<path d="M17 130C17 118.954 25.9543 110 37 110H83C94.0457 110 103 118.954 103 130V130C103 141.046 94.0457 150 83 150H37C25.9543 150 17 141.046 17 130V130Z" fill="#3C77FB"/>
-<path d="M38 129.5C38 122.044 44.0442 116 51.5 116H82.5C89.9558 116 96 122.044 96 129.5V129.5C96 136.956 89.9558 143 82.5 143H51.5C44.0442 143 38 136.956 38 129.5V129.5Z" fill="white"/>
-<path d="M145 290C145 285.582 148.582 282 153 282H284C288.418 282 292 285.582 292 290V299C292 303.418 288.418 307 284 307H153C148.582 307 145 303.418 145 299V290Z" fill="#3C77FB"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="114" fill="url(#bggrad)"/>
+
+  <!-- Inner subtle gradient overlay for depth -->
+  <rect width="512" height="512" rx="114" fill="url(#toplight)" opacity="0.18"/>
+
+  <!-- Main document / note card -->
+  <rect x="124" y="88" width="220" height="272" rx="22" fill="white"/>
+
+  <!-- Three text lines on the note -->
+  <rect x="154" y="148" width="130" height="11" rx="5.5" fill="#99e6de"/>
+  <rect x="154" y="176" width="108" height="11" rx="5.5" fill="#99e6de"/>
+  <rect x="154" y="204" width="120" height="11" rx="5.5" fill="#99e6de"/>
+
+  <!-- Animated-flow indicator: a rounded pill with arrow on the right side -->
+  <!-- Flow connector line from document right edge -->
+  <rect x="344" y="214" width="52" height="12" rx="6" fill="white" opacity="0.55"/>
+
+  <!-- Arrow head at the end of flow -->
+  <path d="M376 198 L400 220 L376 242" stroke="white" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9"/>
+
+  <!-- Small AI spark / note result card (bottom right, slightly overlapping) -->
+  <rect x="220" y="292" width="172" height="116" rx="18" fill="#0f6b60"/>
+  <rect x="220" y="292" width="172" height="116" rx="18" fill="url(#cardlight)" opacity="0.25"/>
+
+  <!-- Lines on the result card -->
+  <rect x="240" y="318" width="96" height="9" rx="4.5" fill="white" opacity="0.9"/>
+  <rect x="240" y="338" width="72" height="9" rx="4.5" fill="white" opacity="0.6"/>
+  <rect x="240" y="358" width="84" height="9" rx="4.5" fill="white" opacity="0.45"/>
+
+  <!-- Small star/spark icon on the result card (AI indicator) -->
+  <circle cx="356" cy="316" r="12" fill="white" opacity="0.18"/>
+  <path d="M356 308 L357.8 313.4 L363.4 313.4 L359 316.8 L360.8 322.2 L356 319 L351.2 322.2 L353 316.8 L348.6 313.4 L354.2 313.4 Z" fill="white" opacity="0.9"/>
+
+  <defs>
+    <linearGradient id="bggrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1aa396"/>
+      <stop offset="100%" stop-color="#0f6b60"/>
+    </linearGradient>
+    <linearGradient id="toplight" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="white"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cardlight" x1="220" y1="292" x2="392" y2="408" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="white"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
 </svg>
