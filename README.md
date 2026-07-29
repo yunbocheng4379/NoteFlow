@@ -65,11 +65,15 @@ NoteFlow 是一个 AI 视频笔记系统，支持从 Bilibili、YouTube、抖音
 
 ## 截图预览
 
-![NoteFlow 工作台](./doc/image1.png)
-![NoteFlow 笔记预览](./doc/image3.png)
-![NoteFlow 知识库](./doc/image.png)
-![NoteFlow 设置](./doc/image4.png)
-![NoteFlow 任务](./doc/image5.png)
+以下截图均来自当前 NoteFlow v1.0.0 系统界面：
+
+![NoteFlow 工作台](./doc/screenshots/01-workspace.png)
+![NoteFlow 任务列表](./doc/screenshots/02-task-list.png)
+![NoteFlow 笔记合集](./doc/screenshots/03-collections.png)
+![NoteFlow 知识库问答](./doc/screenshots/04-knowledge-base.png)
+![NoteFlow Pro](./doc/screenshots/05-upgrade-pro.png)
+![NoteFlow 关于页](./doc/screenshots/06-about.png)
+![NoteFlow Cookie 池管理](./doc/screenshots/07-cookie-pool.png)
 
 ## 快速开始
 
@@ -88,11 +92,27 @@ docker compose up -d --build
 http://localhost:3015
 ```
 
+首次部署完成后建议检查：
+
+```bash
+docker compose ps
+curl http://127.0.0.1:3015/api/sys_health
+```
+
 GPU 版本：
 
 ```bash
 docker compose -f docker-compose.gpu.yml up -d --build
 ```
+
+项目更新后的二次部署：
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Docker 会保留 named volumes 中的 MySQL 数据、模型缓存、上传文件、笔记结果和向量库数据。正式环境更新前建议先按部署文档备份数据库。
 
 正式服务器部署、首次部署、二次更新部署、数据库导入、Docker 镜像源等内容请查看：
 
@@ -224,34 +244,22 @@ docker compose down -v
 
 正式环境请谨慎执行。
 
-## NoteFlow AI 笔记系统一对一搭建服务
+## 联系我们
 
-提供 NoteFlow AI 笔记系统一对一搭建服务：专人远程协助完成服务器部署、Docker 配置、模型接入、Cookie 池配置、支付配置和上线检查。扫码添加微信，备注「搭建服务」即可咨询：
+以下二维码来自当前系统「关于」页面。如二维码失效，请到 [Issues](https://github.com/yunbocheng4379/NoteFlow/issues) 反馈。
 
 <table align="center">
   <tr>
     <td align="center">
-      <img src="./doc/remote-install-wechat.png" alt="NoteFlow AI笔记系统一对一搭建服务" width="220" />
+      <img src="./doc/about-wechat-community-qr.png" alt="NoteFlow 用户交流群" width="220" />
       <br/>
-      NoteFlow AI 笔记系统一对一搭建服务
+      NoteFlow 用户交流群
     </td>
-  </tr>
-</table>
-
-## 交流社区
-
-扫码加入 NoteFlow 交流微信群。二维码会定期更新，如已失效请到 [Issues](https://github.com/yunbocheng4379/NoteFlow/issues) 反馈。
-
-<table align="center">
-  <tr>
-    <td align="center"><img src="./doc/wechat-group-1.png" alt="NoteFlow 交流群 1" width="200" /><br/>交流群 1</td>
-    <td align="center"><img src="./doc/wechat-group-2.png" alt="NoteFlow 交流群 2" width="200" /><br/>交流群 2</td>
-    <td align="center"><img src="./doc/wechat-group-3.png" alt="NoteFlow 交流群 3" width="200" /><br/>交流群 3</td>
-  </tr>
-  <tr>
-    <td align="center"><img src="./doc/wechat-group-4.png" alt="NoteFlow 交流群 4" width="200" /><br/>交流群 4</td>
-    <td align="center"><img src="./doc/wechat-group-5.png" alt="NoteFlow 交流群 5" width="200" /><br/>交流群 5</td>
-    <td></td>
+    <td align="center">
+      <img src="./doc/about-enterprise-service-qr.png" alt="企业定制 / 私有化部署咨询" width="220" />
+      <br/>
+      企业定制 / 私有化部署咨询
+    </td>
   </tr>
 </table>
 
