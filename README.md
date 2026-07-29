@@ -1,199 +1,106 @@
-<div style="display: flex; justify-content: center; align-items: center; gap: 10px;
-">
-    <p align="center">
-  <img src="./doc/icon.svg" alt="NoteFlow Banner" width="50" height="50"  />
+<p align="center">
+  <img src="./doc/icon.svg" alt="NoteFlow Logo" width="58" height="58" />
 </p>
-<h1 align="center" > NoteFlow v1.0.0</h1>
-</div>
 
-<p align="center"><i>AI 视频笔记生成工具 让 AI 为你的视频做笔记</i></p>
+<h1 align="center">NoteFlow v1.0.0</h1>
+
+<p align="center"><i>一条视频链接，变成一份可检索、可追问、可管理的 AI 笔记。</i></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" />
-  <img src="https://img.shields.io/badge/frontend-react%2019-blue" />
-  <img src="https://img.shields.io/badge/backend-fastapi-green" />
-  <img src="https://img.shields.io/badge/GPT-openai%20%7C%20deepseek%20%7C%20qwen-ff69b4" />
-  <img src="https://img.shields.io/badge/docker-ghcr.io-blue" />
-  <img src="https://img.shields.io/badge/status-active-success" />
+  <img src="https://img.shields.io/badge/frontend-React%2019%20%2B%20Vite-blue" />
+  <img src="https://img.shields.io/badge/backend-FastAPI-green" />
+  <img src="https://img.shields.io/badge/database-MySQL-orange" />
+  <img src="https://img.shields.io/badge/RAG-ChromaDB-10b981" />
+  <img src="https://img.shields.io/badge/docker-compose-blue" />
   <img src="https://img.shields.io/github/stars/yunbocheng4379/NoteFlow?style=social" />
 </p>
 
 <p align="center">
-  <a href="https://www.noteflow.app/"><b>🚀 NoteFlow Pro · 在线版</b></a>
+  <a href="https://www.noteflow.app/"><b>NoteFlow Pro 在线版</b></a>
+  ·
+  <a href="https://github.com/yunbocheng4379/NoteFlow/releases"><b>桌面版下载</b></a>
+  ·
+  <a href="./docs/DEPLOYMENT.md"><b>部署文档</b></a>
 </p>
 
-<p align="center">
-  <b>不想折腾部署？</b>访问 <a href="https://www.noteflow.app/"><b>www.noteflow.app</b></a> 即开即用 —— 免安装、免配置环境、免下模型，注册即可把视频转成笔记。
-  <br/>
-  本地部署遇到的依赖、代理、模型下载这些坑，云端版统统不用管。
-</p>
+## 项目简介
 
-<p align="center">
-  <a href="https://www.noteflow.app/">
-    <img src="https://img.shields.io/badge/%E7%AB%8B%E5%8D%B3%E4%BD%93%E9%AA%8C-NoteFlow%20Pro-ff5c5c?style=for-the-badge" alt="立即体验 NoteFlow Pro" />
-  </a>
-</p>
+NoteFlow 是一个 AI 视频笔记系统，支持从 Bilibili、YouTube、抖音、快手、本地视频等来源解析内容，自动转写音频并生成结构化 Markdown 笔记。生成后的笔记可以进入知识库向量索引，用于跨笔记 AI 问答、引用来源追踪、笔记合集管理和后续导出。
 
+如果你只想直接使用，不想处理 Docker、代理、FFmpeg、Whisper 模型下载和服务器配置，可以访问 **[www.noteflow.app](https://www.noteflow.app/)** 使用在线版。
 
+## 核心能力
 
-## ✨ 项目简介
+### 视频转笔记
 
-NoteFlow 是一个开源的 AI 视频笔记助手，支持通过哔哩哔哩、YouTube、抖音等视频链接，自动提取内容并生成结构清晰、重点明确的 Markdown 格式笔记。支持插入截图、原片跳转、AI 问答等功能。
+- 支持在线视频链接和本地视频上传。
+- 自动识别平台，支持 Bilibili、YouTube、抖音、快手等视频来源。
+- 支持 Fast-Whisper、MLX-Whisper、Groq、BCut 等音频转写方案。
+- 支持选择笔记风格、笔记格式、补充说明、截图插入、原片跳转链接。
+- 支持视频理解、多模态截图分析和生成过程任务状态追踪。
 
-> 💡 **想直接用、不想本地部署？** —— [NoteFlow Pro 在线版 www.noteflow.app](https://www.noteflow.app/) 已上线，云端托管、开箱即用，省去依赖安装 / 代理配置 / 模型下载的全部麻烦。
+### AI 模型与成本控制
 
-## 🌐 在线使用（推荐）
+- 支持 OpenAI-compatible 模型供应商，可接入 DeepSeek、Qwen、Kimi、MiniMax、Claude、Gemini、Groq 等模型。
+- 模型列表展示供应商 Logo，支持普通模型 / Pro 模型分层。
+- 支持深度思考开关，并根据模型能力自动禁用不支持的选项。
+- 支持电力余额、套餐充值、会员订阅和账单流水。
 
-直接访问 **[www.noteflow.app](https://www.noteflow.app/)** 即可使用 NoteFlow Pro 在线版，无需本地部署。
+### 知识库与笔记管理
 
-## 📝 使用文档
-详细文档可以查看[这里](https://github.com/yunbocheng4379/NoteFlow/)
-## 📦 桌面版下载
-本项目提供了 Windows 和 macOS 桌面客户端，可在 [Releases](https://github.com/yunbocheng4379/NoteFlow/releases) 页面下载最新版本。
+- 生成笔记后自动写入向量库，并维护索引状态。
+- 知识库支持跨笔记 AI 问答、选择指定笔记范围、深度思考展示、引用来源折叠展示。
+- 支持笔记合集，将同一课程、主题或批量生成的笔记集中管理。
+- 支持笔记重命名、编辑后自动重建向量索引。
+- 支持任务列表、生成历史、多版本记录和历史回看。
 
-> Windows 用户请注意：一定要在没有中文路径的环境下运行。
+### 管理后台
 
-## 💎 NoteFlow AI笔记系统一对一搭建服务
+- AI 模型供应商管理、模型启用和模型等级配置。
+- 音频转写配置和 Whisper 模型下载管理。
+- Cookie 池管理：多平台 Cookie、分组、权重、失败计数、失效标记和池耗尽提醒。
+- 用户管理、反馈管理、系统通知、部署监控、更新日志管理。
+- 支持支付宝 / 微信支付渠道配置与订单状态同步。
 
-提供 **NoteFlow AI笔记系统一对一搭建服务**：专人一对一远程协助，从环境部署、模型配置到上手使用全程陪跑，帮你快速跑通整套系统。扫码添加微信，备注「搭建服务」即可咨询：
+## 截图预览
 
-<table align="center">
-  <tr>
-    <td align="center"><img src="./doc/remote-install-wechat.png" alt="NoteFlow AI笔记系统一对一搭建服务" width="220" /><br/>NoteFlow AI笔记系统一对一搭建服务</td>
-  </tr>
-</table>
+![NoteFlow 工作台](./doc/image1.png)
+![NoteFlow 笔记预览](./doc/image3.png)
+![NoteFlow 知识库](./doc/image.png)
+![NoteFlow 设置](./doc/image4.png)
+![NoteFlow 任务](./doc/image5.png)
 
-## 🔧 功能特性
-
-- 支持多平台：Bilibili、YouTube、本地视频、抖音、快手
-- 支持返回笔记格式选择
-- 支持笔记风格选择
-- 支持多模态视频理解
-- 支持多版本记录保留
-- 支持自行配置 GPT 大模型（OpenAI、DeepSeek、Qwen 等）
-- 本地模型音频转写（支持 Fast-Whisper、MLX-Whisper、Groq、BCut）
-- GPT 大模型总结视频内容
-- 自动生成结构化 Markdown 笔记
-- 可选插入截图（自动截取）
-- 可选内容跳转链接（关联原视频）
-- 任务记录与历史回看
-- 基于 RAG 的笔记内容 AI 问答（支持 Function Calling）
-- 笔记顶部视频封面 Banner 展示
-- 工作区和生成历史面板支持折叠/展开
-
-### v1.0.0 当前版本
-
-- 项目已统一更名为 NoteFlow，并以 v1.0.0 作为当前正式版本。
-- 默认部署方式切换为 Docker Compose，完整 Web 栈包含 MySQL、FastAPI 后端、React/Vite 前端和 nginx 反向代理。
-- 详细发布记录和历史变更请查看 [CHANGELOG.md](./CHANGELOG.md)。
-
-## 📸 截图预览
-![screenshot](./doc/image1.png)
-![screenshot](./doc/image3.png)
-![screenshot](./doc/image.png)
-![screenshot](./doc/image4.png)
-![screenshot](./doc/image5.png)
-
-## 🚀 快速开始
+## 快速开始
 
 ### 方式一：Docker Compose 部署（推荐）
 
-确保已安装 Docker 和 Docker Compose Plugin，然后使用项目内置 compose 文件构建并启动完整服务：
+先准备 Docker 和 Docker Compose Plugin，然后在项目根目录执行：
 
 ```bash
-cp .env.example .env       # 第一次部署务必先创建 .env，否则 BACKEND_PORT/APP_PORT 等变量为空会启动失败
+cp .env.example .env
 docker compose up -d --build
+```
 
-# GPU 加速部署（需要 NVIDIA GPU + NVIDIA Container Toolkit）
+默认访问地址：
+
+```text
+http://localhost:3015
+```
+
+GPU 版本：
+
+```bash
 docker compose -f docker-compose.gpu.yml up -d --build
 ```
 
-默认访问：`http://localhost:3015`
+正式服务器部署、首次部署、二次更新部署、数据库导入、Docker 镜像源等内容请查看：
 
-正式服务器部署步骤请优先参考：[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)。
+[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
-#### Docker 部署常见问题（FAQ）
+### 方式二：源码运行
 
-社区反馈最集中的几个坑，遇到先按下面排查：
-
-**0. 国内拉不到 docker.io（build 阶段报 `dial tcp ... i/o timeout`）**
-
-`docker compose build` 拉 `python:3.11-slim` / `node:20-alpine` / `nginx:1.25-alpine` 时连 `auth.docker.io` 超时。两种解法，按推荐顺序：
-
-- **方法 A：配置 Docker daemon 镜像加速器**——编辑 `~/.docker/daemon.json`（Linux 在 `/etc/docker/daemon.json`），加：
-  ```json
-  {
-    "registry-mirrors": ["https://docker.m.daocloud.io"]
-  }
-  ```
-  然后重启 Docker Desktop / `sudo systemctl restart docker`。这是一劳永逸的做法。
-- **方法 B：临时切换 base image 镜像源**——本项目所有 Dockerfile 都暴露了 `BASE_REGISTRY` build-arg：
-  ```bash
-  BASE_REGISTRY=docker.m.daocloud.io docker compose build
-  docker compose up -d
-  ```
-  或永久写到 `.env`：`echo 'BASE_REGISTRY=docker.m.daocloud.io' >> .env`。
-
-注意：Chinese 公共 docker 镜像源时常被关停，2025-2026 之间可用的列表会变；如果 `docker.m.daocloud.io` 不通，搜一下"Docker 镜像加速 可用"找最新可用源即可。
-
-**1. 容器一直 restart / unhealthy**
-
-先看后端日志：
-```bash
-docker logs -f noteflow-backend
-```
-后端启动会按顺序打印 `[startup 1/5] ... [startup 5/5] 启动完成`。若日志卡在某一步或出现 `[startup FAILED]`，就是那一步的问题，常见：
-- **卡在 `[startup 3/5]`**：转写器配置读不到。检查 `.env` 里 `TRANSCRIBER_TYPE` 是否写错，`mlx-whisper` 只能在 Apple Silicon 用，Linux/Docker 请用 `fast-whisper` 或 `groq`。
-- **首次跑视频时容器被 kill**：whisper 模型下载触发 OOM。先把 `.env` 里 `WHISPER_MODEL_SIZE` 改成 `tiny`，跑通后再去前端「音频转写配置」里逐档升。
-
-**2. 改了 `.env` 没生效**
-
-区分两类变量：
-- `VITE_*` 是**构建时**变量（前端 bundle 里硬编码），改完必须 `docker compose build frontend && docker compose up -d`。只 `restart` 不会重新打包。
-- 其他后端变量（`TRANSCRIBER_TYPE`、`WHISPER_MODEL_SIZE`、`FFMPEG_BIN_PATH` 等）是**运行时**变量，改完 `docker compose up -d` 即可。
-
-注意：**LLM API key 不要写 `.env`**，从前端「模型供应商」页面录入，会保存到 MySQL 数据库并持久化。
-
-**3. 数据存在哪？删容器会丢吗？**
-
-`docker compose` 使用 named volumes 持久化数据，删容器不会丢：
-
-- `noteflow_mysql_data`：MySQL 数据库
-- `noteflow_backend_static`：截图和静态输出
-- `noteflow_backend_uploads`：上传的本地视频
-- `noteflow_backend_note_results`：生成的笔记和转写结果
-- `noteflow_backend_models`：Whisper 模型缓存
-- `noteflow_backend_vector_db`：向量索引
-- `noteflow_backend_logs`：后端日志
-- `noteflow_backend_data`：后端其他运行时数据
-
-要彻底重置所有 Docker 数据，执行：
-
-```bash
-docker compose down -v
-```
-
-注意：`down -v` 会删除 MySQL 数据和生成结果，正式环境请谨慎使用。
-
-**4. 前端打开是空白页 / 报 502**
-
-通常是 nginx 起来了但 backend 还没 healthy。`docker ps` 看 backend 容器 STATUS 是不是 `(healthy)`；若长期 `(unhealthy)`，按问题 1 排查后端日志。
-
-**5. 不要用 `restart: on-failure:N`**
-
-如果你 fork 后改过 compose 文件、把 restart 策略改成了 `on-failure:3`：任何 3 次连续崩溃都会让容器永远不再启动，之后改 `.env` 也没用。本项目自带的 compose 已经统一用 `unless-stopped`。
-
-### 方式二：源码部署
-
-#### 1. 克隆仓库
-
-```bash
-git clone https://github.com/yunbocheng4379/NoteFlow.git
-cd NoteFlow
-mv .env.example .env
-```
-
-#### 2. 启动后端（FastAPI）
+后端：
 
 ```bash
 cd backend
@@ -201,7 +108,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-#### 3. 启动前端（Vite + React）
+前端：
 
 ```bash
 cd NoteFlow_frontend
@@ -209,56 +116,131 @@ pnpm install
 pnpm dev
 ```
 
-访问：`http://localhost:3015`
+访问：
 
-## ⚙️ 依赖说明
-
-### 🎬 FFmpeg
-本项目依赖 ffmpeg 用于音频处理与转码，源码部署时必须安装：
-```bash
-# Mac (brew)
-brew install ffmpeg
-
-# Ubuntu / Debian
-sudo apt install ffmpeg
-
-# Windows
-# 请从官网下载安装：https://ffmpeg.org/download.html
-```
-> ⚠️ 若系统无法识别 ffmpeg，请将其加入系统环境变量 PATH
->
-> Docker 部署已内置 FFmpeg，无需额外安装。
-
-### 🚀 CUDA 加速（可选）
-若你希望更快地执行音频转写任务，可使用具备 NVIDIA GPU 的机器，并启用 fast-whisper + CUDA 加速版本：
-
-具体 `fast-whisper` 配置方法，请参考：[fast-whisper 项目地址](http://github.com/SYSTRAN/faster-whisper#requirements)
-
-### 🐳 使用 Docker Compose 一键部署
-
-确保你已安装 Docker，然后在项目根目录执行：
-
-```bash
-# 标准部署
-docker compose up -d --build
-
-# GPU 加速部署（需要 NVIDIA GPU）
-docker compose -f docker-compose.gpu.yml up -d --build
+```text
+http://localhost:3015
 ```
 
-## 🧠 TODO
+## 常用命令
 
-- [x] 支持抖音及快手等视频平台
-- [x] 支持前端设置切换 AI 模型切换、语音转文字模型
-- [x] AI 摘要风格自定义（学术风、口语风、重点提取等）
-- [x] 加入更多模型支持
-- [x] 加入更多音频转文本模型支持
-- [x] 基于 RAG 的笔记内容 AI 问答
-- [ ] 笔记导出为 PDF / Word / Notion
+后端测试：
 
-### Contact and Join-联系和加入社区
+```bash
+cd backend
+pytest
+```
 
-扫码加入 NoteFlow 交流微信群（共 5 个群，任选一个即可；二维码会定期更新，如已失效请到 [Issues](https://github.com/yunbocheng4379/NoteFlow/issues) 反馈）：
+前端构建：
+
+```bash
+cd NoteFlow_frontend
+pnpm build
+```
+
+浏览器扩展：
+
+```bash
+cd NoteFlow_extension
+pnpm install
+pnpm dev
+pnpm build
+```
+
+桌面端打包：
+
+```bash
+cd backend && ./build.sh
+cd NoteFlow_frontend && pnpm tauri build
+```
+
+## 目录结构
+
+```text
+NoteFlow
+├── backend/              # FastAPI 后端、任务队列、下载器、转写、LLM、RAG、数据库
+├── NoteFlow_frontend/    # React 19 + Vite 前端
+├── NoteFlow_extension/   # 浏览器扩展
+├── docs/                 # 部署和设计文档
+├── doc/                  # README 图片和社区二维码
+├── docker-compose.yml    # 标准 Docker 部署
+└── docker-compose.gpu.yml
+```
+
+## 关键依赖
+
+- Python 3.11+
+- Node.js 20+
+- MySQL 8+
+- FFmpeg
+- ChromaDB
+- Docker / Docker Compose
+- 可选：NVIDIA GPU + NVIDIA Container Toolkit
+
+Docker 部署已内置 FFmpeg；源码部署需要自行安装 FFmpeg。
+
+## Docker 常见问题
+
+### 国内拉取 Docker Hub 超时
+
+可在 Docker daemon 中配置镜像加速器，例如：
+
+```json
+{
+  "registry-mirrors": ["https://docker.m.daocloud.io"]
+}
+```
+
+也可以临时使用项目 Dockerfile 提供的 `BASE_REGISTRY`：
+
+```bash
+BASE_REGISTRY=docker.m.daocloud.io docker compose build
+docker compose up -d
+```
+
+### 修改 `.env` 后没有生效
+
+- `VITE_*` 是前端构建时变量，修改后需要重新 build 前端镜像。
+- 后端运行时变量通常 `docker compose up -d` 即可生效。
+- LLM API Key 建议在前端模型供应商页面配置，不要写入 `.env`。
+
+### 数据持久化位置
+
+Docker Compose 使用 named volumes 保存数据：
+
+- `noteflow_mysql_data`：MySQL 数据
+- `noteflow_backend_note_results`：生成笔记和转写结果
+- `noteflow_backend_vector_db`：知识库向量索引
+- `noteflow_backend_models`：Whisper 模型缓存
+- `noteflow_backend_uploads`：上传文件
+- `noteflow_backend_static`：截图等静态资源
+- `noteflow_backend_logs`：后端日志
+
+彻底清空数据：
+
+```bash
+docker compose down -v
+```
+
+正式环境请谨慎执行。
+
+## NoteFlow AI 笔记系统一对一搭建服务
+
+提供 NoteFlow AI 笔记系统一对一搭建服务：专人远程协助完成服务器部署、Docker 配置、模型接入、Cookie 池配置、支付配置和上线检查。扫码添加微信，备注「搭建服务」即可咨询：
+
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="./doc/remote-install-wechat.png" alt="NoteFlow AI笔记系统一对一搭建服务" width="220" />
+      <br/>
+      NoteFlow AI 笔记系统一对一搭建服务
+    </td>
+  </tr>
+</table>
+
+## 交流社区
+
+扫码加入 NoteFlow 交流微信群。二维码会定期更新，如已失效请到 [Issues](https://github.com/yunbocheng4379/NoteFlow/issues) 反馈。
 
 <table align="center">
   <tr>
@@ -273,25 +255,23 @@ docker compose -f docker-compose.gpu.yml up -d --build
   </tr>
 </table>
 
+## 代码参考
 
+- 抖音下载功能部分代码参考：[Evil0ctal/Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
 
-## 🔎代码参考
-- 本项目中的 `抖音下载功能` 部分代码参考引用自：[Evil0ctal/Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
-
-## 📜 License
+## License
 
 MIT License
 
----
-
-💬 你的支持与反馈是我持续优化的动力！欢迎 PR、提 issue、Star ⭐️
 ## Buy Me a Coffee / 捐赠
-如果你觉得项目对你有帮助，考虑支持我一下吧
+
+如果你觉得项目对你有帮助，可以支持一下：
+
 <div style='display:inline;'>
     <img width='30%' src='https://common-1304618721.cos.ap-chengdu.myqcloud.com/8986c9eb29c356a0cfa3d470c23d3b6.jpg'/>
     <img width='30%' src='https://common-1304618721.cos.ap-chengdu.myqcloud.com/2a049ea298b206bcd0d8b8da3219d6b.jpg'/>
 </div>
 
-## ⭐ Star History
+## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=yunbocheng4379/NoteFlow&type=Date)](https://www.star-history.com/#yunbocheng4379/NoteFlow&Date)
