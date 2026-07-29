@@ -26,6 +26,7 @@ class CreateModelRequest(BaseModel):
     provider_id: str
     model_name: str
     tier: str = "normal"
+    supports_reasoning: bool = False
 
 
 class UpdateModelTierRequest(BaseModel):
@@ -84,11 +85,16 @@ def model_list_by_provider(
 @router.post("/models")
 def create_model(data: CreateModelRequest, current_user: User = Depends(get_current_admin)):
     try:
-        success = ModelService.add_new_model(
-            data.provider_id, data.model_name, tier=data.tier, created_by=current_user.id
+        result = ModelService.add_new_model(
+            data.provider_id, data.model_name, tier=data.tier,
+            supports_reasoning=data.supports_reasoning, created_by=current_user.id
         )
-        if not success:
-            return R.error("模型添加失败，请确认供应商是否存在")
+        if result == "provider_not_found":
+            return R.error("模型添加失败，供应商不存在")
+        if result == "updated":
+            return R.success(msg="模型配置已更新")
+        if result != "ok":
+            return R.error("模型添加失败，请稍后重试")
         return R.success(msg="模型添加成功")
     except Exception as e:
         logger.error(f"添加模型失败 provider={data.provider_id} model={data.model_name}: {e}", exc_info=True)

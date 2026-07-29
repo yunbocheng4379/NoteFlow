@@ -13,13 +13,14 @@ from dataclasses import asdict
 from app.auth.dependencies import get_current_user
 from app.db.engine import get_db
 from app.db.models.users import User
-from app.db.video_task_dao import get_task_by_video, insert_video_task, update_task_status
+from app.db.video_task_dao import get_task_by_video, insert_video_task, update_task_status, update_task_title
 from sqlalchemy.orm import Session
 from app.enmus.exception import NoteErrorEnum
 from app.enmus.note_enums import DownloadQuality
 from app.exceptions.note import NoteError
 from app.exceptions.provider import ProviderError
 from app.services.note import NoteGenerator, logger
+from app.services.kb_permissions import require_pro
 from app.services.task_serial_executor import task_serial_executor
 from app.utils.error_messages import translate_download_error
 from app.utils.response import ResponseWrapper as R
@@ -78,6 +79,15 @@ def save_note_to_file(task_id: str, note):
         json.dump(asdict(note), f, ensure_ascii=False, indent=2)
 
 
+def _apply_custom_title(task_id: str, result_content: dict) -> None:
+    """若用户手动重命名过该笔记，用 video_tasks.custom_title 覆盖结果中的 audio_meta.title。"""
+    from app.db.video_task_dao import get_task_by_task_id
+
+    row = get_task_by_task_id(task_id)
+    if row and row.custom_title:
+        result_content.setdefault("audio_meta", {})["title"] = row.custom_title
+
+
 def _persist_prefetched_transcript(task_id: str, transcript: dict) -> None:
     segments = transcript.get("segments") or []
     cleaned_segments = []
@@ -105,6 +115,21 @@ def _persist_prefetched_transcript(task_id: str, transcript: dict) -> None:
     with open(target, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
     logger.info(f"已写入客户端预取字幕缓存: {target} ({len(cleaned_segments)} 段)")
+
+
+def _index_note_for_kb(task_id: str) -> None:
+    """为笔记建立知识库向量索引，并同步持久化索引状态。"""
+    from app.db.kb_index_status_dao import set_status as set_index_status
+    from app.services.vector_store import VectorStoreManager
+
+    try:
+        set_index_status(task_id, "indexing")
+        VectorStoreManager().index_task(task_id)
+        set_index_status(task_id, "indexed")
+        logger.info(f"向量索引完成 (task_id={task_id})")
+    except Exception as e:
+        set_index_status(task_id, "failed")
+        logger.warning(f"向量索引失败（不影响笔记）(task_id={task_id}): {e}")
 
 
 def run_note_task(task_id: str, video_url: str, platform: str, quality: DownloadQuality,
@@ -148,11 +173,7 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
         from app.db import note_collection_dao
         note_collection_dao.add_task_to_collection_on_generate(collection_id, user_id, task_id)
 
-    try:
-        from app.services.vector_store import VectorStoreManager
-        VectorStoreManager().index_task(task_id)
-    except Exception as e:
-        logger.warning(f"向量索引失败（不影响笔记）: {e}")
+    _index_note_for_kb(task_id)
 
 
 @router.delete('/tasks/{task_id}')
@@ -370,6 +391,7 @@ def get_task_status(task_id: str, current_user: User = Depends(get_current_user)
             if os.path.exists(result_path):
                 with open(result_path, "r", encoding="utf-8") as rf:
                     result_content = json.load(rf)
+                _apply_custom_title(task_id, result_content)
                 return R.success({
                     "status": status,
                     "result": result_content,
@@ -400,6 +422,7 @@ def get_task_status(task_id: str, current_user: User = Depends(get_current_user)
     if os.path.exists(result_path):
         with open(result_path, "r", encoding="utf-8") as f:
             result_content = json.load(f)
+        _apply_custom_title(task_id, result_content)
         return R.success({"status": TaskStatus.SUCCESS.value, "result": result_content, "task_id": task_id})
 
     return R.success({"status": TaskStatus.PENDING.value, "message": "任务排队中", "task_id": task_id})
@@ -407,6 +430,24 @@ def get_task_status(task_id: str, current_user: User = Depends(get_current_user)
 
 class UpdateNoteRequest(BaseModel):
     content: str
+
+
+class UpdateNoteTitleRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
+
+@router.put("/note/{task_id}/title")
+def update_note_title(task_id: str, data: UpdateNoteTitleRequest, current_user: User = Depends(get_current_user)):
+    """用户手动重命名笔记标题，写入 video_tasks.custom_title，覆盖自动提取的视频标题。"""
+    title = data.title.strip()
+    if not title:
+        return R.error(msg='标题不能为空', code=400)
+
+    ok = update_task_title(task_id, title, user_id=current_user.id)
+    if not ok:
+        return R.error(msg='任务不存在或无权限编辑', code=404)
+
+    return R.success({"task_id": task_id, "title": title}, msg='重命名成功')
 
 
 @router.put("/note/{task_id}")
@@ -437,11 +478,7 @@ def update_note_content(task_id: str, data: UpdateNoteRequest, current_user: Use
         logger.error(f"保存笔记编辑失败 (task_id={task_id}): {e}")
         return R.error(msg='保存失败，请稍后重试')
 
-    try:
-        from app.services.vector_store import VectorStoreManager
-        VectorStoreManager().index_task(task_id)
-    except Exception as e:
-        logger.warning(f"重建向量索引失败 (task_id={task_id}): {e}")
+    _index_note_for_kb(task_id)
 
     return R.success({"task_id": task_id, "markdown": data.content}, msg='保存成功')
 
@@ -507,7 +544,7 @@ def list_tasks(current_user: User = Depends(get_current_user)):
             "created_at": row.created_at.isoformat() if row.created_at else "",
             "completed_at": row.completed_at.isoformat() if row.completed_at else "",
             "status": status,
-            "title": title,
+            "title": row.custom_title or title,
             "cover_url": cover_url,
             "duration": duration,
             "batch_id": row.batch_id,
@@ -622,6 +659,7 @@ def generate_notes_batch(data: GenerateNotesBatchRequest, background_tasks: Back
     批量提交笔记生成任务：逐条探测时长 -> 计费 -> 扣费 -> 建任务 -> 丢进现有执行队列。
     共享同一 batch_id 分组；遇到余额不足时停止后续处理，剩余项标记为失败。
     """
+    require_pro(current_user, "批量模式")
     try:
         from app.db import transcriber_config_dao
         from app.routers.config import _check_whisper_model_exists, _check_mlx_whisper_model_exists, _downloading

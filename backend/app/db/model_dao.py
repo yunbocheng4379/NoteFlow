@@ -53,7 +53,7 @@ def get_models_by_provider(provider_id: int, tier_filter: Optional[list] = None)
         if tier_filter is not None:
             q = q.filter(Model.tier.in_(tier_filter))
         models = q.all()
-        return [{"id": m.id, "model_name": m.model_name, "tier": m.tier} for m in models]
+        return [{"id": m.id, "model_name": m.model_name, "tier": m.tier, "supports_reasoning": bool(m.supports_reasoning)} for m in models]
     finally:
         db.close()
 
@@ -80,6 +80,21 @@ def update_model_supports_reasoning(model_id: int, enabled: bool) -> bool:
         if not model:
             return False
         model.supports_reasoning = 1 if enabled else 0
+        db.commit()
+        return True
+    finally:
+        db.close()
+
+
+def update_model(model_id: int, tier: str, supports_reasoning: int) -> bool:
+    """同时更新模型等级 + 深度思考支持（仅管理员可调用），供"保存模型"重新保存已存在模型时使用"""
+    db = next(get_db())
+    try:
+        model = db.query(Model).filter_by(id=model_id).first()
+        if not model:
+            return False
+        model.tier = tier
+        model.supports_reasoning = supports_reasoning
         db.commit()
         return True
     finally:

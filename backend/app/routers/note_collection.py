@@ -20,6 +20,7 @@ from app.db.models.users import User
 from app.db.video_task_dao import insert_video_task, update_task_status
 from app.models.audio_model import AudioDownloadResult
 from app.models.notes_model import NoteResult
+from app.services.kb_permissions import require_pro
 from app.models.transcriber_model import TranscriptResult
 from app.utils.logger import get_logger
 from app.utils.response import ResponseWrapper as R
@@ -34,6 +35,11 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_COVER_SIZE = 5 * 1024 * 1024  # 5MB
 
 os.makedirs(COVER_DIR, exist_ok=True)
+
+
+def get_current_pro_user(current_user: User = Depends(get_current_user)) -> User:
+    require_pro(current_user, "笔记合集")
+    return current_user
 
 
 class CreateCollectionRequest(BaseModel):
@@ -106,12 +112,12 @@ def _load_task_summary(row: VideoTask) -> dict:
 
 
 @router.get("")
-def list_collections(keyword: Optional[str] = None, current_user: User = Depends(get_current_user)):
+def list_collections(keyword: Optional[str] = None, current_user: User = Depends(get_current_pro_user)):
     return R.success(note_collection_dao.list_collections(user_id=current_user.id, keyword=keyword))
 
 
 @router.post("")
-def create_collection(data: CreateCollectionRequest, current_user: User = Depends(get_current_user)):
+def create_collection(data: CreateCollectionRequest, current_user: User = Depends(get_current_pro_user)):
     collection = note_collection_dao.create_collection(
         user_id=current_user.id, name=data.name, description=data.description
     )
@@ -119,7 +125,7 @@ def create_collection(data: CreateCollectionRequest, current_user: User = Depend
 
 
 @router.get("/{collection_id}")
-def get_collection(collection_id: int, current_user: User = Depends(get_current_user)):
+def get_collection(collection_id: int, current_user: User = Depends(get_current_pro_user)):
     collection = note_collection_dao.get_collection(collection_id, current_user.id)
     if not collection:
         return R.error(msg="合集不存在或无权限访问", code=404)
@@ -128,7 +134,7 @@ def get_collection(collection_id: int, current_user: User = Depends(get_current_
 
 @router.put("/{collection_id}")
 def update_collection(
-    collection_id: int, data: UpdateCollectionRequest, current_user: User = Depends(get_current_user)
+    collection_id: int, data: UpdateCollectionRequest, current_user: User = Depends(get_current_pro_user)
 ):
     updated = note_collection_dao.update_collection(
         collection_id, current_user.id, name=data.name, description=data.description
@@ -139,7 +145,7 @@ def update_collection(
 
 
 @router.delete("/{collection_id}")
-def delete_collection(collection_id: int, current_user: User = Depends(get_current_user)):
+def delete_collection(collection_id: int, current_user: User = Depends(get_current_pro_user)):
     ok = note_collection_dao.delete_collection(collection_id, current_user.id)
     if not ok:
         return R.error(msg="合集不存在或无权限操作", code=404)
@@ -148,7 +154,7 @@ def delete_collection(collection_id: int, current_user: User = Depends(get_curre
 
 @router.post("/{collection_id}/cover")
 async def upload_cover(
-    collection_id: int, file: UploadFile = File(...), current_user: User = Depends(get_current_user)
+    collection_id: int, file: UploadFile = File(...), current_user: User = Depends(get_current_pro_user)
 ):
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail="仅支持 JPG/PNG/GIF/WEBP 格式")
@@ -179,7 +185,7 @@ async def upload_cover(
 
 
 @router.get("/{collection_id}/items")
-def list_items(collection_id: int, current_user: User = Depends(get_current_user)):
+def list_items(collection_id: int, current_user: User = Depends(get_current_pro_user)):
     task_ids = note_collection_dao.get_item_task_ids(collection_id, current_user.id)
     if task_ids is None:
         return R.error(msg="合集不存在或无权限访问", code=404)
@@ -199,7 +205,7 @@ def list_items(collection_id: int, current_user: User = Depends(get_current_user
 
 
 @router.post("/{collection_id}/items")
-def add_items(collection_id: int, data: ItemsRequest, current_user: User = Depends(get_current_user)):
+def add_items(collection_id: int, data: ItemsRequest, current_user: User = Depends(get_current_pro_user)):
     result = note_collection_dao.add_items(collection_id, current_user.id, data.task_ids)
     if result is None:
         return R.error(msg="合集不存在或无权限操作", code=404)
@@ -207,7 +213,7 @@ def add_items(collection_id: int, data: ItemsRequest, current_user: User = Depen
 
 
 @router.delete("/{collection_id}/items")
-def remove_items(collection_id: int, data: ItemsRequest, current_user: User = Depends(get_current_user)):
+def remove_items(collection_id: int, data: ItemsRequest, current_user: User = Depends(get_current_pro_user)):
     result = note_collection_dao.remove_items(collection_id, current_user.id, data.task_ids)
     if result is None:
         return R.error(msg="合集不存在或无权限操作", code=404)
@@ -293,7 +299,7 @@ def merge_notes(
     collection_id: int,
     data: MergeRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_pro_user),
 ):
     """把合集内选中的 >=2 篇笔记通过 LLM 融合成一篇新笔记，自动加入本合集。"""
     collection = note_collection_dao.get_collection(collection_id, current_user.id)
@@ -348,7 +354,7 @@ def merge_notes(
 
 
 @router.get("/{collection_id}/export_zip")
-def export_zip(collection_id: int, current_user: User = Depends(get_current_user)):
+def export_zip(collection_id: int, current_user: User = Depends(get_current_pro_user)):
     """把合集内所有笔记逐篇导出为 Markdown，打包成一个 ZIP 返回。"""
     collection = note_collection_dao.get_collection(collection_id, current_user.id)
     if collection is None:
@@ -402,7 +408,7 @@ def _yaml_escape(value: str) -> str:
 
 
 @router.get("/{collection_id}/export_obsidian")
-def export_obsidian(collection_id: int, current_user: User = Depends(get_current_user)):
+def export_obsidian(collection_id: int, current_user: User = Depends(get_current_pro_user)):
     """把合集内所有笔记逐篇导出为带 YAML frontmatter 的 Obsidian 格式 Markdown，打包成 ZIP 返回。"""
     collection = note_collection_dao.get_collection(collection_id, current_user.id)
     if collection is None:

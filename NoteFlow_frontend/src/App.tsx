@@ -77,6 +77,11 @@ const CollectionPage = lazy(() => import('@/pages/CollectionPage'))
 const CollectionDetailPage = lazy(() => import('@/pages/CollectionPage/Detail'))
 const FlashcardPage = lazy(() => import('@/pages/FlashcardPage'))
 const KnowledgeBasePage = lazy(() => import('@/pages/KnowledgeBasePage'))
+const GuidePage = lazy(() => import('@/pages/GuidePage'))
+const QuickStartArticle = lazy(() => import('@/pages/GuidePage/articles/QuickStart'))
+const MembershipArticle = lazy(() => import('@/pages/GuidePage/articles/Membership'))
+const BatchGenerateArticle = lazy(() => import('@/pages/GuidePage/articles/BatchGenerate'))
+const RoadmapArticle = lazy(() => import('@/pages/GuidePage/articles/Roadmap'))
 
 function App() {
   useTaskPolling(3000)
@@ -139,6 +144,11 @@ function App() {
         <Suspense fallback={<div className="flex h-screen items-center justify-center">加载中…</div>}>
           <Routes>
             <Route path="/welcome" element={<LandingPage />} />
+            <Route path="/guide" element={<GuidePage />} />
+            <Route path="/guide/quick-start" element={<QuickStartArticle />} />
+            <Route path="/guide/membership" element={<MembershipArticle />} />
+            <Route path="/guide/batch-generate" element={<BatchGenerateArticle />} />
+            <Route path="/guide/roadmap" element={<RoadmapArticle />} />
             <Route path="/login" element={<AuthPage />} />
             <Route path="/bind-phone" element={<BindPhonePage />} />
             <Route path="/onboarding" element={<Onboarding />} />

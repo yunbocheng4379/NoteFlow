@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -36,6 +36,7 @@ import {
 import { get_task_status } from '@/services/note'
 import { useCollectionStore } from '@/store/collectionStore'
 import { useModelStore } from '@/store/modelStore'
+import { useProviderStore } from '@/store/providerStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -69,14 +70,14 @@ import AddNotesToCollectionDialog from '@/components/AddNotesToCollectionDialog'
 import ShareCollectionDialog from '@/components/ShareCollectionDialog'
 import FlashcardGenerateDialog from '@/components/FlashcardGenerateDialog'
 import { useTaskStore } from '@/store/taskStore'
+import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '')
 
 function NoteCoverImage({ src, alt, platform }: { src: string; alt: string; platform: string }) {
   const baseURL = String(import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
-  const proxied = src && platform !== 'local'
-    ? `${baseURL}/image_proxy?url=${encodeURIComponent(src)}`
-    : src
+  const proxied =
+    src && platform !== 'local' ? `${baseURL}/image_proxy?url=${encodeURIComponent(src)}` : src
 
   if (proxied) {
     return (
@@ -85,14 +86,16 @@ function NoteCoverImage({ src, alt, platform }: { src: string; alt: string; plat
         alt=""
         title={alt}
         className="h-full w-full object-cover"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+        onError={e => {
+          ;(e.target as HTMLImageElement).style.display = 'none'
+        }}
       />
     )
   }
 
   if (platform === 'merged') {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary to-primary/70 text-white/80">
+      <div className="from-primary to-primary/70 flex h-full w-full items-center justify-center bg-gradient-to-br text-white/80">
         <Sparkles className="h-8 w-8" />
       </div>
     )
@@ -108,7 +111,10 @@ interface MergeJob {
   message?: string
 }
 
-const MERGE_QUEUE_STATUS_CONFIG: Record<MergeJob['status'], { label: string; icon: React.ReactNode; className: string }> = {
+const MERGE_QUEUE_STATUS_CONFIG: Record<
+  MergeJob['status'],
+  { label: string; icon: ReactNode; className: string }
+> = {
   RUNNING: {
     label: '融合中',
     icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
@@ -137,10 +143,13 @@ const CollectionDetailPage = () => {
   const { id } = useParams<{ id: string }>()
   const collectionId = Number(id)
   const navigate = useNavigate()
-  const patchCollection = useCollectionStore((s) => s.patchCollection)
-  const setCurrentTask = useTaskStore((s) => s.setCurrentTask)
-  const modelList = useModelStore((s) => s.modelList)
-  const loadEnabledModels = useModelStore((s) => s.loadEnabledModels)
+  const patchCollection = useCollectionStore(s => s.patchCollection)
+  const setCurrentTask = useTaskStore(s => s.setCurrentTask)
+  const ensureTaskFromSummary = useTaskStore(s => s.ensureTaskFromSummary)
+  const modelList = useModelStore(s => s.modelList)
+  const loadEnabledModels = useModelStore(s => s.loadEnabledModels)
+  const providers = useProviderStore(s => s.provider)
+  const fetchProviderList = useProviderStore(s => s.fetchProviderList)
 
   const [collection, setCollection] = useState<NoteCollection | null>(null)
   const [items, setItems] = useState<CollectionNoteItem[]>([])
@@ -197,13 +206,15 @@ const CollectionDetailPage = () => {
 
   useEffect(() => {
     if (modelList.length === 0) loadEnabledModels()
+    if (providers.length === 0) fetchProviderList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) setMoreOpen(false)
-      if (mergeQueueRef.current && !mergeQueueRef.current.contains(e.target as Node)) setMergeQueueOpen(false)
+      if (mergeQueueRef.current && !mergeQueueRef.current.contains(e.target as Node))
+        setMergeQueueOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -211,29 +222,31 @@ const CollectionDetailPage = () => {
 
   // 轮询正在融合中的任务，更新队列状态；全部结束后停止轮询
   useEffect(() => {
-    const hasRunning = mergeJobs.some((j) => j.status === 'RUNNING')
+    const hasRunning = mergeJobs.some(j => j.status === 'RUNNING')
     if (!hasRunning) return
 
     const timer = setInterval(async () => {
-      const running = mergeJobs.filter((j) => j.status === 'RUNNING')
+      const running = mergeJobs.filter(j => j.status === 'RUNNING')
       for (const job of running) {
         try {
           const res: any = await get_task_status(job.taskId)
           if (res.status === 'SUCCESS') {
-            setMergeJobs((prev) =>
-              prev.map((j) => (j.taskId === job.taskId ? { ...j, status: 'SUCCESS' } : j)),
+            setMergeJobs(prev =>
+              prev.map(j => (j.taskId === job.taskId ? { ...j, status: 'SUCCESS' } : j))
             )
             toast.success(`融合笔记「${job.title}」已完成`)
             load()
           } else if (res.status === 'FAILED') {
-            setMergeJobs((prev) =>
-              prev.map((j) => (j.taskId === job.taskId ? { ...j, status: 'FAILED', message: res.msg } : j)),
+            setMergeJobs(prev =>
+              prev.map(j =>
+                j.taskId === job.taskId ? { ...j, status: 'FAILED', message: res.msg } : j
+              )
             )
             toast.error(`融合笔记「${job.title}」失败`)
           }
         } catch {
-          setMergeJobs((prev) =>
-            prev.map((j) => (j.taskId === job.taskId ? { ...j, status: 'FAILED' } : j)),
+          setMergeJobs(prev =>
+            prev.map(j => (j.taskId === job.taskId ? { ...j, status: 'FAILED' } : j))
           )
         }
       }
@@ -244,11 +257,13 @@ const CollectionDetailPage = () => {
 
   const coverSrc = useMemo(() => {
     if (!collection?.cover_url) return null
-    return collection.cover_url.startsWith('http') ? collection.cover_url : `${API_BASE}${collection.cover_url}`
+    return collection.cover_url.startsWith('http')
+      ? collection.cover_url
+      : `${API_BASE}${collection.cover_url}`
   }, [collection?.cover_url])
 
   const toggleSelect = (taskId: string) => {
-    setSelectedIds((prev) => {
+    setSelectedIds(prev => {
       const next = new Set(prev)
       if (next.has(taskId)) next.delete(taskId)
       else next.add(taskId)
@@ -262,10 +277,12 @@ const CollectionDetailPage = () => {
     setRemoving(true)
     try {
       await removeCollectionItems(collectionId, [taskId])
-      setItems((prev) => prev.filter((it) => it.task_id !== taskId))
-      setCollection((prev) => (prev ? { ...prev, note_count: Math.max(0, prev.note_count - 1) } : prev))
+      setItems(prev => prev.filter(it => it.task_id !== taskId))
+      setCollection(prev =>
+        prev ? { ...prev, note_count: Math.max(0, prev.note_count - 1) } : prev
+      )
       patchCollection(collectionId, { note_count: Math.max(0, (collection?.note_count ?? 1) - 1) })
-      setSelectedIds((prev) => {
+      setSelectedIds(prev => {
         if (!prev.has(taskId)) return prev
         const next = new Set(prev)
         next.delete(taskId)
@@ -383,7 +400,7 @@ const CollectionDetailPage = () => {
 
   const handleMerge = async () => {
     if (!collectionId) return
-    const selected = modelList.find((m) => m.model_name === mergeModelName)
+    const selected = modelList.find(m => m.model_name === mergeModelName)
     if (!selected) {
       toast.error('请选择融合使用的模型')
       return
@@ -391,17 +408,18 @@ const CollectionDetailPage = () => {
     setMerging(true)
     try {
       const selectedTitles = items
-        .filter((it) => selectedIds.has(it.task_id))
-        .map((it) => it.title || it.video_id)
-      const jobTitle = selectedTitles.slice(0, 2).join(' + ') + (selectedTitles.length > 2 ? ' 等' : '')
+        .filter(it => selectedIds.has(it.task_id))
+        .map(it => it.title || it.video_id)
+      const jobTitle =
+        selectedTitles.slice(0, 2).join(' + ') + (selectedTitles.length > 2 ? ' 等' : '')
 
       const { task_id } = await mergeCollectionNotes(
         collectionId,
         Array.from(selectedIds),
         selected.provider_id,
-        selected.model_name,
+        selected.model_name
       )
-      setMergeJobs((prev) => [{ taskId: task_id, title: jobTitle, status: 'RUNNING' }, ...prev])
+      setMergeJobs(prev => [{ taskId: task_id, title: jobTitle, status: 'RUNNING' }, ...prev])
       setMergeQueueOpen(true)
       toast.success('融合任务已提交，生成完成后会自动加入本合集')
       setMergeOpen(false)
@@ -436,7 +454,10 @@ const CollectionDetailPage = () => {
 
   return (
     <div className="flex h-full w-full flex-col overflow-y-auto bg-[#f5f5f5] px-8 py-6">
-      <Link to="/collections" className="mb-4 flex items-center gap-1 text-sm text-blue-600 hover:underline">
+      <Link
+        to="/collections"
+        className="mb-4 flex items-center gap-1 text-sm text-blue-600 hover:underline"
+      >
         <ArrowLeft className="h-3.5 w-3.5" />
         返回合集列表
       </Link>
@@ -461,20 +482,20 @@ const CollectionDetailPage = () => {
         <div className="flex flex-wrap items-center gap-2">
           {mergeJobs.length > 0 && (
             <div className="relative" ref={mergeQueueRef}>
-              <Button size="sm" variant="outline" onClick={() => setMergeQueueOpen((v) => !v)}>
+              <Button size="sm" variant="outline" onClick={() => setMergeQueueOpen(v => !v)}>
                 <ListChecks className="h-4 w-4" />
                 融合队列
-                {mergeJobs.some((j) => j.status === 'RUNNING') && (
+                {mergeJobs.some(j => j.status === 'RUNNING') && (
                   <span className="ml-0.5 flex h-1.5 w-1.5 rounded-full bg-blue-500" />
                 )}
               </Button>
               {mergeQueueOpen && (
-                <div className="absolute right-0 top-full z-20 mt-1 w-72 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+                <div className="absolute top-full right-0 z-20 mt-1 w-72 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                   <div className="border-b border-neutral-100 px-3 py-2">
                     <span className="text-xs font-medium text-neutral-500">融合任务队列</span>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
-                    {mergeJobs.map((job) => {
+                    {mergeJobs.map(job => {
                       const cfg = MERGE_QUEUE_STATUS_CONFIG[job.status]
                       return (
                         <div
@@ -506,7 +527,11 @@ const CollectionDetailPage = () => {
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent>{selectedIds.size < 2 ? '请至少选择 2 篇笔记' : `融合选中的 ${selectedIds.size} 篇笔记`}</TooltipContent>
+            <TooltipContent>
+              {selectedIds.size < 2
+                ? '请至少选择 2 篇笔记'
+                : `融合选中的 ${selectedIds.size} 篇笔记`}
+            </TooltipContent>
           </Tooltip>
 
           <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
@@ -517,32 +542,52 @@ const CollectionDetailPage = () => {
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="inline-flex">
-                <Button size="sm" variant="outline" disabled={selectedIds.size !== 1} onClick={openFlashcardDialog}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={selectedIds.size !== 1}
+                  onClick={openFlashcardDialog}
+                >
                   <BookOpenText className="h-4 w-4" />
                   闪记卡
                 </Button>
               </span>
             </TooltipTrigger>
-            <TooltipContent>{selectedIds.size === 1 ? '生成闪记卡' : '请先选择一篇笔记'}</TooltipContent>
+            <TooltipContent>
+              {selectedIds.size === 1 ? '生成闪记卡' : '请先选择一篇笔记'}
+            </TooltipContent>
           </Tooltip>
 
-          <Button size="sm" variant="outline" disabled={exportingObsidian} onClick={handleExportObsidian}>
-            {exportingObsidian ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={exportingObsidian}
+            onClick={handleExportObsidian}
+          >
+            {exportingObsidian ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
             导出 Obsidian
           </Button>
 
           <Button size="sm" variant="outline" disabled={exporting} onClick={handleExportZip}>
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
             导出 ZIP
           </Button>
 
           <div className="relative" ref={moreRef}>
-            <Button size="sm" variant="outline" onClick={() => setMoreOpen((v) => !v)}>
+            <Button size="sm" variant="outline" onClick={() => setMoreOpen(v => !v)}>
               <MoreVertical className="h-4 w-4" />
               更多
             </Button>
             {moreOpen && (
-              <div className="absolute right-0 top-full z-20 mt-1 w-40 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
+              <div className="absolute top-full right-0 z-20 mt-1 w-40 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-lg">
                 <button
                   onClick={() => coverInputRef.current?.click()}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
@@ -559,7 +604,10 @@ const CollectionDetailPage = () => {
                 </button>
                 <div className="mx-2 h-px bg-neutral-100" />
                 <button
-                  onClick={() => { setDeleteOpen(true); setMoreOpen(false) }}
+                  onClick={() => {
+                    setDeleteOpen(true)
+                    setMoreOpen(false)
+                  }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -604,23 +652,78 @@ const CollectionDetailPage = () => {
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center py-16 text-center text-sm text-neutral-400">
-          合集还没有笔记。去任务列表把已生成的笔记加进来，或者新建笔记时选这个合集。
+        <div className="flex flex-1 items-center justify-center px-4 py-14">
+          <div className="w-full max-w-[760px] text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-amber-100 bg-amber-50 text-amber-600 shadow-[0_18px_45px_rgba(245,158,11,0.12)]">
+              <Folder className="h-9 w-9" />
+            </div>
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              空合集
+            </div>
+            <h2 className="text-2xl font-semibold text-neutral-900">把第一篇笔记放进来</h2>
+            <p className="mx-auto mt-3 max-w-[560px] text-sm leading-6 text-neutral-500">
+              你可以从已经生成完成的笔记中导入到「{collection.name}」，也可以新建笔记时直接选择这个合集。等内容积累起来后，就能融合成综合笔记、统一分享和批量导出。
+            </p>
+
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <Button onClick={() => setAddOpen(true)} className="px-5">
+                <Plus className="h-4 w-4" />
+                导入已有笔记
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/')}>
+                <Sparkles className="h-4 w-4" />
+                新建笔记
+              </Button>
+              <Button variant="ghost" onClick={() => navigate('/tasks')}>
+                <ListChecks className="h-4 w-4" />
+                查看任务列表
+              </Button>
+            </div>
+
+            <div className="mt-10 grid gap-3 text-left sm:grid-cols-3">
+              {[
+                {
+                  title: '导入已完成笔记',
+                  desc: '从历史任务里选择内容，批量放入当前合集。',
+                  icon: CheckCircle2,
+                },
+                {
+                  title: '沉淀主题资料',
+                  desc: '把同一课程、项目或资料集中到一个空间。',
+                  icon: BookOpenText,
+                },
+                {
+                  title: '后续统一处理',
+                  desc: '内容足够后可融合、分享，或导出为资料包。',
+                  icon: FileDown,
+                },
+              ].map(({ title, desc, icon: Icon }) => (
+                <div key={title} className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-600">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-neutral-800">{title}</h3>
+                  <p className="mt-1.5 text-xs leading-5 text-neutral-500">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
-          {items.map((it) => {
+          {items.map(it => {
             const selected = selectedIds.has(it.task_id)
             return (
               <div
                 key={it.task_id}
                 className={`group relative flex flex-col overflow-hidden rounded-xl border bg-white ${
-                  selected ? 'border-primary ring-1 ring-primary/40' : 'border-neutral-200'
+                  selected ? 'border-primary ring-primary/40 ring-1' : 'border-neutral-200'
                 }`}
               >
                 <button
                   onClick={() => toggleSelect(it.task_id)}
-                  className={`absolute left-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border shadow ${
+                  className={`absolute top-2 left-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border shadow ${
                     selected
                       ? 'border-primary bg-primary text-white'
                       : 'border-neutral-300 bg-white/90 text-transparent opacity-0 group-hover:opacity-100'
@@ -630,17 +733,23 @@ const CollectionDetailPage = () => {
                   <Check className="h-3 w-3" />
                 </button>
                 <button
-                  onClick={() => { setCurrentTask(it.task_id); navigate('/') }}
+                  onClick={() => {
+                    ensureTaskFromSummary(it)
+                    setCurrentTask(it.task_id)
+                    navigate('/')
+                  }}
                   className="flex h-28 items-center justify-center bg-neutral-50"
                 >
                   <NoteCoverImage src={it.cover_url} alt={it.title} platform={it.platform} />
                 </button>
                 <div className="flex flex-1 flex-col gap-1 border-t border-neutral-100 px-3 py-2.5">
-                  <span className="truncate text-sm font-medium text-neutral-800">{it.title || it.video_id}</span>
+                  <span className="truncate text-sm font-medium text-neutral-800">
+                    {it.title || it.video_id}
+                  </span>
                 </div>
                 <button
                   onClick={() => setRemoveTarget(it)}
-                  className="absolute right-2 top-2 hidden h-6 w-6 items-center justify-center rounded-full bg-white/90 text-neutral-500 shadow group-hover:flex hover:text-red-500"
+                  className="absolute top-2 right-2 hidden h-6 w-6 items-center justify-center rounded-full bg-white/90 text-neutral-500 shadow group-hover:flex hover:text-red-500"
                   title="从合集移出"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -660,13 +769,15 @@ const CollectionDetailPage = () => {
           <div className="space-y-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-neutral-700">合集名称</label>
-              <Input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={100} />
+              <Input value={editName} onChange={e => setEditName(e.target.value)} maxLength={100} />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-neutral-700">描述（可选）</label>
+              <label className="mb-1 block text-sm font-medium text-neutral-700">
+                描述（可选）
+              </label>
               <Textarea
                 value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
+                onChange={e => setEditDescription(e.target.value)}
                 rows={3}
                 maxLength={500}
                 className="resize-none text-sm"
@@ -695,7 +806,7 @@ const CollectionDetailPage = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="bg-red-500 text-white hover:bg-red-600"
               disabled={deleting}
               onClick={handleDelete}
             >
@@ -705,18 +816,24 @@ const CollectionDetailPage = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null) }}>
+      <AlertDialog
+        open={!!removeTarget}
+        onOpenChange={open => {
+          if (!open) setRemoveTarget(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>从合集移出</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要将「{removeTarget?.title || removeTarget?.video_id}」从本合集移出吗？笔记本身不会被删除，仍保留在任务列表中。
+              确定要将「{removeTarget?.title || removeTarget?.video_id}
+              」从本合集移出吗？笔记本身不会被删除，仍保留在任务列表中。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={removing}>取消</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="bg-red-500 text-white hover:bg-red-600"
               disabled={removing}
               onClick={handleRemoveItem}
             >
@@ -730,32 +847,47 @@ const CollectionDetailPage = () => {
         collectionId={collectionId}
         open={addOpen}
         onOpenChange={setAddOpen}
-        existingTaskIds={items.map((it) => it.task_id)}
+        existingTaskIds={items.map(it => it.task_id)}
         onAdded={load}
       />
 
-      <ShareCollectionDialog collectionId={collectionId} open={shareOpen} onOpenChange={setShareOpen} />
+      <ShareCollectionDialog
+        collectionId={collectionId}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
 
-      <FlashcardGenerateDialog taskId={flashcardTaskId} open={flashcardOpen} onOpenChange={setFlashcardOpen} />
+      <FlashcardGenerateDialog
+        taskId={flashcardTaskId}
+        open={flashcardOpen}
+        onOpenChange={setFlashcardOpen}
+      />
 
       <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>融合成笔记</DialogTitle>
             <DialogDescription>
-              把选中的 {selectedIds.size} 篇笔记通过 AI 融合成一篇新笔记，自动加入本合集，原笔记保持不变。
+              把选中的 {selectedIds.size} 篇笔记通过 AI
+              融合成一篇新笔记，自动加入本合集，原笔记保持不变。
             </DialogDescription>
           </DialogHeader>
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-700">融合使用的模型</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700">
+              融合使用的模型
+            </label>
             <Select value={mergeModelName} onValueChange={setMergeModelName}>
               <SelectTrigger className="w-full shadow-none">
                 <SelectValue placeholder="请选择模型" />
               </SelectTrigger>
               <SelectContent>
-                {modelList.map((m) => (
+                {modelList.map(m => (
                   <SelectItem key={m.id} value={m.model_name}>
-                    {m.model_name}
+                    <ModelOptionLabel
+                      providerId={m.provider_id}
+                      modelName={m.model_name}
+                      providers={providers}
+                    />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -766,7 +898,11 @@ const CollectionDetailPage = () => {
               取消
             </Button>
             <Button size="sm" disabled={merging || !mergeModelName} onClick={handleMerge}>
-              {merging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {merging ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
               开始融合
             </Button>
           </DialogFooter>

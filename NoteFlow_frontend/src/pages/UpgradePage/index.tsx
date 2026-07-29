@@ -46,11 +46,15 @@ const UpgradePage = () => {
       .finally(() => setLoading(false))
   }, [])
 
-  const showFirstSubHint = useMemo(() => plans.some((p) => p.is_first_subscription), [plans])
+  const showFirstSubHint = useMemo(() => plans.some(p => p.is_first_subscription), [plans])
+  const [lastPurchase, setLastPurchase] = useState<
+    { kind: 'recharge'; id: number } | { kind: 'subscription'; id: number } | null
+  >(null)
 
   const handleBuyRecharge = async (pkg: RechargePackage) => {
     try {
-      const order = await billingApi.createRechargeOrder(pkg.id, 'MOCK_ALIPAY')
+      const order = await billingApi.createRechargeOrder(pkg.id, 'ALIPAY')
+      setLastPurchase({ kind: 'recharge', id: pkg.id })
       setPayingOrder(order)
     } catch (e: any) {
       toast.error(e?.msg || '下单失败')
@@ -59,11 +63,22 @@ const UpgradePage = () => {
 
   const handleBuySubscription = async (plan: SubscriptionPlan) => {
     try {
-      const order = await billingApi.createSubscriptionOrder(plan.id, 'MOCK_ALIPAY')
+      const order = await billingApi.createSubscriptionOrder(plan.id, 'ALIPAY')
+      setLastPurchase({ kind: 'subscription', id: plan.id })
       setPayingOrder(order)
     } catch (e: any) {
       toast.error(e?.msg || '下单失败')
     }
+  }
+
+  // 切换支付渠道需要重新下单 (旧订单二维码已生成, 换渠道走一笔新单据)
+  const handleSwitchMethod = async (method: 'ALIPAY' | 'WECHAT') => {
+    if (!lastPurchase) return
+    const order =
+      lastPurchase.kind === 'recharge'
+        ? await billingApi.createRechargeOrder(lastPurchase.id, method)
+        : await billingApi.createSubscriptionOrder(lastPurchase.id, method)
+    setPayingOrder(order)
   }
 
   return (
@@ -73,7 +88,7 @@ const UpgradePage = () => {
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-1.5 text-xs font-bold tracking-wider text-white shadow-sm">
             <Sparkles className="h-3.5 w-3.5" />
-            BILINOTE PRO
+            NoteFlow PRO
           </div>
           <h1 className="mt-4 text-3xl font-bold text-neutral-900">选择适合您的方案</h1>
           <p className="mt-2 text-sm text-neutral-500">
@@ -113,9 +128,7 @@ const UpgradePage = () => {
           </div>
         </div>
 
-        {loading && (
-          <div className="py-16 text-center text-sm text-neutral-500">加载中…</div>
-        )}
+        {loading && <div className="py-16 text-center text-sm text-neutral-500">加载中…</div>}
 
         {!loading && tab === 'recharge' && (
           <RechargeTab packages={packages} onBuy={handleBuyRecharge} />
@@ -133,7 +146,11 @@ const UpgradePage = () => {
         </div>
       </div>
 
-      <PayDialog order={payingOrder} onClose={() => setPayingOrder(null)} />
+      <PayDialog
+        order={payingOrder}
+        onClose={() => setPayingOrder(null)}
+        onSwitchMethod={handleSwitchMethod}
+      />
 
       {/* 蓝色主题覆盖 */}
       <style>{`
@@ -155,7 +172,7 @@ const RechargeTab = ({
 }) => {
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-      {packages.map((pkg) => {
+      {packages.map(pkg => {
         const isFeatured = pkg.badge === '最受欢迎'
         return (
           <div
@@ -177,7 +194,9 @@ const RechargeTab = ({
             </div>
 
             <div className="mb-1 text-sm text-neutral-500">{pkg.name}</div>
-            <div className="mb-1 text-4xl font-bold text-neutral-900">¥{formatYuan(pkg.price_cents)}</div>
+            <div className="mb-1 text-4xl font-bold text-neutral-900">
+              ¥{formatYuan(pkg.price_cents)}
+            </div>
             {pkg.description && (
               <div className="mb-2 text-xs text-neutral-500">{pkg.description}</div>
             )}
@@ -194,7 +213,7 @@ const RechargeTab = ({
               onClick={() => onBuy(pkg)}
               className={`mt-auto w-full ${
                 isFeatured
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'
                   : 'bg-white text-blue-600 ring-1 ring-blue-500/50 hover:bg-blue-50'
               }`}
             >
@@ -284,7 +303,7 @@ const SubscriptionTab = ({
   return (
     <>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {plans.map((plan) => {
+        {plans.map(plan => {
           const isFeatured = !!plan.badge
           const durationLabel =
             plan.duration_days === 30 ? '/月' : plan.duration_days === 90 ? '/季' : '/年'
@@ -296,7 +315,7 @@ const SubscriptionTab = ({
               }`}
             >
               {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-3 py-0.5 text-[11px] font-bold text-white shadow-sm whitespace-nowrap">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-3 py-0.5 text-[11px] font-bold whitespace-nowrap text-white shadow-sm">
                   {plan.badge}
                 </div>
               )}
@@ -338,7 +357,7 @@ const SubscriptionTab = ({
               )}
 
               <ul className="mb-6 space-y-2 text-sm">
-                {SUB_BENEFITS.map((b) => (
+                {SUB_BENEFITS.map(b => (
                   <li key={b} className="flex items-start gap-2 text-neutral-600">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
                     <span>{b}</span>
@@ -350,7 +369,7 @@ const SubscriptionTab = ({
                 onClick={() => onBuy(plan)}
                 className={`mt-auto w-full ${
                   isFeatured
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'
                     : 'bg-white text-blue-600 ring-1 ring-blue-500/50 hover:bg-blue-50'
                 }`}
               >
@@ -368,7 +387,7 @@ const SubscriptionTab = ({
       {/* 会员独享 */}
       <div className="mt-16 rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-blue-50/30 p-8">
         <div className="mb-6 text-center">
-          <div className="mb-1 text-xs uppercase tracking-wider text-blue-600">EXCLUSIVE</div>
+          <div className="mb-1 text-xs tracking-wider text-blue-600 uppercase">EXCLUSIVE</div>
           <div className="text-2xl font-bold text-neutral-900">不止多了功能 · 是少了等待</div>
           <div className="mt-1 text-sm text-neutral-500">会员独享 9 项高效特权</div>
         </div>
@@ -422,18 +441,12 @@ const FAQ_ITEMS: Array<[string, string]> = [
     '为什么提交后实际扣的电力跟提交前显示的不一样？',
     '提交前按视频源站返回的时长「预估」, worker 真正下载视频后会拿到精确时长重新结算 —— 更短就退差额到余额, 更长就补扣; 余额不够也不会让任务失败, 系统接受小亏。所以 footer 显示的是预估, 任务详情页看到的是真实扣费。',
   ],
-  [
-    '电力会过期吗？',
-    '不会。充值或订阅获得的电力永久有效, 不设过期时间。',
-  ],
+  ['电力会过期吗？', '不会。充值或订阅获得的电力永久有效, 不设过期时间。'],
   [
     '订阅和充值有什么区别？',
     '充值是一次性购买电力; 订阅是按月 / 年付费, 每月自动发放电力, 且解锁高级模型 / PDF / Word / PPT / 海报等高级功能, 长期使用更划算。',
   ],
-  [
-    '支付失败怎么办？',
-    '支付失败不会扣款, 请检查网络后重试。如有疑问请联系客服。',
-  ],
+  ['支付失败怎么办？', '支付失败不会扣款, 请检查网络后重试。如有疑问请联系客服。'],
   [
     '可以退款吗？',
     '电力到账后不支持退款, 请按实际需求购买。如遇系统问题导致电力未到账, 请联系客服处理。',

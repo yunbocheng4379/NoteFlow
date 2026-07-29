@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { generateNote } from '@/services/note.ts'
-import { getTasks, deleteTask } from '@/services/task.ts'
+import { getTasks, deleteTask, renameTask as renameTaskApi } from '@/services/task.ts'
 import { v4 as uuidv4 } from 'uuid'
 import toast from 'react-hot-toast'
 
@@ -77,8 +77,13 @@ interface TaskStore {
   // Pass verId=null when the task's markdown is a plain string (no version history yet).
   overwriteVersionContent: (id: string, verId: string | null, content: string) => void
   removeTask: (id: string) => Promise<void>
+  renameTask: (id: string, title: string) => Promise<void>
   clearTasks: () => void
   setCurrentTask: (taskId: string | null) => void
+  // Insert a task from a backend summary (e.g. a collection item) if it's not
+  // already in the store — needed for tasks created outside the normal
+  // addPendingTask flow (batch/merge jobs) before the next loadHistory() run.
+  ensureTaskFromSummary: (summary: TaskSummaryLike) => void
   getCurrentTask: () => Task | null
   retryTask: (id: string, payload?: any) => void
   // Load full task history from backend — called on login and on boot
@@ -108,8 +113,7 @@ function getUserId(): number | null {
   return null
 }
 
-// Convert the backend TaskSummary shape into a full Task (with empty content fields)
-function summaryToTask(s: {
+export interface TaskSummaryLike {
   task_id: string
   video_id: string
   platform: string
@@ -121,7 +125,10 @@ function summaryToTask(s: {
   cover_url: string
   duration: number
   batch_id?: string | null
-}): Task {
+}
+
+// Convert the backend TaskSummary shape into a full Task (with empty content fields)
+function summaryToTask(s: TaskSummaryLike): Task {
   return {
     id: s.task_id,
     status: (s.status as TaskStatus) || 'PENDING',
@@ -419,9 +426,42 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
+      renameTask: async (id: string, title: string) => {
+        const trimmed = title.trim()
+        if (!trimmed) return
+
+        const previousTitle = get().tasks.find(t => t.id === id)?.audioMeta.title ?? ''
+
+        // Optimistic update
+        set(state => ({
+          tasks: state.tasks.map(t =>
+            t.id === id ? { ...t, audioMeta: { ...t.audioMeta, title: trimmed } } : t,
+          ),
+        }))
+
+        try {
+          await renameTaskApi(id, trimmed)
+        } catch (e) {
+          console.error('重命名笔记失败：', e)
+          // Roll back on failure
+          set(state => ({
+            tasks: state.tasks.map(t =>
+              t.id === id ? { ...t, audioMeta: { ...t.audioMeta, title: previousTitle } } : t,
+            ),
+          }))
+          throw e
+        }
+      },
+
       clearTasks: () => set({ tasks: [], currentTaskId: null, historyLoaded: false }),
 
       setCurrentTask: taskId => set({ currentTaskId: taskId }),
+
+      ensureTaskFromSummary: summary =>
+        set(state => {
+          if (state.tasks.some(t => t.id === summary.task_id)) return state
+          return { tasks: [summaryToTask(summary), ...state.tasks] }
+        }),
     }),
     {
       name: storageKey(getUserId()),

@@ -178,4 +178,38 @@ html, body, #root {
     color: #fff !important;
     opacity: 0.72;
   }
+
+  .noteflow-kb-sender .ant-sender {
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .noteflow-kb-bubble-list .ant-bubble-list {
+    width: 100%;
+  }
+
+  .noteflow-kb-bubble-list .ant-bubble-content {
+    max-width: min(640px, calc(100% - 48px));
+    overflow-wrap: anywhere;
+  }
+
+  .noteflow-kb-sender .ant-sender-actions-btn.ant-btn-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+  }
+
+  .noteflow-kb-sender .ant-sender-actions-btn.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):hover,
+  .noteflow-kb-sender .ant-sender-actions-btn.ant-btn-primary:not(:disabled):not(.ant-btn-disabled):focus-visible {
+    background-color: #0f6b60 !important;
+    border-color: #0f6b60 !important;
+  }
+
+  .noteflow-kb-sender .ant-sender-actions-btn.ant-btn-primary:disabled,
+  .noteflow-kb-sender .ant-sender-actions-btn.ant-btn-primary.ant-btn-disabled {
+    background-color: color-mix(in srgb, var(--primary) 56%, white) !important;
+    border-color: color-mix(in srgb, var(--primary) 56%, white) !important;
+    color: #fff !important;
+    opacity: 0.72;
+  }
 }

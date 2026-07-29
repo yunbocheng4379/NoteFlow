@@ -559,13 +559,16 @@ class NoteGenerator:
         pool = CookiePoolManager.instance()
         # effective tier: admin 拿全池, 普通用户按 reserved_for_tier 过滤
         user_tier = get_user_tier(self.user_id)
+        tried_cookie_ids: set[int] = set()
 
         while attempt <= max_retries:
             attempt += 1
             # pick + 用 ctx 把 cookie 与 downloader 绑起来.
             # ctx 会在 __exit__ 时根据"是否显式 report"以及"是否异常"自动兜底上报.
             # tier 由 user_id 推导, 让 admin 拿全池, 普通用户按 reserved_for_tier 过滤.
-            with pool.use_cookie(platform, tier=user_tier) as ctx:
+            with pool.use_cookie(
+                platform, tier=user_tier, exclude_ids=tried_cookie_ids
+            ) as ctx:
                 # 池空时直接结束 retry 循环, 走 pool_exhausted 路径
                 if ctx.is_empty:
                     logger.warning(
@@ -624,9 +627,14 @@ class NoteGenerator:
                     ):
                         # 显式报告 (会让 __exit__ 跳过兜底, 避免重复)
                         ctx.report_failure(error_msg=err_str)
+                        if ctx.cookie_id is not None:
+                            tried_cookie_ids.add(ctx.cookie_id)
                         if attempt <= max_retries:
-                            # raise 让 __exit__ 走完, 然后 while 继续下一轮 pick
-                            raise
+                            logger.warning(
+                                f"[cookie] platform={platform} cookie_id={ctx.cookie_id} "
+                                f"下载失败，切换下一条 Cookie 重试 ({attempt}/{max_retries + 1})"
+                            )
+                            continue
                         break
 
                     # 非 cookie 错误: 抑制 ctx 兜底上报, 直接透传友好错误

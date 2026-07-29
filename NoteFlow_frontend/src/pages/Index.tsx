@@ -28,18 +28,18 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: '工作台', to: '/' },
   { icon: ListTodo, label: '任务列表', to: '/tasks' },
-  { icon: Folder, label: '笔记合集', to: '/collections' },
-  { icon: BookOpen, label: '知识库', to: '/knowledge-base' },
+  { icon: Folder, label: '笔记合集', to: '/collections', pro: true },
+  { icon: BookOpen, label: '知识库', to: '/knowledge-base', pro: true },
   { icon: Palette, label: '笔记风格', to: '/note-style' },
   { icon: Megaphone, label: '更新日志', to: '/update-logs' },
   { icon: Zap, label: '升级 Pro', to: '/upgrade' },
   { icon: ReceiptText, label: '账单与额度', to: '/billing' },
   { icon: Gift, label: '我的推荐码', to: '/referral' },
-]  // 全体用户可见的「更新日志」入口
+] // 全体用户可见的「更新日志」入口
 
 const Index = () => {
   const location = useLocation()
-  const { user, clearAuth } = useUserStore()
+  const { user, clearAuth, credits, activeSubscription } = useUserStore()
   const isAdmin = !!user?.is_admin
   const [showFeedback, setShowFeedback] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -54,7 +54,9 @@ const Index = () => {
   }
 
   const avatarSrc = user?.avatar
-    ? user.avatar.startsWith('http') ? user.avatar : `${API_BASE}${user.avatar}`
+    ? user.avatar.startsWith('http')
+      ? user.avatar
+      : `${API_BASE}${user.avatar}`
     : null
 
   // Close menu when clicking outside
@@ -78,7 +80,7 @@ const Index = () => {
       >
         {/* 顶部 toggle 区域：整行可点击，logo 固定不动 */}
         <button
-          onClick={() => setCollapsed((v) => !v)}
+          onClick={() => setCollapsed(v => !v)}
           className="flex h-14 w-full shrink-0 items-center border-b border-neutral-100 hover:bg-neutral-50"
         >
           {/* logo 固定在 w-14 的列中，始终不移动 */}
@@ -91,13 +93,13 @@ const Index = () => {
               collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
             }`}
           >
-            <span className="whitespace-nowrap text-sm font-semibold text-gray-800">NoteFlow</span>
+            <span className="text-sm font-semibold whitespace-nowrap text-gray-800">NoteFlow</span>
           </span>
         </button>
 
         {/* 主导航区 */}
         <div className="flex flex-1 flex-col gap-0.5 overflow-hidden px-1 py-2">
-          {NAV_ITEMS.map(({ icon: Icon, label, to }) => {
+          {NAV_ITEMS.map(({ icon: Icon, label, to, pro }) => {
             const isActive = location.pathname === to
             const isUpgrade = to === '/upgrade'
             let cls = isActive
@@ -118,12 +120,12 @@ const Index = () => {
                   <Icon className="h-5 w-5" />
                 </span>
                 <span
-                  className={`flex items-center gap-1 overflow-hidden whitespace-nowrap text-sm transition-[opacity,max-width] duration-200 ${
+                  className={`flex items-center gap-1 overflow-hidden text-sm whitespace-nowrap transition-[opacity,max-width] duration-200 ${
                     collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
                   } ${isUpgrade ? 'font-semibold' : ''}`}
                 >
                   {label}
-                  {to === '/knowledge-base' && (
+                  {pro && (
                     <span className="rounded bg-amber-200 px-1 text-[10px] font-medium text-amber-800">
                       Pro
                     </span>
@@ -142,14 +144,14 @@ const Index = () => {
             className={`flex h-9 w-full items-center rounded-lg transition-colors ${
               location.pathname === '/about'
                 ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-neutral-100 hover:text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-neutral-100'
             }`}
           >
             <span className="flex w-12 shrink-0 items-center justify-center">
               <Info className="h-5 w-5" />
             </span>
             <span
-              className={`overflow-hidden whitespace-nowrap text-sm transition-[opacity,max-width] duration-200 ${
+              className={`overflow-hidden text-sm whitespace-nowrap transition-[opacity,max-width] duration-200 ${
                 collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
               }`}
             >
@@ -159,13 +161,13 @@ const Index = () => {
 
           <button
             onClick={() => setShowFeedback(true)}
-            className="flex h-9 w-full items-center rounded-lg text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground flex h-9 w-full items-center rounded-lg transition-colors hover:bg-neutral-100"
           >
             <span className="flex w-12 shrink-0 items-center justify-center">
               <MessageSquareWarning className="h-5 w-5" />
             </span>
             <span
-              className={`overflow-hidden whitespace-nowrap text-sm transition-[opacity,max-width] duration-200 ${
+              className={`overflow-hidden text-sm whitespace-nowrap transition-[opacity,max-width] duration-200 ${
                 collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
               }`}
             >
@@ -177,13 +179,13 @@ const Index = () => {
           {isAdmin && (
             <Link
               to="/settings"
-              className="flex h-9 w-full items-center rounded-lg text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground flex h-9 w-full items-center rounded-lg transition-colors hover:bg-neutral-100"
             >
               <span className="flex w-12 shrink-0 items-center justify-center">
                 <SlidersHorizontal className="h-5 w-5" />
               </span>
               <span
-                className={`overflow-hidden whitespace-nowrap text-sm transition-[opacity,max-width] duration-200 ${
+                className={`overflow-hidden text-sm whitespace-nowrap transition-[opacity,max-width] duration-200 ${
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
                 }`}
               >
@@ -192,11 +194,39 @@ const Index = () => {
             </Link>
           )}
 
+          {/* 电力余额卡片 */}
+          <Link
+            to="/billing"
+            className={`mt-1 flex items-center rounded-xl bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-900 ${
+              collapsed ? 'h-10 justify-center px-0' : 'h-14 gap-3 px-3'
+            }`}
+            title={`剩余电力 ${credits}`}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400 text-white">
+              <Zap className="h-4 w-4 fill-current" />
+            </span>
+            <span
+              className={`flex min-w-0 flex-col overflow-hidden transition-[opacity,max-width] duration-200 ${
+                collapsed ? 'max-w-0 opacity-0' : 'max-w-[100px] opacity-100'
+              }`}
+            >
+              <span className="truncate text-lg leading-5 font-bold tabular-nums">{credits}</span>
+              <span className="truncate text-[10px] leading-3 font-medium tracking-[0.16em] text-white/55 uppercase">
+                剩余电力
+              </span>
+              {activeSubscription && (
+                <span className="mt-0.5 truncate text-[10px] leading-3 text-emerald-200">
+                  {activeSubscription.plan_name}
+                </span>
+              )}
+            </span>
+          </Link>
+
           {/* 用户卡片 + 弹出菜单 */}
           <div ref={userCardRef} className="relative mt-1">
             {/* 弹出菜单，向上弹出 */}
             {showUserMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-1.5 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
+              <div className="absolute right-0 bottom-full left-0 mb-1.5 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
                 <Link
                   to="/profile"
                   onClick={() => setShowUserMenu(false)}
@@ -218,7 +248,7 @@ const Index = () => {
 
             {/* 用户卡片按钮 */}
             <button
-              onClick={() => setShowUserMenu((v) => !v)}
+              onClick={() => setShowUserMenu(v => !v)}
               className={`flex w-full items-center rounded-xl border transition-colors ${
                 showUserMenu
                   ? 'border-neutral-200 bg-neutral-50'
@@ -227,7 +257,11 @@ const Index = () => {
             >
               {/* 头像 */}
               {avatarSrc ? (
-                <img src={avatarSrc} alt="avatar" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+                <img
+                  src={avatarSrc}
+                  alt="avatar"
+                  className="h-7 w-7 shrink-0 rounded-full object-cover"
+                />
               ) : (
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-100 text-xs font-semibold text-teal-700">
                   {user?.username?.[0]?.toUpperCase() ?? 'U'}
@@ -240,7 +274,7 @@ const Index = () => {
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[80px] opacity-100'
                 }`}
               >
-                <span className="w-full truncate whitespace-nowrap text-xs font-medium text-gray-800">
+                <span className="w-full truncate text-xs font-medium whitespace-nowrap text-gray-800">
                   {user?.username ?? '用户'}
                 </span>
               </span>

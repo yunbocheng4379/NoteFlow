@@ -102,11 +102,19 @@ class CookiePoolManager:
         items = self._fetch(platform, tier=tier)
         return len(items) == 0
 
-    def pick(self, platform: str, *, tier: Optional[str] = None):
+    def pick(
+        self,
+        platform: str,
+        *,
+        tier: Optional[str] = None,
+        exclude_ids: Optional[set[int]] = None,
+    ):
         """加权随机抽一条可用 cookie. 全失效 / 不匹配 tier 返回 ``None``.
         pick 后会原子地 ``increment_in_use`` (+1), 满配额的 cookie 会被跳过.
         """
         items = self._fetch(platform, tier=tier)
+        if exclude_ids:
+            items = [it for it in items if it.get("id") not in exclude_ids]
         if not items:
             return None
 
@@ -218,7 +226,13 @@ class CookiePoolManager:
     # ===== downloader 上下文 =====
 
     @contextmanager
-    def use_cookie(self, platform: str, *, tier: Optional[str] = None) -> Generator:
+    def use_cookie(
+        self,
+        platform: str,
+        *,
+        tier: Optional[str] = None,
+        exclude_ids: Optional[set[int]] = None,
+    ) -> Generator:
         """
         用法::
 
@@ -245,8 +259,9 @@ class CookiePoolManager:
         想抑制此行为可用 ``ctx.suppress_auto_report()`` 关掉.
 
         ``tier`` 用于按用户等级过滤 (admin / vip / user); 传 None 视为全部.
+        ``exclude_ids`` 用于一次业务任务内避开已经失败过的 Cookie.
         """
-        picked = self.pick(platform, tier=tier)
+        picked = self.pick(platform, tier=tier, exclude_ids=exclude_ids)
         ctx = _CookieContext(self, platform, picked)
         try:
             yield ctx

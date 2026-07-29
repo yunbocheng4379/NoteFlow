@@ -11,6 +11,8 @@ from app.db.model_dao import delete_model, insert_model
 from app.db.provider_dao import delete_provider, insert_provider
 from app.db.video_task_dao import insert_video_task, delete_task_by_video
 from app.services.knowledge_base_service import (
+    _build_context_and_sources,
+    _get_indexed_task_ids,
     _resolve_reasoning_mode,
     ask_stream,
     get_index_coverage,
@@ -39,6 +41,83 @@ def test_get_index_coverage_counts_indexed_subset():
     finally:
         delete_task_by_video(video_id_a, "bilibili", user_id=user_id)
         delete_task_by_video(video_id_b, "bilibili", user_id=user_id)
+
+
+def test_get_index_coverage_repairs_missing_status_when_vector_exists():
+    fake_store = MagicMock()
+    fake_store.is_indexed.return_value = True
+
+    with patch("app.services.knowledge_base_service.get_task_ids_by_user", return_value=["task-a"]), \
+            patch("app.services.knowledge_base_service.get_index_statuses", return_value={}), \
+            patch("app.services.knowledge_base_service.VectorStoreManager", return_value=fake_store), \
+            patch("app.services.knowledge_base_service.set_index_status") as set_status, \
+            patch("app.services.knowledge_base_service._start_backfill") as start_backfill:
+        coverage = get_index_coverage(user_id=1)
+
+    assert coverage == {"total": 1, "indexed": 1}
+    fake_store.is_indexed.assert_called_once_with("task-a")
+    set_status.assert_called_once_with("task-a", "indexed")
+    start_backfill.assert_called_once_with([])
+
+
+def test_get_index_coverage_backfills_missing_vector_index():
+    fake_store = MagicMock()
+    fake_store.is_indexed.return_value = False
+
+    with patch("app.services.knowledge_base_service.get_task_ids_by_user", return_value=["task-a"]), \
+            patch("app.services.knowledge_base_service.get_index_statuses", return_value={}), \
+            patch("app.services.knowledge_base_service.VectorStoreManager", return_value=fake_store), \
+            patch("app.services.knowledge_base_service.set_index_status") as set_status, \
+            patch("app.services.knowledge_base_service._start_backfill") as start_backfill:
+        coverage = get_index_coverage(user_id=1)
+
+    assert coverage == {"total": 1, "indexed": 0}
+    fake_store.is_indexed.assert_called_once_with("task-a")
+    set_status.assert_called_once_with("task-a", "indexing")
+    start_backfill.assert_called_once_with(["task-a"])
+
+
+def test_get_indexed_task_ids_scopes_to_requested_subset():
+    """传入 note_task_ids 时只返回该子集内已索引的部分，且过滤掉不属于该用户的 task_id。"""
+    user_id = 999014
+    video_id_a = f"video-{uuid.uuid4().hex[:8]}"
+    video_id_b = f"video-{uuid.uuid4().hex[:8]}"
+    task_a = f"test-{uuid.uuid4().hex[:8]}"
+    task_b = f"test-{uuid.uuid4().hex[:8]}"
+    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id)
+    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id)
+    set_status(task_a, "indexed")
+    set_status(task_b, "indexed")
+
+    try:
+        # 只请求 task_a，且混入一个不属于该用户的伪造 task_id，应被过滤掉
+        result = _get_indexed_task_ids(user_id, task_ids=[task_a, "not-owned-task"])
+        assert result == [task_a]
+    finally:
+        delete_task_by_video(video_id_a, "bilibili", user_id=user_id)
+        delete_task_by_video(video_id_b, "bilibili", user_id=user_id)
+
+
+def test_build_sources_dedupes_chunks_from_same_note():
+    """一篇笔记召回多个片段时，引用来源应按笔记去重。"""
+    chunks = [
+        {"text": "第一段相关内容", "metadata": {"task_id": "task-a", "source_type": "markdown"}},
+        {"text": "第二段相关内容", "metadata": {"task_id": "task-a", "source_type": "transcript"}},
+        {"text": "第三段相关内容", "metadata": {"task_id": "task-a", "source_type": "meta"}},
+    ]
+
+    with patch("app.services.knowledge_base_service.load_note_title", return_value="测试笔记"):
+        context, sources = _build_context_and_sources(chunks)
+
+    assert context.count("笔记《测试笔记》") == 3
+    assert sources == [
+        {
+            "task_id": "task-a",
+            "title": "测试笔记",
+            "text": "第一段相关内容",
+            "source_type": "markdown",
+        }
+    ]
 
 
 def _make_provider_and_model(model_name: str, supports_reasoning: int):
@@ -263,6 +342,47 @@ def test_ask_stream_qwen_thinking_passes_extra_body():
         delete_provider(provider_id)
 
 
+def test_ask_stream_note_task_ids_scopes_retrieval():
+    """传入 note_task_ids 时，query_multi 只用交集后的子集调用，而不是用户全部笔记。"""
+    user_id = 999015
+    video_id_a = f"video-{uuid.uuid4().hex[:8]}"
+    video_id_b = f"video-{uuid.uuid4().hex[:8]}"
+    task_a = f"test-{uuid.uuid4().hex[:8]}"
+    task_b = f"test-{uuid.uuid4().hex[:8]}"
+    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id)
+    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id)
+    set_status(task_a, "indexed")
+    set_status(task_b, "indexed")
+
+    provider_id, model = _make_provider_and_model("gpt-4o", supports_reasoning=0)
+    conv = kb_dao.create_conversation(user_id=user_id)
+    fake_gpt = _FakeGPT([_FakePiece(_FakeDelta(content="答案"))])
+    fake_store = MagicMock()
+    fake_store.query_multi.return_value = []
+    try:
+        with patch("app.services.knowledge_base_service.GPTFactory.from_config", return_value=fake_gpt), \
+             patch("app.services.knowledge_base_service.VectorStoreManager", return_value=fake_store):
+            list(ask_stream(
+                conversation_id=conv["id"],
+                question="只问 task_a 相关的内容",
+                provider_id=provider_id,
+                model_name="gpt-4o",
+                enable_thinking=False,
+                user_id=user_id,
+                note_task_ids=[task_a],
+            ))
+
+        fake_store.query_multi.assert_called_once()
+        called_task_ids = fake_store.query_multi.call_args.args[0]
+        assert called_task_ids == [task_a]
+    finally:
+        kb_dao.delete_conversation(conv["id"], user_id=user_id)
+        delete_model(model["id"])
+        delete_provider(provider_id)
+        delete_task_by_video(video_id_a, "bilibili", user_id=user_id)
+        delete_task_by_video(video_id_b, "bilibili", user_id=user_id)
+
+
 def test_ask_stream_history_excludes_reasoning_content_from_context():
     """构建 LLM messages 时历史消息只带 content，不带 reasoning_content。"""
     provider_id, model = _make_provider_and_model("gpt-4o", supports_reasoning=0)
@@ -291,5 +411,3 @@ def test_ask_stream_history_excludes_reasoning_content_from_context():
         kb_dao.delete_conversation(conv["id"], user_id=999013)
         delete_model(model["id"])
         delete_provider(provider_id)
-
-

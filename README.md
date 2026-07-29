@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.noteflow.app/"><b>NoteFlow Pro 在线版</b></a>
+  <a href="http://47.99.136.241:3015/welcome"><b>NoteFlow Pro 在线版</b></a>
   ·
   <a href="https://github.com/yunbocheng4379/NoteFlow/releases"><b>桌面版下载</b></a>
   ·
@@ -262,24 +262,3 @@ docker compose down -v
     </td>
   </tr>
 </table>
-
-## 代码参考
-
-- 抖音下载功能部分代码参考：[Evil0ctal/Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
-
-## License
-
-MIT License
-
-## Buy Me a Coffee / 捐赠
-
-如果你觉得项目对你有帮助，可以支持一下：
-
-<div style='display:inline;'>
-    <img width='30%' src='https://common-1304618721.cos.ap-chengdu.myqcloud.com/8986c9eb29c356a0cfa3d470c23d3b6.jpg'/>
-    <img width='30%' src='https://common-1304618721.cos.ap-chengdu.myqcloud.com/2a049ea298b206bcd0d8b8da3219d6b.jpg'/>
-</div>
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yunbocheng4379/NoteFlow&type=Date)](https://www.star-history.com/#yunbocheng4379/NoteFlow&Date)

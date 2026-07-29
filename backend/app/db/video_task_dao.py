@@ -71,6 +71,25 @@ def get_task_by_video(video_id: str, platform: str, user_id: Optional[int] = Non
         db.close()
 
 
+def update_task_title(task_id: str, title: str, user_id: Optional[int] = None) -> bool:
+    db = next(get_db())
+    try:
+        q = db.query(VideoTask).filter_by(task_id=task_id)
+        if user_id is not None:
+            q = q.filter(VideoTask.user_id == user_id)
+        task = q.first()
+        if not task:
+            return False
+        task.custom_title = title
+        db.commit()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to update task title: {e}")
+        return False
+    finally:
+        db.close()
+
+
 def get_task_by_task_id(task_id: str):
     db = next(get_db())
     try:

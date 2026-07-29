@@ -81,6 +81,7 @@ web_modules/
 .env.bak*
 .pnpm-store/
 .superpowers/
+.claude/
 .vscode/
 config/
 backend/vector_db/
@@ -91,6 +92,8 @@ backend/models/
 backend/uploads/
 backend/*.db
 backend/note_results/
+backend/secrets/
+*.pem
 NoteFlow_frontend/noteflow.db
 note_results/
 static/

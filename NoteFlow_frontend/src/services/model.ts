@@ -33,7 +33,7 @@ export const fetchEnableModelById = async (id: string) => {
 }
 
 export async function addModel(
-  data: { provider_id: string; model_name: string; tier?: 'normal' | 'pro' },
+  data: { provider_id: string; model_name: string; tier?: 'normal' | 'pro'; supports_reasoning?: boolean },
   opts?: CallOpts,
 ) {
   return request.post('/models', data, cfg(opts))

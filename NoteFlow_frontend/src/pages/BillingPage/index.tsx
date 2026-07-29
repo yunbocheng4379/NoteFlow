@@ -55,11 +55,11 @@ const BillingPage = () => {
   }, [tab, orderPage])
 
   const rePay = async (order: Order) => {
-    // 重新支付需要 mock_qrcode_token, 而 listOrders 返回的历史订单 token 为 null
+    // 重新支付需要有效的支付凭证 (mock_qrcode_token 或真实渠道的 qrcode_url)
     // 简化: 用户重新走充值下单流程
     try {
       const full = await billingApi.getOrder(order.order_no)
-      if (!full.mock_qrcode_token) {
+      if (!full.mock_qrcode_token && !full.qrcode_url) {
         toast.error('支付凭证已失效，请重新下单')
         return
       }

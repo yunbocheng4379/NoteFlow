@@ -234,6 +234,7 @@ class TestDownloaderActiveCookieId(unittest.TestCase):
         picked.name = "fake"
         picked.platform = "bilibili"
         self.fake_pool.pick.return_value = picked
+        self.fake_pool.pick_round.side_effect = lambda *args, **kwargs: iter([picked])
 
         # Patch CookiePoolManager.instance() 用我们的 fake
         # 注: cookie_manager 用 lazy import, 真正访问的路径是

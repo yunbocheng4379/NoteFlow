@@ -1,6 +1,6 @@
 from typing import Optional, TYPE_CHECKING
 
-from app.db.model_dao import insert_model, get_all_models, get_model_by_provider_and_name, delete_model
+from app.db.model_dao import insert_model, get_all_models, get_model_by_provider_and_name, delete_model, update_model
 from app.db.provider_dao import get_enabled_providers
 from app.enmus.exception import ProviderErrorEnum
 from app.exceptions.provider import ProviderError
@@ -174,26 +174,30 @@ class ModelService:
             return False
 
     @staticmethod
-    def add_new_model(provider_id: int, model_name: str, tier: str = "normal",
-                      created_by: Optional[int] = None) -> bool:
-        """新增全局模型（仅管理员可调用）；created_by 记录操作的管理员 id"""
+    def add_new_model(provider_id: int, model_name: str, tier: str = "normal", supports_reasoning: bool = False,
+                      created_by: Optional[int] = None) -> str:
+        """新增或更新全局模型（仅管理员可调用）；created_by 记录操作的管理员 id
+        模型已存在时视为「保存模型」的修改场景，直接更新其 tier / supports_reasoning，而不是报错拒绝
+        返回 "ok" / "updated" / "provider_not_found" / "error"，供路由层区分提示文案"""
         try:
             provider = ProviderService.get_provider_by_id(provider_id)
             if not provider:
                 print(f"供应商ID {provider_id} 不存在，无法添加模型")
-                return False
+                return "provider_not_found"
 
             existing = get_model_by_provider_and_name(provider_id, model_name)
             if existing:
-                print(f"模型 {model_name} 已存在于供应商ID {provider_id} 下，跳过插入")
-                return False
+                update_model(existing["id"], tier=tier, supports_reasoning=int(supports_reasoning))
+                print(f"模型 {model_name} 已存在于供应商ID {provider_id} 下，已更新等级/深度思考配置")
+                return "updated"
 
-            insert_model(provider_id=provider_id, model_name=model_name, tier=tier, created_by=created_by)
+            insert_model(provider_id=provider_id, model_name=model_name, tier=tier,
+                         supports_reasoning=int(supports_reasoning), created_by=created_by)
             print(f"模型 {model_name} 已成功添加到供应商ID {provider_id}")
-            return True
+            return "ok"
         except Exception as e:
             print(f"添加模型失败: {e}")
-            return False
+            return "error"
 
     @staticmethod
     def set_model_tier(model_id: int, tier: str) -> bool:

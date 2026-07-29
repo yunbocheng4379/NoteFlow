@@ -37,7 +37,12 @@ interface ModelStore {
   loadModels: (providerId: string, apiKey?: string) => Promise<void>
   loadModelsById: (providerId: string) => Promise<IModelListItem[]>
   loadEnabledModels: () => Promise<void>
-  addNewModel: (providerId: string, modelId: string, tier?: 'normal' | 'pro') => Promise<void>
+  addNewModel: (
+    providerId: string,
+    modelId: string,
+    tier?: 'normal' | 'pro',
+    supportsReasoning?: boolean,
+  ) => Promise<void>
   deleteModel: (modelId: number) => Promise<void>
   updateModelTier: (modelId: number, tier: 'normal' | 'pro') => Promise<boolean>
   updateModelSupportsReasoning: (modelId: number, enabled: boolean) => Promise<boolean>
@@ -102,32 +107,36 @@ export const useModelStore = create<ModelStore>()(
       }
     },
 
-    //  新增模型逻辑
-    addNewModel: async (providerId: string, modelId: string, tier: 'normal' | 'pro' = 'normal') => {
-      try {
-        const res = await addModel({ provider_id: providerId, model_name: modelId, tier })
-
-        if (res.code === 0) {
-          console.log('新增模型成功:', modelId)
-          set((state) => ({
-            models: [
-              ...state.models,
-              {
-                id: modelId,
-                created: Date.now(),
-                object: 'model',
-                owned_by: '',
-                permission: '',
-                root: '',
-              },
-            ],
-          }))
-        } else {
-          console.error('新增模型失败', res.msg)
-        }
-      } catch (error) {
-        console.error('添加模型出错', error)
-      }
+    //  新增模型逻辑；请求失败时向上抛出，让调用方决定如何提示用户（避免与全局 toast 拦截器重复提示）
+    addNewModel: async (
+      providerId: string,
+      modelId: string,
+      tier: 'normal' | 'pro' = 'normal',
+      supportsReasoning = false,
+    ) => {
+      await addModel(
+        { provider_id: providerId, model_name: modelId, tier, supports_reasoning: supportsReasoning },
+        { silent: true },
+      )
+      // “选择模型”下拉列表里的 models 来自供应商原始模型列表（fetchModels），本身已经包含这条模型，
+      // 保存（无论新增还是修改已有模型）时不应该再重复塞一条，否则会在刷新前看到一个重复项
+      set((state) =>
+        state.models.some((m) => m.id === modelId)
+          ? state
+          : {
+              models: [
+                ...state.models,
+                {
+                  id: modelId,
+                  created: Date.now(),
+                  object: 'model',
+                  owned_by: '',
+                  permission: '',
+                  root: '',
+                },
+              ],
+            },
+      )
     },
 
     //  删除模型

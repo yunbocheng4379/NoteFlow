@@ -24,3 +24,7 @@ export const getTasks = async (): Promise<TaskSummary[]> => {
 export const deleteTask = async (taskId: string): Promise<void> => {
   await request.delete(`/tasks/${taskId}`)
 }
+
+export const renameTask = async (taskId: string, title: string): Promise<void> => {
+  await request.put(`/note/${taskId}/title`, { title })
+}

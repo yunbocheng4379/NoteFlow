@@ -21,7 +21,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useModelStore } from '@/store/modelStore'
+import { useProviderStore } from '@/store/providerStore'
 import { generateFlashcards } from '@/services/flashcard'
+import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 
 interface Props {
   taskId: string | null
@@ -34,8 +36,10 @@ const MAX_CARDS = 50
 
 export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: Props) {
   const navigate = useNavigate()
-  const modelList = useModelStore((s) => s.modelList)
-  const loadEnabledModels = useModelStore((s) => s.loadEnabledModels)
+  const modelList = useModelStore(s => s.modelList)
+  const loadEnabledModels = useModelStore(s => s.loadEnabledModels)
+  const providers = useProviderStore(s => s.provider)
+  const fetchProviderList = useProviderStore(s => s.fetchProviderList)
 
   const [modelName, setModelName] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
@@ -44,7 +48,8 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
 
   useEffect(() => {
     if (open && modelList.length === 0) loadEnabledModels()
-  }, [open, modelList.length, loadEnabledModels])
+    if (open && providers.length === 0) fetchProviderList()
+  }, [open, modelList.length, loadEnabledModels, providers.length, fetchProviderList])
 
   useEffect(() => {
     if (open && !modelName && modelList.length > 0) {
@@ -61,7 +66,7 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
 
   const handleGenerate = async () => {
     if (!taskId) return
-    const selected = modelList.find((m) => m.model_name === modelName)
+    const selected = modelList.find(m => m.model_name === modelName)
     if (!selected) {
       toast.error('请选择生成模型')
       return
@@ -95,7 +100,9 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>生成闪记卡</DialogTitle>
-          <DialogDescription>围绕这篇笔记生成一组问答卡片，帮助快速记忆核心内容。</DialogDescription>
+          <DialogDescription>
+            围绕这篇笔记生成一组问答卡片，帮助快速记忆核心内容。
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -106,9 +113,13 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
                 <SelectValue placeholder="请选择模型" />
               </SelectTrigger>
               <SelectContent>
-                {modelList.map((m) => (
+                {modelList.map(m => (
                   <SelectItem key={m.id} value={m.model_name}>
-                    {m.model_name}
+                    <ModelOptionLabel
+                      providerId={m.provider_id}
+                      modelName={m.model_name}
+                      providers={providers}
+                    />
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -124,15 +135,17 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
               min={MIN_CARDS}
               max={MAX_CARDS}
               value={cardCount}
-              onChange={(e) => setCardCount(Number(e.target.value))}
+              onChange={e => setCardCount(Number(e.target.value))}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-700">自定义出题要求（可选）</label>
+            <label className="mb-1 block text-sm font-medium text-neutral-700">
+              自定义出题要求（可选）
+            </label>
             <Textarea
               value={customPrompt}
-              onChange={(e) => setCustomPrompt(e.target.value)}
+              onChange={e => setCustomPrompt(e.target.value)}
               rows={3}
               maxLength={1000}
               placeholder="例如：多考察具体数据和结论，少考察概念定义"
@@ -146,7 +159,11 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
             取消
           </Button>
           <Button size="sm" disabled={generating || !modelName} onClick={handleGenerate}>
-            {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {generating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
             生成
           </Button>
         </DialogFooter>

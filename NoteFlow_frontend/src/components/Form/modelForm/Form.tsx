@@ -80,10 +80,6 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
   const [modelOptions, setModelOptions] = useState<IModel[]>([]) // ⚡新增，保存模型列表
   const [models, setModels]= useState<IEnabledModel[]>([])
   const [modelLoading, setModelLoading] = useState(false)
-  const updateModelTierInStore = useModelStore(state => state.updateModelTier)
-  const [tierUpdatingId, setTierUpdatingId] = useState<string | null>(null)
-  const updateModelSupportsReasoningInStore = useModelStore(state => state.updateModelSupportsReasoning)
-  const [reasoningUpdatingId, setReasoningUpdatingId] = useState<string | null>(null)
   const randomColor = ()=>{
     return '#' + Math.floor(Math.random() * 16777215).toString(16)
   }
@@ -155,43 +151,6 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
     } finally {
       setDeleting(false)
       setPendingDeleteId(null)
-    }
-  }
-  // 切换模型等级：普通 <-> Pro
-  const handleToggleTier = async (model: IEnabledModel) => {
-    const nextTier = model.tier === 'pro' ? 'normal' : 'pro'
-    setTierUpdatingId(model.id)
-    try {
-      const ok = await updateModelTierInStore(Number(model.id), nextTier)
-      if (ok) {
-        setModels(prev =>
-          prev.map(m => (m.id === model.id ? { ...m, tier: nextTier } : m)),
-        )
-        toast.success(nextTier === 'pro' ? '已设为 Pro 模型' : '已设为普通模型')
-      } else {
-        toast.error('更新模型等级失败')
-      }
-    } catch (e) {
-      toast.error('更新模型等级失败')
-    } finally {
-      setTierUpdatingId(null)
-    }
-  }
-  // 切换模型是否支持深度思考
-  const handleToggleSupportsReasoning = async (model: IEnabledModel) => {
-    const next = !model.supports_reasoning
-    setReasoningUpdatingId(model.id)
-    try {
-      const ok = await updateModelSupportsReasoningInStore(Number(model.id), next)
-      if (ok) {
-        setModels(prev =>
-          prev.map(m => (m.id === model.id ? { ...m, supports_reasoning: next } : m)),
-        )
-      } else {
-        toast.error('更新失败，请重试')
-      }
-    } finally {
-      setReasoningUpdatingId(null)
     }
   }
   // 测试连通性
@@ -384,31 +343,26 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
                   >
                     {model.model_name}
                     {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleTier(model)}
-                        disabled={tierUpdatingId === model.id}
+                      <span
                         className={`rounded px-1 text-xs font-medium ${
-                          isPro ? 'bg-amber-200 hover:bg-amber-300' : 'bg-neutral-200 hover:bg-neutral-300'
+                          isPro ? 'bg-amber-200' : 'bg-neutral-200'
                         }`}
-                        title="点击切换普通/Pro"
+                        title="仅展示，如需修改请通过上方「保存模型」重新添加"
                       >
                         {isPro ? 'Pro' : '普通'}
-                      </button>
+                      </span>
                     )}
                     {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleSupportsReasoning(model)}
-                        disabled={reasoningUpdatingId === model.id}
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium transition-colors ${
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
                           model.supports_reasoning
-                            ? 'bg-indigo-200 hover:bg-indigo-300 text-indigo-700'
-                            : 'bg-neutral-200 hover:bg-neutral-300 text-neutral-600'
+                            ? 'bg-indigo-200 text-indigo-700'
+                            : 'bg-neutral-200 text-neutral-600'
                         }`}
+                        title="仅展示，如需修改请通过上方「保存模型」重新添加"
                       >
                         {model.supports_reasoning ? '支持思考' : '不支持思考'}
-                      </button>
+                      </span>
                     )}
                     {!isAdmin && isPro && (
                       <span className="rounded bg-amber-200 px-1 text-xs font-medium">Pro</span>

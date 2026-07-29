@@ -133,3 +133,5 @@ zopfli==0.2.3.post1
 alibabacloud_dysmsapi20170525==4.6.0
 alibabacloud-tea-openapi==0.4.5
 alibabacloud-tea-util==0.3.14
+python-alipay-sdk==3.4.0
+wechatpayv3==2.0

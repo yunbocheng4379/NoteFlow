@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Enum, ForeignKey, func
+from sqlalchemy import Column, Integer, BigInteger, String, Text, DateTime, Enum, ForeignKey, func
 
 from app.db.engine import Base
 
@@ -30,6 +30,9 @@ class Order(Base):
     pay_method = Column(Enum(*ORDER_PAY_METHODS, name="order_pay_method"), nullable=True,
                          comment="支付方式: MOCK_ 前缀=mock 通道")
     mock_qrcode_token = Column(String(64), nullable=True, comment="一次性二维码 token; PAID 后清空")
+    qrcode_url = Column(String(512), nullable=True, comment="真实支付渠道返回的二维码内容 (支付宝 qr_code / 微信 code_url)")
+    trade_no = Column(String(64), nullable=True, comment="支付渠道侧交易号 (支付宝 trade_no / 微信 transaction_id)")
+    notify_payload = Column(Text, nullable=True, comment="最近一次异步通知的原始报文, 用于排查与防重放审计")
     paid_at = Column(DateTime, nullable=True, comment="支付完成时间")
     cancelled_at = Column(DateTime, nullable=True, comment="取消时间")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")

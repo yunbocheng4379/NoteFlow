@@ -15,9 +15,9 @@ spec.loader.exec_module(task_serial_executor)
 SerialTaskExecutor = task_serial_executor.SerialTaskExecutor
 
 
-class TestTaskSerialExecutor(unittest.TestCase):
-    def test_executor_runs_tasks_one_by_one(self):
-        executor = SerialTaskExecutor()
+class TestTaskExecutor(unittest.TestCase):
+    def test_executor_respects_max_workers(self):
+        executor = SerialTaskExecutor(max_workers=2)
         state_lock = threading.Lock()
         state = {"active": 0, "peak_active": 0}
 
@@ -29,13 +29,15 @@ class TestTaskSerialExecutor(unittest.TestCase):
             with state_lock:
                 state["active"] -= 1
 
-        threads = [threading.Thread(target=lambda: executor.run(critical_work)) for _ in range(2)]
+        threads = [threading.Thread(target=lambda: executor.run(critical_work)) for _ in range(4)]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
 
-        self.assertEqual(state["peak_active"], 1)
+        self.assertLessEqual(state["peak_active"], 2)
+        self.assertGreaterEqual(state["peak_active"], 1)
+        executor.shutdown()
 
 
 if __name__ == "__main__":

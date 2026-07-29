@@ -28,19 +28,76 @@ SYSTEM_PROMPT = """你是一个跨笔记知识库问答助手，可以访问用�
 MAX_HISTORY_MESSAGES = 20
 
 
+def _backfill_index_status(task_ids: list[str]) -> None:
+    """后台补建缺失的知识库索引，并同步索引状态。"""
+    if not task_ids:
+        return
+
+    store = VectorStoreManager()
+    for tid in task_ids:
+        try:
+            set_index_status(tid, "indexing")
+            store.index_task(tid)
+            set_index_status(tid, "indexed")
+        except Exception as e:
+            set_index_status(tid, "failed")
+            logger.error(f"知识库后台补索引失败: task_id={tid}, {e}")
+
+
+def _start_backfill(task_ids: list[str]) -> None:
+    """异步触发补索引，避免 API 请求被向量化耗时阻塞。"""
+    if not task_ids:
+        return
+    import threading
+
+    threading.Thread(target=_backfill_index_status, args=(task_ids,), daemon=True).start()
+
+
 def get_index_coverage(user_id: int) -> dict:
-    """返回当前用户笔记的索引覆盖情况：总数与已索引数。"""
+    """返回当前用户笔记的索引覆盖情况，并自愈缺失的索引状态。"""
     task_ids = get_task_ids_by_user(user_id)
     if not task_ids:
         return {"total": 0, "indexed": 0}
     statuses = get_index_statuses(task_ids)
-    indexed = sum(1 for t in task_ids if statuses.get(t) == "indexed")
+
+    indexed = 0
+    backfill_ids: list[str] = []
+    store = VectorStoreManager()
+    for task_id in task_ids:
+        status = statuses.get(task_id)
+        if status == "indexed":
+            indexed += 1
+            continue
+
+        if status != "indexing" and store.is_indexed(task_id):
+            set_index_status(task_id, "indexed")
+            indexed += 1
+            continue
+
+        if status is None:
+            set_index_status(task_id, "indexing")
+            backfill_ids.append(task_id)
+
+    _start_backfill(backfill_ids)
     return {"total": len(task_ids), "indexed": indexed}
 
 
-def _get_indexed_task_ids(user_id: int) -> list[str]:
-    """已索引的 task_id 子集；未索引的异步补索引，本次不等待。"""
-    task_ids = get_task_ids_by_user(user_id)
+def _get_indexed_task_ids(user_id: int, task_ids: Optional[list[str]] = None) -> list[str]:
+    """已索引的 task_id 子集；未索引的异步补索引，本次不等待。
+
+    :param task_ids: 若传入，限定在该笔记子集内检索（与用户名下笔记取交集，防止越权）；
+                      否则默认使用该用户全部笔记。
+    """
+    owned_ids = get_task_ids_by_user(user_id)
+    if not owned_ids:
+        return []
+
+    if task_ids is not None:
+        owned_set = set(owned_ids)
+        task_ids = [t for t in task_ids if t in owned_set]
+    else:
+        task_ids = owned_ids
+
     if not task_ids:
         return []
 
@@ -48,21 +105,7 @@ def _get_indexed_task_ids(user_id: int) -> list[str]:
     indexed_ids = [t for t in task_ids if statuses.get(t) == "indexed"]
     unindexed_ids = [t for t in task_ids if statuses.get(t) != "indexed" and statuses.get(t) != "indexing"]
 
-    if unindexed_ids:
-        import threading
-
-        def _backfill(ids: list[str]):
-            store = VectorStoreManager()
-            for tid in ids:
-                try:
-                    set_index_status(tid, "indexing")
-                    store.index_task(tid)
-                    set_index_status(tid, "indexed")
-                except Exception as e:
-                    set_index_status(tid, "failed")
-                    logger.error(f"知识库后台补索引失败: task_id={tid}, {e}")
-
-        threading.Thread(target=_backfill, args=(unindexed_ids,), daemon=True).start()
+    _start_backfill(unindexed_ids)
 
     return indexed_ids
 
@@ -70,6 +113,7 @@ def _get_indexed_task_ids(user_id: int) -> list[str]:
 def _build_context_and_sources(chunks: list[dict]) -> tuple[str, list[dict]]:
     parts = []
     sources = []
+    seen_task_ids = set()
     for chunk in chunks:
         meta = chunk.get("metadata", {})
         task_id = meta.get("task_id", "")
@@ -78,7 +122,16 @@ def _build_context_and_sources(chunks: list[dict]) -> tuple[str, list[dict]]:
         label = f"[笔记《{title}》]" if title else "[未知来源]"
         parts.append(f"{label}\n{chunk['text']}")
 
-        source = {"task_id": task_id, "title": title, "text": chunk["text"][:200], "source_type": source_type}
+        source_key = task_id or f"{title}:{source_type}"
+        if source_key in seen_task_ids:
+            continue
+        seen_task_ids.add(source_key)
+        source = {
+            "task_id": task_id,
+            "title": title,
+            "text": chunk["text"][:200],
+            "source_type": source_type,
+        }
         sources.append(source)
     context = "\n\n".join(parts) if parts else "（未检索到相关内容）"
     return context, sources
@@ -103,9 +156,12 @@ def ask_stream(
     model_name: str,
     enable_thinking: bool,
     user_id: int,
+    note_task_ids: Optional[list[str]] = None,
 ) -> Iterator[dict]:
     """
     知识库流式问答：跨笔记检索 + 可选深度思考 + 流式返回，落库用户问题与最终回答。
+
+    :param note_task_ids: 若传入，检索范围限定在这些笔记内；否则默认使用该用户全部笔记。
 
     yield 事件字典：
       {"type": "sources", "sources": [...]}
@@ -116,7 +172,7 @@ def ask_stream(
     """
     kb_dao.add_message(conversation_id, "user", question)
 
-    indexed_task_ids = _get_indexed_task_ids(user_id)
+    indexed_task_ids = _get_indexed_task_ids(user_id, note_task_ids)
 
     vector_store = VectorStoreManager()
     chunks = vector_store.query_multi(indexed_task_ids, question, per_task_n=4, top_k=8) if indexed_task_ids else []

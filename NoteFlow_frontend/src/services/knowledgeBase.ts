@@ -68,6 +68,7 @@ export const askKbStream = async (
     provider_id: string
     model_name: string
     enable_thinking: boolean
+    note_task_ids?: string[]
   },
   handlers: {
     onSources?: (sources: KbSource[]) => void

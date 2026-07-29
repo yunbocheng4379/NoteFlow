@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import toast from 'react-hot-toast'
+import { useProviderStore } from '@/store/providerStore'
+import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 
 interface ModelSelectorProps {
   providerId: string
@@ -22,9 +24,12 @@ const isMasked = (key?: string) => !key || key.includes('*')
 export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProps) {
   const { models, loading, selectedModel, loadModels, setSelectedModel, addNewModel } =
     useModelStore()
+  const providers = useProviderStore(s => s.provider)
+  const fetchProviderList = useProviderStore(s => s.fetchProviderList)
   const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [tier, setTier] = useState<'normal' | 'pro'>('normal')
+  const [supportsReasoning, setSupportsReasoning] = useState<'yes' | 'no'>('no')
 
   const effectiveApiKey = isMasked(apiKey) ? undefined : apiKey
 
@@ -37,6 +42,7 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
   useEffect(() => {
     if (providerId) {
       loadModels(providerId, effectiveApiKey)
+      if (providers.length === 0) fetchProviderList()
     }
   }, [providerId])
 
@@ -47,11 +53,11 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
     }
     try {
       setSubmitting(true)
-      await addNewModel(providerId, selectedModel, tier)
+      await addNewModel(providerId, selectedModel, tier, supportsReasoning === 'yes')
       toast.success('保存模型成功 🎉')
       onSaved?.()
-    } catch (error) {
-      toast.error('保存失败')
+    } catch (error: any) {
+      toast.error(error?.msg || '保存失败')
     } finally {
       setSubmitting(false)
     }
@@ -86,14 +92,18 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
           </div>
           {filteredModels.map((model, index) => (
             <SelectItem key={`${model.id}-${index}`} value={model.id}>
-              {model.id}
+              <ModelOptionLabel
+                providerId={providerId}
+                modelName={model.id}
+                providers={providers}
+              />
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">模型等级</span>
+        <span className="text-muted-foreground text-sm">模型等级</span>
         <Select value={tier} onValueChange={v => setTier(v as 'normal' | 'pro')}>
           <SelectTrigger className="w-[160px]">
             <SelectValue />
@@ -101,6 +111,22 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
           <SelectContent>
             <SelectItem value="normal">普通模型</SelectItem>
             <SelectItem value="pro">Pro 模型</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground text-sm">支持深度思考</span>
+        <Select
+          value={supportsReasoning}
+          onValueChange={v => setSupportsReasoning(v as 'yes' | 'no')}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="no">不支持</SelectItem>
+            <SelectItem value="yes">支持</SelectItem>
           </SelectContent>
         </Select>
       </div>

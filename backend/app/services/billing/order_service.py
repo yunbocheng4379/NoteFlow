@@ -76,6 +76,19 @@ def list_user_orders(db: Session, user_id: int, page: int = 1, page_size: int = 
 
 # ---------- 创建订单 ----------
 
+def _issue_qrcode(order: Order, *, subject: str) -> None:
+    """
+    真实支付渠道 (ALIPAY/WECHAT) 下单后调用网关生成二维码, 写入 order.qrcode_url.
+    MOCK_ 渠道走 mock_qrcode_token, 不调用这里.
+    """
+    if order.pay_method == "ALIPAY":
+        from app.services.billing.pay_channels import alipay_channel
+        order.qrcode_url = alipay_channel.create_qrcode(order, subject=subject)
+    elif order.pay_method == "WECHAT":
+        from app.services.billing.pay_channels import wechat_channel
+        order.qrcode_url = wechat_channel.create_qrcode(order, description=subject)
+
+
 def create_recharge_order(
     db: Session, *, user_id: int, package_id: int, pay_method: str
 ) -> Order:
@@ -103,6 +116,8 @@ def create_recharge_order(
         pay_method=pay_method,
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
+    if pay_method in ("ALIPAY", "WECHAT"):
+        _issue_qrcode(order, subject=f"NoteFlow 充值-{pkg.name}")
     db.add(order)
     db.flush()
     logger.info(f"[order] create RECHARGE user={user_id} order_no={order.order_no} pkg={pkg.code} amount={pkg.price_cents}")
@@ -139,6 +154,8 @@ def create_subscription_order(
         pay_method=pay_method,
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
+    if pay_method in ("ALIPAY", "WECHAT"):
+        _issue_qrcode(order, subject=f"NoteFlow 订阅-{plan.name}")
     db.add(order)
     db.flush()
     logger.info(f"[order] create SUBSCRIPTION user={user_id} order_no={order.order_no} plan={plan.code} first={is_first} amount={price}")
@@ -147,12 +164,12 @@ def create_subscription_order(
 
 # ---------- 支付 ----------
 
-def mock_pay(
-    db: Session, *, order_no: str, mock_qrcode_token: str, current_user_id: int
-) -> Order:
+def _settle_paid_order(
+    db: Session, *, order: Order, trade_no: Optional[str] = None, raw_payload: Optional[str] = None
+) -> None:
     """
-    Mock 支付: 校验 token + 状态 + user_id, 通过则 mark PAID + 触发下游动作.
-    单事务; 调用方需 with db.begin() 或自行 commit.
+    标记订单已支付 + 分发下游动作. 调用方必须已确认 order.status == "PENDING"
+    (行锁 + 状态校验由调用方负责, 这里只做落地, 保证 mock/真实渠道共用同一套下游逻辑).
 
     下游动作 (按顺序):
       RECHARGE: credit_ledger.grant(user, package.credits, type='RECHARGE', related_order_id)
@@ -162,6 +179,39 @@ def mock_pay(
     """
     from app.services.billing import credit_ledger, subscription_service, referral_service
 
+    order.status = "PAID"
+    order.paid_at = datetime.now()
+    order.mock_qrcode_token = None
+    if trade_no:
+        order.trade_no = trade_no
+    if raw_payload:
+        order.notify_payload = raw_payload
+    db.flush()
+
+    if order.kind == "RECHARGE":
+        pkg = db.get(RechargePackage, order.package_id)
+        credit_ledger.grant(
+            db,
+            user_id=order.user_id,
+            amount=order.credits_amount,
+            type_="RECHARGE",
+            related_order_id=order.id,
+            note=f"充值到账: {pkg.name if pkg else order.package_id}",
+        )
+    elif order.kind == "SUBSCRIPTION":
+        subscription_service.activate_subscription_from_order(db, order=order)
+    else:
+        raise OrderStateError(f"未知订单类型: {order.kind}")
+
+    referral_service.maybe_pay_first_subscription_reward(db, order=order)
+
+    logger.info(f"[order] PAID user={order.user_id} order_no={order.order_no} kind={order.kind} trade_no={trade_no}")
+
+
+def mock_pay(
+    db: Session, *, order_no: str, mock_qrcode_token: str, current_user_id: int
+) -> Order:
+    """Mock 支付: 校验 token + 状态 + user_id, 通过则调用 _settle_paid_order."""
     order: Order | None = db.execute(
         select(Order).where(Order.order_no == order_no).with_for_update()
     ).scalar_one_or_none()
@@ -178,33 +228,87 @@ def mock_pay(
     if not order.mock_qrcode_token or order.mock_qrcode_token != mock_qrcode_token:
         raise OrderStateError("二维码 token 校验失败")
 
-    # 1) 标记订单已支付
-    order.status = "PAID"
-    order.paid_at = datetime.now()
-    order.mock_qrcode_token = None
-    db.flush()
-
-    # 2) 分发下游动作
-    if order.kind == "RECHARGE":
-        pkg = db.get(RechargePackage, order.package_id)
-        credit_ledger.grant(
-            db,
-            user_id=order.user_id,
-            amount=order.credits_amount,
-            type_="RECHARGE",
-            related_order_id=order.id,
-            note=f"充值到账: {pkg.name if pkg else order.package_id}",
-        )
-    elif order.kind == "SUBSCRIPTION":
-        subscription_service.activate_subscription_from_order(db, order=order)
-    else:
-        raise OrderStateError(f"未知订单类型: {order.kind}")
-
-    # 3) 触发首订阅推荐返点 (仅 SUBSCRIPTION 起作用, 内部会判 kind)
-    referral_service.maybe_pay_first_subscription_reward(db, order=order)
-
-    logger.info(f"[order] MOCK_PAID user={order.user_id} order_no={order.order_no} kind={order.kind}")
+    _settle_paid_order(db, order=order)
     return order
+
+
+def settle_order_by_gateway(
+    db: Session, *, order_no: str, trade_no: Optional[str] = None, raw_payload: Optional[str] = None
+) -> Optional[Order]:
+    """
+    真实支付渠道 notify / 对账兜底 共用的入口: 按 order_no 加行锁查订单,
+    PENDING 则结算, 已经是 PAID 直接幂等返回 (网关会重试通知), 其它状态记警告并返回 None.
+    找不到订单也返回 None (调用方负责按渠道约定的格式响应网关).
+    """
+    order: Order | None = db.execute(
+        select(Order).where(Order.order_no == order_no).with_for_update()
+    ).scalar_one_or_none()
+    if not order:
+        logger.warning(f"[order] settle_order_by_gateway: 订单不存在 order_no={order_no}")
+        return None
+
+    if order.status == "PAID":
+        logger.info(f"[order] settle_order_by_gateway: 订单已是 PAID, 幂等跳过 order_no={order_no}")
+        return order
+
+    if order.status != "PENDING":
+        logger.warning(f"[order] settle_order_by_gateway: 订单状态非 PENDING/PAID (当前 {order.status}), order_no={order_no}")
+        return None
+
+    _settle_paid_order(db, order=order, trade_no=trade_no, raw_payload=raw_payload)
+    return order
+
+
+# ---------- 对账兜底 ----------
+
+def reconcile_pending_gateway_orders(db: Session, *, min_age_minutes: int = 2) -> int:
+    """
+    主动查询网关侧支付状态, 兜底 notify 丢失的场景.
+    只处理创建时间 > min_age_minutes (避免和刚创建、还没来得及支付的订单抢查询) 的
+    PENDING + pay_method in (ALIPAY, WECHAT) 订单.
+    返回本次补单成功的订单数.
+    """
+    from datetime import timedelta
+    from app.services.billing.pay_channels import alipay_channel, wechat_channel
+
+    cutoff = datetime.now() - timedelta(minutes=min_age_minutes)
+    pending = db.execute(
+        select(Order).where(
+            and_(
+                Order.status == "PENDING",
+                Order.pay_method.in_(("ALIPAY", "WECHAT")),
+                Order.created_at < cutoff,
+            )
+        )
+    ).scalars().all()
+
+    settled = 0
+    for order in pending:
+        try:
+            if order.pay_method == "ALIPAY":
+                resp = alipay_channel.query_order(order.order_no)
+                if not resp or resp.get("trade_status") not in ("TRADE_SUCCESS", "TRADE_FINISHED"):
+                    continue
+                trade_no = resp.get("trade_no")
+            else:
+                resp = wechat_channel.query_order(order.order_no)
+                if not resp or resp.get("trade_state") != "SUCCESS":
+                    continue
+                trade_no = resp.get("transaction_id")
+
+            settled_order = settle_order_by_gateway(
+                db, order_no=order.order_no, trade_no=trade_no,
+                raw_payload=str(resp),
+            )
+            if settled_order:
+                settled += 1
+                logger.info(f"[order] reconcile: 补单成功 order_no={order.order_no}")
+        except Exception:
+            logger.exception(f"[order] reconcile: 查单/补单异常 order_no={order.order_no}")
+
+    if settled:
+        logger.info(f"[order] reconcile: 本轮共补单 {settled} 个")
+    return settled
 
 
 # ---------- 定时清理 ----------

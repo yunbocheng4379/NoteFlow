@@ -179,6 +179,7 @@ def _serialize_order(o: Order) -> dict:
         "status": o.status,
         "pay_method": o.pay_method,
         "mock_qrcode_token": o.mock_qrcode_token,
+        "qrcode_url": o.qrcode_url,
         "is_first_subscription": bool(o.is_first_subscription),
         "paid_at": o.paid_at.isoformat() if o.paid_at else None,
         "cancelled_at": o.cancelled_at.isoformat() if o.cancelled_at else None,

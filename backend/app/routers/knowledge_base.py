@@ -1,4 +1,5 @@
 import json as _json
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -23,6 +24,7 @@ class AskStreamRequest(BaseModel):
     provider_id: str
     model_name: str
     enable_thinking: bool = False
+    note_task_ids: Optional[List[str]] = None
 
 
 @router.post("/conversations")
@@ -78,6 +80,7 @@ def ask_stream(data: AskStreamRequest, current_user: User = Depends(get_current_
                 model_name=data.model_name,
                 enable_thinking=data.enable_thinking,
                 user_id=current_user.id,
+                note_task_ids=data.note_task_ids,
             ):
                 yield f"data: {_json.dumps(event, ensure_ascii=False)}\n\n"
         except Exception as e:

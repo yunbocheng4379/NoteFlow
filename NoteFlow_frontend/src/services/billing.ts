@@ -56,6 +56,7 @@ export interface Order {
   status: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED'
   pay_method: string
   mock_qrcode_token: string | null
+  qrcode_url: string | null
   is_first_subscription: boolean
   paid_at: string | null
   cancelled_at: string | null

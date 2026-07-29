@@ -208,6 +208,11 @@ def test_bind_phone_success(test_user, db):
 
 
 def test_bind_phone_duplicate(test_user, db):
+    # 当前已有手机号的账号走"换绑"保护，需要先验证旧手机号。
+    # 这里测试的是新手机号已被占用，因此用未绑定手机号的用户覆盖该前置条件。
+    test_user.phone = None
+    db.commit()
+
     other_suffix = datetime.now().strftime("%H%M%S%f")
     other = User(
         username=f"codelogin_other_{other_suffix}",
@@ -237,7 +242,10 @@ def test_bind_phone_duplicate(test_user, db):
     db.commit()
 
 
-def test_bind_phone_blocked_by_concurrent_lock(test_user):
+def test_bind_phone_blocked_by_concurrent_lock(test_user, db):
+    test_user.phone = None
+    db.commit()
+
     # 模拟"另一个并发请求正在绑定同一手机号": 提前占住 bind_phone_lock,
     # 验证第二个请求会被锁直接拦截(不进入查重/验证码消费逻辑), 证明锁机制真的在拦截并发绑定。
     r = get_redis()
@@ -311,7 +319,10 @@ def test_bind_phone_concurrent_race(db):
         t.join()
 
     codes = sorted(r.json()["code"] for r in results)
-    assert codes == [0, 40903]  # 恰好一个成功, 一个被 PHONE_EXISTS 拦截
+    assert codes[0] == 0
+    # 恰好一个成功；另一个请求不能绑定成功。
+    # 实际返回可能是锁后发现手机号已占用，也可能是验证码已被成功请求消费。
+    assert codes[1] in (40104, 40903)
 
     # 锁在 finally 里释放, 竞态结束后不应再持有
     r_client = get_redis()

@@ -1,10 +1,4 @@
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from '@/components/ui/form.tsx'
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form.tsx'
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch, type FieldErrors } from 'react-hook-form'
@@ -13,10 +7,13 @@ import { z } from 'zod'
 
 import {
   AlertTriangle,
+  ArrowRight,
   Check,
   ChevronDown,
   Clock,
+  Layers3,
   Loader2,
+  Sparkles,
   Upload,
   X,
   Zap,
@@ -36,6 +33,7 @@ import {
 import { uploadFile } from '@/services/upload.ts'
 import { useTaskStore } from '@/store/taskStore'
 import { useModelStore } from '@/store/modelStore'
+import { useProviderStore } from '@/store/providerStore'
 import { useNoteStyleStore } from '@/store/noteStyleStore'
 import { useCollectionStore } from '@/store/collectionStore'
 import { Button } from '@/components/ui/button.tsx'
@@ -54,6 +52,7 @@ import { detectPlatform, noteFormats, videoPlatforms } from '@/constant/note.ts'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
+import { ModelOptionLabel, ModelProviderLogo } from '@/components/ModelProviderLogo'
 
 /* ---------- Schema ---------- */
 const formSchema = z
@@ -95,18 +94,6 @@ const formSchema = z
 
 export type NoteFormValues = z.infer<typeof formSchema>
 
-/* ---------- Model avatar letter ---------- */
-const modelInitial = (name: string) => name.charAt(0).toUpperCase()
-const MODEL_COLORS = [
-  'bg-violet-500', 'bg-blue-500', 'bg-emerald-500',
-  'bg-amber-500', 'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500',
-]
-const avatarColor = (name: string) => {
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff
-  return MODEL_COLORS[Math.abs(h) % MODEL_COLORS.length]
-}
-
 /* ---------- Multi-select format dropdown ---------- */
 const FormatMultiSelect = ({
   value,
@@ -137,7 +124,8 @@ const FormatMultiSelect = ({
       if (
         triggerRef.current?.contains(e.target as Node) ||
         dropRef.current?.contains(e.target as Node)
-      ) return
+      )
+        return
       setOpen(false)
     }
     document.addEventListener('mousedown', handler)
@@ -213,9 +201,7 @@ const FormatMultiSelect = ({
     onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v])
   }
 
-  const selectedLabels = noteFormats
-    .filter(f => value.includes(f.value))
-    .map(f => f.label)
+  const selectedLabels = noteFormats.filter(f => value.includes(f.value)).map(f => f.label)
 
   return (
     <div className="relative">
@@ -228,46 +214,62 @@ const FormatMultiSelect = ({
         <span className="truncate text-neutral-600">
           {selectedLabels.length > 0 ? selectedLabels.join('、') : '请选择笔记格式'}
         </span>
-        <ChevronDown className={cn('ml-2 h-4 w-4 shrink-0 text-neutral-400 transition-transform', open && 'rotate-180')} />
+        <ChevronDown
+          className={cn(
+            'ml-2 h-4 w-4 shrink-0 text-neutral-400 transition-transform',
+            open && 'rotate-180'
+          )}
+        />
       </button>
 
-      {open && rect && createPortal(
-        <div
-          ref={dropRef}
-          data-dialog-ignore="true"
-          style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999, pointerEvents: 'auto' }}
-          className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg"
-        >
-          {noteFormats.map(({ label, value: v }) => {
-            const disabled = disabledMap[v]
-            const checked = value.includes(v)
-            return (
-              <button
-                key={v}
-                type="button"
-                disabled={disabled}
-                onClick={() => toggle(v)}
-                className={cn(
-                  'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors',
-                  disabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-neutral-50',
-                )}
-              >
-                <div className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
-                  checked ? 'border-primary bg-primary' : 'border-neutral-300',
-                )}>
-                  {checked && <Check className="h-3 w-3 text-white" />}
-                </div>
-                <span className="flex-1 text-left">{label}</span>
-                {v === 'screenshot' && disabled && (
-                  <span className="text-xs text-amber-500">需开启视频理解</span>
-                )}
-              </button>
-            )
-          })}
-        </div>,
-        document.body,
-      )}
+      {open &&
+        rect &&
+        createPortal(
+          <div
+            ref={dropRef}
+            data-dialog-ignore="true"
+            style={{
+              position: 'fixed',
+              top: rect.bottom + 4,
+              left: rect.left,
+              width: rect.width,
+              zIndex: 9999,
+              pointerEvents: 'auto',
+            }}
+            className="max-h-60 overflow-y-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-lg"
+          >
+            {noteFormats.map(({ label, value: v }) => {
+              const disabled = disabledMap[v]
+              const checked = value.includes(v)
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => toggle(v)}
+                  className={cn(
+                    'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors',
+                    disabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-neutral-50'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                      checked ? 'border-primary bg-primary' : 'border-neutral-300'
+                    )}
+                  >
+                    {checked && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                  <span className="flex-1 text-left">{label}</span>
+                  {v === 'screenshot' && disabled && (
+                    <span className="text-xs text-amber-500">需开启视频理解</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }
@@ -315,9 +317,7 @@ const VideoInfoPreview = ({
             <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
             正在解析链接…
           </p>
-          <p className="mt-1 text-xs text-neutral-500">
-            拉取标题 / 封面 / 时长（通常几秒内完成）
-          </p>
+          <p className="mt-1 text-xs text-neutral-500">拉取标题 / 封面 / 时长（通常几秒内完成）</p>
         </div>
       </div>
     )
@@ -334,14 +334,19 @@ const VideoInfoPreview = ({
     <div className="animate-in fade-in slide-in-from-top-1 flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-2.5 shadow-sm duration-300">
       <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-md bg-neutral-100">
         {cover ? (
-          <img src={cover} alt={info.title} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+          <img
+            src={cover}
+            alt={info.title}
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-neutral-300">
             <Upload className="h-5 w-5" />
           </div>
         )}
         {duration && (
-          <span className="absolute bottom-0.5 right-0.5 rounded bg-black/70 px-1 text-[10px] font-medium text-white">
+          <span className="absolute right-0.5 bottom-0.5 rounded bg-black/70 px-1 text-[10px] font-medium text-white">
             {duration}
           </span>
         )}
@@ -377,6 +382,31 @@ const VideoInfoPreview = ({
   )
 }
 
+function BatchModeProPrompt() {
+  return (
+    <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-5 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-amber-600 shadow-sm">
+        <Layers3 className="h-6 w-6" />
+      </div>
+      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-100">
+        <Sparkles className="h-3 w-3" />
+        NoteFlow PRO
+      </div>
+      <p className="mt-3 text-sm font-semibold text-neutral-900">批量模式为会员专属功能</p>
+      <p className="mx-auto mt-1.5 max-w-[360px] text-xs leading-5 text-neutral-500">
+        一次解析频道、合集或多条视频链接，批量提交任务并自动归档，更适合课程和系列内容整理。
+      </p>
+      <RouterLink
+        to="/upgrade"
+        className="bg-primary hover:bg-primary/90 mt-4 inline-flex h-9 items-center justify-center rounded-xl px-4 text-sm font-medium text-white transition-colors"
+      >
+        升级 Pro
+        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+      </RouterLink>
+    </div>
+  )
+}
+
 /* ---------- Main component ---------- */
 const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) => {
   const navigate = useNavigate()
@@ -408,6 +438,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
 
   const { addPendingTask, currentTaskId, getCurrentTask, retryTask } = useTaskStore()
   const { loadEnabledModels, modelList } = useModelStore()
+  const providers = useProviderStore(s => s.provider)
+  const fetchProviderList = useProviderStore(s => s.fetchProviderList)
   const { loadStyles, styles: noteStyles } = useNoteStyleStore()
   const { loadCollections, collections } = useCollectionStore()
 
@@ -447,10 +479,16 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   }, [detectedPlatform, form, isLocal, platform])
 
   // ==== 电力成本预览 ====
-  const userCredits = useUserStore((s) => s.credits)
-  const refreshBalance = useUserStore((s) => s.refreshBalance)
-  const currentUserId = useUserStore((s) => s.user?.id)
-  const [costPreview, setCostPreview] = useState<{ required: number; sufficient: boolean; duration_sec: number | null } | null>(null)
+  const userCredits = useUserStore(s => s.credits)
+  const activeSubscription = useUserStore(s => s.activeSubscription)
+  const refreshBalance = useUserStore(s => s.refreshBalance)
+  const currentUserId = useUserStore(s => s.user?.id)
+  const isPro = !!activeSubscription
+  const [costPreview, setCostPreview] = useState<{
+    required: number
+    sufficient: boolean
+    duration_sec: number | null
+  } | null>(null)
 
   useEffect(() => {
     if (!modelName || !videoUrl || isLocal) {
@@ -495,30 +533,37 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
 
   useEffect(() => {
     loadEnabledModels()
+    fetchProviderList()
     loadStyles()
-    loadCollections()
     // 加载平台列表，检查当前平台是否被禁用
-    platformAPI.list().then(platforms => {
-      const cur = platforms.find((p: any) => p.platform_id === platform)
-      if (cur && !cur.is_enabled) {
-        setPlatformDisabled(cur.name || platform)
-      }
-    }).catch(() => {})
+    platformAPI
+      .list()
+      .then(platforms => {
+        const cur = platforms.find((p: any) => p.platform_id === platform)
+        if (cur && !cur.is_enabled) {
+          setPlatformDisabled(cur.name || platform)
+        }
+      })
+      .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (isPro) loadCollections()
+  }, [isPro, loadCollections])
 
   // 笔记风格按来源分组：系统内置 / 我的自定义 / 公开广场（公开广场排除自己创建的，避免同一 value 在两组间重复选中）
   const styleValue = useWatch({ control: form.control, name: 'style' })
   const groupedStyles = useMemo(() => {
-    const system = noteStyles.filter((s) => s.source === 'system')
-    const mine = noteStyles.filter((s) => s.source === 'user' && s.user_id === currentUserId)
-    const isPublic = noteStyles.filter((s) => s.is_public && s.user_id !== currentUserId)
+    const system = noteStyles.filter(s => s.source === 'system')
+    const mine = noteStyles.filter(s => s.source === 'user' && s.user_id === currentUserId)
+    const isPublic = noteStyles.filter(s => s.is_public && s.user_id !== currentUserId)
     return { system, mine, isPublic }
   }, [noteStyles, currentUserId])
 
   // 若当前选中的风格已不在可用列表中（如被作者删除或取消公开），回退到默认系统风格
   useEffect(() => {
     if (noteStyles.length === 0 || !styleValue) return
-    const exists = noteStyles.some((s) => s.value === styleValue)
+    const exists = noteStyles.some(s => s.value === styleValue)
     if (!exists) {
       form.setValue('style', 'minimal', { shouldValidate: true })
       toast.error('所选笔记风格已不可用，已切换为默认风格')
@@ -592,7 +637,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       if (
         modelTriggerRef.current?.contains(e.target as Node) ||
         document.getElementById('model-drop-panel')?.contains(e.target as Node)
-      ) return
+      )
+        return
       setModelDropOpen(false)
     }
     document.addEventListener('mousedown', handler)
@@ -663,7 +709,10 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
     if (!videoUnderstandingEnabled) {
       const fmt = form.getValues('format')
       if (fmt.includes('screenshot')) {
-        form.setValue('format', fmt.filter(f => f !== 'screenshot'))
+        form.setValue(
+          'format',
+          fmt.filter(f => f !== 'screenshot')
+        )
       }
     }
   }, [videoUnderstandingEnabled])
@@ -747,7 +796,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
             platform: detected,
             checked: true,
           }
-        }),
+        })
       )
       setBatchPreview(prev => [...prev, ...results])
       setBatchUrlsText('')
@@ -758,7 +807,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
 
   const toggleBatchItem = (videoUrl: string) => {
     setBatchPreview(prev =>
-      prev.map(v => (v.video_url === videoUrl ? { ...v, checked: !v.checked } : v)),
+      prev.map(v => (v.video_url === videoUrl ? { ...v, checked: !v.checked } : v))
     )
   }
 
@@ -799,9 +848,21 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
           addPendingTask(
             r.task_id,
             source?.platform || 'bilibili',
-            { video_url: r.video_url, platform: source?.platform, quality: values.quality, model_name: values.model_name },
-            source ? { title: source.title, cover_url: source.cover_url, duration: source.duration, platform: source.platform } : undefined,
-            batch_id,
+            {
+              video_url: r.video_url,
+              platform: source?.platform,
+              quality: values.quality,
+              model_name: values.model_name,
+            },
+            source
+              ? {
+                  title: source.title,
+                  cover_url: source.cover_url,
+                  duration: source.duration,
+                  platform: source.platform,
+                }
+              : undefined,
+            batch_id
           )
           successCount++
         }
@@ -841,15 +902,16 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
     }
     try {
       const data = await generateNote(payload)
-      const meta = videoInfo && !isLocal
-        ? {
-            title: videoInfo.title,
-            cover_url: videoInfo.cover_url,
-            duration: videoInfo.duration,
-            platform: videoInfo.platform,
-            video_id: videoInfo.video_id,
-          }
-        : undefined
+      const meta =
+        videoInfo && !isLocal
+          ? {
+              title: videoInfo.title,
+              cover_url: videoInfo.cover_url,
+              duration: videoInfo.duration,
+              platform: videoInfo.platform,
+              video_id: videoInfo.video_id,
+            }
+          : undefined
       addPendingTask(data.task_id, values.platform, payload, meta)
       onSubmitSuccess?.()
     } catch (e: any) {
@@ -858,7 +920,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
         toast.error(
           downloading
             ? '转写模型正在下载中，请稍候再提交'
-            : '转写模型尚未下载，请先去「音频转写配置」页下载',
+            : '转写模型尚未下载，请先去「音频转写配置」页下载'
         )
         if (!downloading) navigate('/settings/transcriber')
         return
@@ -887,7 +949,6 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       >
         {/* 可滚动内容区 */}
         <div ref={scrollAreaRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-
           {/* ── Video source tabs ── */}
           <div>
             <div className="mb-3 flex border-b border-neutral-200">
@@ -901,8 +962,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 className={cn(
                   'px-4 pb-2 text-sm font-medium transition-colors',
                   !isLocal && !batchMode
-                    ? 'border-b-2 border-primary text-primary -mb-px'
-                    : 'text-neutral-500 hover:text-neutral-700',
+                    ? 'border-primary text-primary -mb-px border-b-2'
+                    : 'text-neutral-500 hover:text-neutral-700'
                 )}
               >
                 在线链接
@@ -917,8 +978,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 className={cn(
                   'px-4 pb-2 text-sm font-medium transition-colors',
                   isLocal && !batchMode
-                    ? 'border-b-2 border-primary text-primary -mb-px'
-                    : 'text-neutral-500 hover:text-neutral-700',
+                    ? 'border-primary text-primary -mb-px border-b-2'
+                    : 'text-neutral-500 hover:text-neutral-700'
                 )}
               >
                 本地文件
@@ -933,8 +994,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   className={cn(
                     'px-4 pb-2 text-sm font-medium transition-colors',
                     batchMode
-                      ? 'border-b-2 border-primary text-primary -mb-px'
-                      : 'text-neutral-500 hover:text-neutral-700',
+                      ? 'border-primary text-primary -mb-px border-b-2'
+                      : 'text-neutral-500 hover:text-neutral-700'
                   )}
                 >
                   批量模式
@@ -942,7 +1003,9 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
               )}
             </div>
 
-            {batchMode ? (
+            {batchMode && !isPro ? (
+              <BatchModeProPrompt />
+            ) : batchMode ? (
               /* Batch: channel/collection URL + manual multi-URL textarea + preview list */
               <div className="space-y-3">
                 <div>
@@ -975,7 +1038,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                     placeholder="https://... &#10;https://..."
                     value={batchUrlsText}
                     onChange={e => setBatchUrlsText(e.target.value)}
-                    className="min-h-20 shadow-none text-sm"
+                    className="min-h-20 text-sm shadow-none"
                   />
                   <div className="mt-1.5 flex justify-end">
                     <Button
@@ -985,7 +1048,11 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                       disabled={batchResolving || !batchUrlsText.trim()}
                       onClick={handleResolveManualUrls}
                     >
-                      {batchResolving ? <Loader2 className="h-4 w-4 animate-spin" /> : '添加到预览列表'}
+                      {batchResolving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        '添加到预览列表'
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -994,7 +1061,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   <div className="rounded-lg border border-neutral-200">
                     <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2">
                       <p className="text-xs text-neutral-500">
-                        预览列表（{batchPreview.filter(v => v.checked).length}/{batchPreview.length} 已选，最多 30 个）
+                        预览列表（{batchPreview.filter(v => v.checked).length}/{batchPreview.length}{' '}
+                        已选，最多 30 个）
                       </p>
                       <button
                         type="button"
@@ -1011,7 +1079,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                             type="checkbox"
                             checked={v.checked}
                             onChange={() => toggleBatchItem(v.video_url)}
-                            className="h-3.5 w-3.5 shrink-0 cursor-pointer accent-primary"
+                            className="accent-primary h-3.5 w-3.5 shrink-0 cursor-pointer"
                           />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs font-medium text-neutral-800">
@@ -1047,9 +1115,14 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                     <div
                       className={cn(
                         'hover:border-primary flex h-36 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-colors',
-                        uploadSuccess ? 'border-emerald-400 bg-emerald-50' : 'border-neutral-200 bg-neutral-50',
+                        uploadSuccess
+                          ? 'border-emerald-400 bg-emerald-50'
+                          : 'border-neutral-200 bg-neutral-50'
                       )}
-                      onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                      onDragOver={e => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
                       onDrop={e => {
                         e.preventDefault()
                         const file = e.dataTransfer.files?.[0]
@@ -1067,11 +1140,20 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                       }}
                     >
                       {isUploading ? (
-                        <><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="text-sm text-neutral-500">上传中…</p></>
+                        <>
+                          <Loader2 className="text-primary h-6 w-6 animate-spin" />
+                          <p className="text-sm text-neutral-500">上传中…</p>
+                        </>
                       ) : uploadSuccess ? (
-                        <><Check className="h-6 w-6 text-emerald-500" /><p className="text-sm text-emerald-600">上传成功</p></>
+                        <>
+                          <Check className="h-6 w-6 text-emerald-500" />
+                          <p className="text-sm text-emerald-600">上传成功</p>
+                        </>
                       ) : (
-                        <><Upload className="h-6 w-6 text-neutral-400" /><p className="text-sm text-neutral-500">拖拽或点击选择视频文件</p></>
+                        <>
+                          <Upload className="h-6 w-6 text-neutral-400" />
+                          <p className="text-sm text-neutral-500">拖拽或点击选择视频文件</p>
+                        </>
                       )}
                     </div>
                     <FormMessage />
@@ -1113,7 +1195,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
                     <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                     <p className="text-sm text-amber-700">
-                      <span className="font-medium">{platformDisabled}</span> 当前已暂停服务，请稍后再试或联系管理员
+                      <span className="font-medium">{platformDisabled}</span>{' '}
+                      当前已暂停服务，请稍后再试或联系管理员
                     </p>
                   </div>
                 )}
@@ -1123,7 +1206,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
 
           {/* ── 生成参数 section ── */}
           <div className="space-y-3">
-            <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">生成参数</p>
+            <p className="text-xs font-medium tracking-wide text-neutral-400 uppercase">生成参数</p>
 
             {/* AI 模型 */}
             <FormField
@@ -1133,7 +1216,12 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 <FormItem>
                   <label className="mb-1 block text-sm font-medium text-neutral-700">AI 模型</label>
                   {modelList.length === 0 ? (
-                    <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/settings/model')}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate('/settings/model')}
+                    >
                       请先添加模型
                     </Button>
                   ) : (
@@ -1145,7 +1233,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                           if (modelDropOpen) {
                             setModelDropOpen(false)
                           } else {
-                            if (modelTriggerRef.current) setModelDropRect(modelTriggerRef.current.getBoundingClientRect())
+                            if (modelTriggerRef.current)
+                              setModelDropRect(modelTriggerRef.current.getBoundingClientRect())
                             setModelDropOpen(true)
                           }
                         }}
@@ -1153,49 +1242,77 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                       >
                         {field.value ? (
                           <>
-                            <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-bold text-white', avatarColor(field.value))}>
-                              {modelInitial(field.value)}
+                            <ModelProviderLogo
+                              providerId={
+                                modelList.find(m => m.model_name === field.value)?.provider_id
+                              }
+                              modelName={field.value}
+                              providers={providers}
+                              size={24}
+                              className="rounded-lg"
+                            />
+                            <span className="flex-1 truncate text-left text-sm text-neutral-800">
+                              {field.value}
                             </span>
-                            <span className="flex-1 truncate text-left text-sm text-neutral-800">{field.value}</span>
                           </>
                         ) : (
                           <span className="text-sm text-neutral-400">请选择模型</span>
                         )}
-                        <ChevronDown className={cn('ml-auto h-4 w-4 shrink-0 text-neutral-400 transition-transform', modelDropOpen && 'rotate-180')} />
+                        <ChevronDown
+                          className={cn(
+                            'ml-auto h-4 w-4 shrink-0 text-neutral-400 transition-transform',
+                            modelDropOpen && 'rotate-180'
+                          )}
+                        />
                       </button>
 
-                      {modelDropOpen && modelDropRect && createPortal(
-                        <div
-                          id="model-drop-panel"
-                          data-dialog-ignore="true"
-                          style={{ position: 'fixed', top: modelDropRect.bottom + 4, left: modelDropRect.left, width: modelDropRect.width, zIndex: 9999, pointerEvents: 'auto' }}
-                          className="max-h-60 overflow-y-auto rounded-xl border border-neutral-200 bg-white shadow-lg"
-                        >
-                          {modelList.map(m => {
-                            const selected = field.value === m.model_name
-                            return (
-                              <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => { field.onChange(m.model_name); setModelDropOpen(false) }}
-                                className={cn(
-                                  'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-neutral-50',
-                                  selected && 'bg-primary/5',
-                                )}
-                              >
-                                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white', avatarColor(m.model_name))}>
-                                  {modelInitial(m.model_name)}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <span className="truncate text-sm font-medium text-neutral-800">{m.model_name}</span>
-                                </div>
-                                {selected && <Check className="ml-auto h-4 w-4 shrink-0 text-primary" />}
-                              </button>
-                            )
-                          })}
-                        </div>,
-                        document.body,
-                      )}
+                      {modelDropOpen &&
+                        modelDropRect &&
+                        createPortal(
+                          <div
+                            id="model-drop-panel"
+                            data-dialog-ignore="true"
+                            style={{
+                              position: 'fixed',
+                              top: modelDropRect.bottom + 4,
+                              left: modelDropRect.left,
+                              width: modelDropRect.width,
+                              zIndex: 9999,
+                              pointerEvents: 'auto',
+                            }}
+                            className="max-h-60 overflow-y-auto rounded-xl border border-neutral-200 bg-white shadow-lg"
+                          >
+                            {modelList.map(m => {
+                              const selected = field.value === m.model_name
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => {
+                                    field.onChange(m.model_name)
+                                    setModelDropOpen(false)
+                                  }}
+                                  className={cn(
+                                    'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-neutral-50',
+                                    selected && 'bg-primary/5'
+                                  )}
+                                >
+                                  <ModelOptionLabel
+                                    providerId={m.provider_id}
+                                    modelName={m.model_name}
+                                    providers={providers}
+                                    size={22}
+                                    className="flex-1 text-sm font-medium text-neutral-800"
+                                  />
+                                  {selected && (
+                                    <Check className="text-primary ml-auto h-4 w-4 shrink-0" />
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>,
+                          document.body
+                        )}
                     </div>
                   )}
                   <FormMessage />
@@ -1209,7 +1326,9 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
               name="style"
               render={({ field }) => (
                 <FormItem>
-                  <label className="mb-1 block text-sm font-medium text-neutral-700">笔记风格</label>
+                  <label className="mb-1 block text-sm font-medium text-neutral-700">
+                    笔记风格
+                  </label>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger className="w-full shadow-none">
@@ -1220,24 +1339,30 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                       {groupedStyles.system.length > 0 && (
                         <SelectGroup>
                           <SelectLabel>内置风格</SelectLabel>
-                          {groupedStyles.system.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>{s.name}</SelectItem>
+                          {groupedStyles.system.map(s => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.name}
+                            </SelectItem>
                           ))}
                         </SelectGroup>
                       )}
                       {groupedStyles.mine.length > 0 && (
                         <SelectGroup>
                           <SelectLabel>我的风格</SelectLabel>
-                          {groupedStyles.mine.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>{s.name}</SelectItem>
+                          {groupedStyles.mine.map(s => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.name}
+                            </SelectItem>
                           ))}
                         </SelectGroup>
                       )}
                       {groupedStyles.isPublic.length > 0 && (
                         <SelectGroup>
                           <SelectLabel>公开风格</SelectLabel>
-                          {groupedStyles.isPublic.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>{s.name}</SelectItem>
+                          {groupedStyles.isPublic.map(s => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.name}
+                            </SelectItem>
                           ))}
                         </SelectGroup>
                       )}
@@ -1267,13 +1392,15 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                     }}
                     className={cn(
                       'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
-                      field.value ? 'bg-primary' : 'bg-neutral-300',
+                      field.value ? 'bg-primary' : 'bg-neutral-300'
                     )}
                   >
-                    <span className={cn(
-                      'pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform duration-200',
-                      field.value ? 'translate-x-4' : 'translate-x-0.5',
-                    )} />
+                    <span
+                      className={cn(
+                        'pointer-events-none inline-block h-4 w-4 translate-y-0.5 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        field.value ? 'translate-x-4' : 'translate-x-0.5'
+                      )}
+                    />
                   </button>
                 </div>
 
@@ -1282,29 +1409,37 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   <div className="mt-3 space-y-3 rounded-lg bg-neutral-50 p-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-neutral-600">采样间隔（秒）</label>
+                        <label className="mb-1 block text-xs font-medium text-neutral-600">
+                          采样间隔（秒）
+                        </label>
                         <Input
                           type="number"
                           value={videoInterval ?? 6}
                           onChange={e => form.setValue('video_interval', +e.target.value)}
-                          className="h-8 shadow-none text-sm"
+                          className="h-8 text-sm shadow-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-neutral-600">拼图尺寸（列 × 行）</label>
+                        <label className="mb-1 block text-xs font-medium text-neutral-600">
+                          拼图尺寸（列 × 行）
+                        </label>
                         <div className="flex items-center gap-1.5">
                           <Input
                             type="number"
                             value={gridSize?.[0] ?? 2}
-                            onChange={e => form.setValue('grid_size', [+e.target.value, gridSize?.[1] ?? 2])}
-                            className="h-8 min-w-0 flex-1 shadow-none text-sm"
+                            onChange={e =>
+                              form.setValue('grid_size', [+e.target.value, gridSize?.[1] ?? 2])
+                            }
+                            className="h-8 min-w-0 flex-1 text-sm shadow-none"
                           />
                           <span className="shrink-0 text-xs text-neutral-400">×</span>
                           <Input
                             type="number"
                             value={gridSize?.[1] ?? 2}
-                            onChange={e => form.setValue('grid_size', [gridSize?.[0] ?? 2, +e.target.value])}
-                            className="h-8 min-w-0 flex-1 shadow-none text-sm"
+                            onChange={e =>
+                              form.setValue('grid_size', [gridSize?.[0] ?? 2, +e.target.value])
+                            }
+                            className="h-8 min-w-0 flex-1 text-sm shadow-none"
                           />
                         </div>
                       </div>
@@ -1356,14 +1491,21 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
           {/* ── 输出与归类 section ── */}
           {mode !== 'regenerate' && (
             <div className="space-y-3">
-              <p className="text-xs font-medium text-neutral-400 uppercase tracking-wide">输出与归类</p>
+              <p className="text-xs font-medium tracking-wide text-neutral-400 uppercase">
+                输出与归类
+              </p>
               <FormField
                 control={form.control}
                 name="collection_id"
                 render={({ field }) => (
                   <FormItem>
-                    <label className="mb-1 block text-sm font-medium text-neutral-700">存入合集（可选）</label>
-                    <Select value={field.value || '__none__'} onValueChange={v => field.onChange(v === '__none__' ? '' : v)}>
+                    <label className="mb-1 block text-sm font-medium text-neutral-700">
+                      存入合集（可选）
+                    </label>
+                    <Select
+                      value={field.value || '__none__'}
+                      onValueChange={v => field.onChange(v === '__none__' ? '' : v)}
+                    >
                       <FormControl>
                         <SelectTrigger className="w-full shadow-none">
                           <SelectValue placeholder="生成后自动归入该合集" />
@@ -1372,7 +1514,9 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                       <SelectContent>
                         <SelectItem value="__none__">不存入合集</SelectItem>
                         {collections.map(c => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1382,7 +1526,6 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
               />
             </div>
           )}
-
         </div>
 
         {/* 固定底部：成本预览 + 提交按钮 */}
@@ -1408,13 +1551,19 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   </span>
                 </div>
                 <div className="text-neutral-500">
-                  当前余额 <b className={costPreview.sufficient ? 'text-teal-600' : 'text-red-500'}>{userCredits}</b>
+                  当前余额{' '}
+                  <b className={costPreview.sufficient ? 'text-teal-600' : 'text-red-500'}>
+                    {userCredits}
+                  </b>
                 </div>
               </div>
               {!costPreview.sufficient && (
                 <div className="mt-1.5 flex items-center justify-between">
                   <span>电力不足，无法生成笔记</span>
-                  <RouterLink to="/upgrade" className="font-medium text-red-600 underline underline-offset-2">
+                  <RouterLink
+                    to="/upgrade"
+                    className="font-medium text-red-600 underline underline-offset-2"
+                  >
                     去充值 →
                   </RouterLink>
                 </div>
@@ -1422,25 +1571,31 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
             </div>
           )}
 
-            <Button
+          <Button
             type="submit"
             className="w-full"
             disabled={
               batchMode
-                ? batchSubmitting || batchPreview.filter(v => v.checked).length === 0
-                : generating || (costPreview !== null && !costPreview.sufficient) || !!platformDisabled
+                ? !isPro || batchSubmitting || batchPreview.filter(v => v.checked).length === 0
+                : generating ||
+                  (costPreview !== null && !costPreview.sufficient) ||
+                  !!platformDisabled
             }
           >
-            {(batchMode ? batchSubmitting : generating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {batchMode
-              ? batchSubmitting
-                ? '正在提交…'
-                : `批量生成 (${batchPreview.filter(v => v.checked).length})`
-              : generating
-              ? '正在生成…'
-              : costPreview
-              ? `消耗 ${costPreview.required} 电力生成笔记`
-              : '生成笔记'}
+            {(batchMode ? batchSubmitting : generating) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {batchMode && !isPro
+              ? '升级 Pro 使用批量模式'
+              : batchMode
+                ? batchSubmitting
+                  ? '正在提交…'
+                  : `批量生成 (${batchPreview.filter(v => v.checked).length})`
+                : generating
+                  ? '正在生成…'
+                  : costPreview
+                    ? `消耗 ${costPreview.required} 电力生成笔记`
+                    : '生成笔记'}
           </Button>
         </div>
       </form>

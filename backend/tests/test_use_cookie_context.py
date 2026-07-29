@@ -19,6 +19,8 @@ import os
 import sys
 import tempfile
 import unittest
+from contextlib import contextmanager
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
@@ -170,6 +172,28 @@ class TestUseCookieContext(unittest.TestCase):
         self.dao.increment_success.assert_not_called()
         self.dao.increment_failure.assert_not_called()
 
+    def test_use_cookie_excludes_failed_cookie_ids(self):
+        """同一任务内可排除已经失败过的 Cookie, 避免反复抽同一条."""
+        self.dao.list_available.return_value = [
+            {"id": 7, "platform": "bilibili", "name": "bad",
+             "cookie": "bad=1", "weight": 10000, "is_enabled": True,
+             "is_marked_invalid": False},
+            {"id": 8, "platform": "bilibili", "name": "next",
+             "cookie": "next=1", "weight": 1, "is_enabled": True,
+             "is_marked_invalid": False},
+        ]
+
+        from app.services.cookie_pool_manager import CookiePoolManager
+        pool = CookiePoolManager.instance()
+        with pool.use_cookie("bilibili", exclude_ids={7}) as ctx:
+            self.assertEqual(ctx.cookie_id, 8)
+            self.assertEqual(ctx.cookie_str, "next=1")
+            ctx.report_success()
+
+        self.dao.increment_in_use.assert_called_once_with(8)
+        self.dao.increment_success.assert_called_once_with(8)
+        self.dao.increment_failure.assert_not_called()
+
     def test_normal_exit_without_report_does_nothing(self):
         """正常退出但没 report — 保守不报 (既不成功也不失败, 避免误扣分)."""
         from app.services.cookie_pool_manager import CookiePoolManager
@@ -196,6 +220,7 @@ class TestDownloaderSetCookieMeta(unittest.TestCase):
         picked.name = "first"
         picked.platform = "bilibili"
         self.fake_pool.pick.return_value = picked
+        self.fake_pool.pick_round.side_effect = lambda *args, **kwargs: iter([picked])
 
         self._pool_patcher = patch(
             "app.services.cookie_pool_manager.CookiePoolManager.instance",
@@ -382,6 +407,101 @@ class TestNoteRetryWithCtx(unittest.TestCase):
                          f"first failure should target id=11, got {fail_calls[0][0][0]}")
         # 验证 increment_success 收到 id=22
         self.dao.increment_success.assert_called_once_with(22)
+
+    def test_download_media_retries_next_cookie_after_cookie_failure(self):
+        """note.py 中第一条 Cookie 失败后应继续切换下一条, 并记录失败."""
+        from app.models.audio_model import AudioDownloadResult
+        from app.services.note import NoteGenerator
+
+        failures = []
+        successes = []
+
+        class FakeCookieContext:
+            def __init__(self, cookie_id, name):
+                self.cookie_id = cookie_id
+                self.cookie_str = f"cookie={cookie_id}"
+                self.name = name
+                self.is_empty = False
+
+            def report_success(self):
+                successes.append(self.cookie_id)
+
+            def report_failure(self, error_msg=None):
+                failures.append((self.cookie_id, error_msg))
+
+            def suppress_auto_report(self):
+                pass
+
+        class FakePool:
+            def __init__(self):
+                self.calls = []
+                self.contexts = [
+                    FakeCookieContext(11, "A"),
+                    FakeCookieContext(22, "B"),
+                ]
+
+            def use_cookie(self, platform, *, tier=None, exclude_ids=None):
+                self.calls.append(set(exclude_ids or set()))
+                ctx = self.contexts[len(self.calls) - 1]
+
+                @contextmanager
+                def _cm():
+                    yield ctx
+
+                return _cm()
+
+            def is_platform_exhausted(self, platform):
+                return False
+
+        fake_pool = FakePool()
+        fake_downloader = MagicMock()
+        fake_downloader.set_cookie_meta = MagicMock()
+        fake_downloader.download.side_effect = [
+            RuntimeError("HTTP Error 412: Precondition Failed"),
+            AudioDownloadResult(
+                file_path="/tmp/test.mp3",
+                title="t",
+                duration=10,
+                cover_url="",
+                platform="bilibili",
+                video_id="BV1",
+                raw_info={},
+                video_path=None,
+            ),
+        ]
+
+        generator = NoteGenerator.__new__(NoteGenerator)
+        generator.user_id = 1
+        generator.video_path = None
+        generator.video_img_urls = []
+        generator._update_status = MagicMock()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            cache_file = Path(tmp) / "task123_audio.json"
+            with patch(
+                "app.services.cookie_pool_manager.CookiePoolManager.instance",
+                return_value=fake_pool,
+            ), patch("app.services.user_tier.get_user_tier", return_value="user"):
+                audio = generator._download_media(
+                    downloader=fake_downloader,
+                    video_url="https://www.bilibili.com/video/BV1xx",
+                    quality="fast",
+                    audio_cache_file=cache_file,
+                    status_phase=MagicMock(),
+                    platform="bilibili",
+                    output_path=tmp,
+                    screenshot=False,
+                    video_understanding=False,
+                    video_interval=6,
+                    grid_size=[],
+                )
+
+        self.assertEqual(audio.video_id, "BV1")
+        self.assertEqual(failures[0][0], 11)
+        self.assertIn("412", failures[0][1])
+        self.assertEqual(successes, [22])
+        self.assertEqual(fake_pool.calls, [set(), {11}])
+        self.assertEqual(fake_downloader.download.call_count, 2)
 
 
 if __name__ == "__main__":

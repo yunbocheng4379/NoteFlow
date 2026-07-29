@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Search } from 'lucide-react'
+import { Loader2, PlayCircle, Search, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   Dialog,
@@ -15,6 +15,35 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getTasks, type TaskSummary } from '@/services/task'
 import { addCollectionItems } from '@/services/collection'
+
+function NoteCover({ src, platform }: { src: string; platform: string }) {
+  const [failed, setFailed] = useState(false)
+  const baseURL = String(import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
+  const coverSrc =
+    src && platform !== 'local' ? `${baseURL}/image_proxy?url=${encodeURIComponent(src)}` : src
+
+  const fallback =
+    platform === 'merged' ? (
+      <Sparkles className="h-4 w-4 text-primary" />
+    ) : (
+      <PlayCircle className="h-4 w-4 text-neutral-300" />
+    )
+
+  return (
+    <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded bg-neutral-100">
+      {coverSrc && !failed ? (
+        <img
+          src={coverSrc}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        fallback
+      )}
+    </div>
+  )
+}
 
 interface AddNotesToCollectionDialogProps {
   collectionId: number | null
@@ -116,11 +145,7 @@ const AddNotesToCollectionDialog = ({
                     checked={selected.has(t.task_id)}
                     onChange={() => toggle(t.task_id)}
                   />
-                  {t.cover_url ? (
-                    <img src={t.cover_url} alt="" className="h-8 w-12 shrink-0 rounded object-cover" />
-                  ) : (
-                    <div className="h-8 w-12 shrink-0 rounded bg-neutral-100" />
-                  )}
+                  <NoteCover src={t.cover_url} platform={t.platform} />
                   <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">
                     {t.title || t.video_id}
                   </span>

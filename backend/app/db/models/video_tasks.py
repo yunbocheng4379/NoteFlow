@@ -22,3 +22,4 @@ class VideoTask(Base):
     completed_at = Column(DateTime, nullable=True, comment="任务完成时间（SUCCESS 或 FAILED 时写入）")
     created_at = Column(DateTime, server_default=func.now(), comment="任务创建时间")
     batch_id = Column(String(64), nullable=True, index=True, comment="批量任务分组 ID；由 /generate_notes_batch 统一生成，单个任务为 NULL")
+    custom_title = Column(String(200), nullable=True, comment="用户手动设置的笔记标题；非空时覆盖自动提取的视频标题")
