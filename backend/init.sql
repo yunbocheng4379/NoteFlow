@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS `models` (
   `model_name` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '模型名称，如 gpt-4o、deepseek-chat，直接传给 API 的 model 参数',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `tier` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
+  `supports_reasoning` tinyint NOT NULL DEFAULT '0' COMMENT '是否原生支持深度思考(reasoning)：1=支持，0=不支持',
   PRIMARY KEY (`id`),
   KEY `ix_models_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
