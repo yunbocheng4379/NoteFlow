@@ -74,7 +74,7 @@ def get_index_coverage(user_id: int) -> dict:
             indexed += 1
             continue
 
-        if status is None:
+        if status is None or status == "failed":
             set_index_status(task_id, "indexing")
             backfill_ids.append(task_id)
 

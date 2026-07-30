@@ -77,6 +77,23 @@ def test_get_index_coverage_backfills_missing_vector_index():
     start_backfill.assert_called_once_with(["task-a"])
 
 
+def test_get_index_coverage_retries_failed_vector_index():
+    fake_store = MagicMock()
+    fake_store.is_indexed.return_value = False
+
+    with patch("app.services.knowledge_base_service.get_task_ids_by_user", return_value=["task-a"]), \
+            patch("app.services.knowledge_base_service.get_index_statuses", return_value={"task-a": "failed"}), \
+            patch("app.services.knowledge_base_service.VectorStoreManager", return_value=fake_store), \
+            patch("app.services.knowledge_base_service.set_index_status") as set_status, \
+            patch("app.services.knowledge_base_service._start_backfill") as start_backfill:
+        coverage = get_index_coverage(user_id=1)
+
+    assert coverage == {"total": 1, "indexed": 0}
+    fake_store.is_indexed.assert_called_once_with("task-a")
+    set_status.assert_called_once_with("task-a", "indexing")
+    start_backfill.assert_called_once_with(["task-a"])
+
+
 def test_get_indexed_task_ids_scopes_to_requested_subset():
     """传入 note_task_ids 时只返回该子集内已索引的部分，且过滤掉不属于该用户的 task_id。"""
     user_id = 999014

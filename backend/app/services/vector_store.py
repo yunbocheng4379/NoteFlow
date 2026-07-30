@@ -1,4 +1,6 @@
 import json
+import hashlib
+import math
 import os
 import re
 from typing import Optional
@@ -12,6 +14,56 @@ logger = get_logger(__name__)
 
 NOTE_OUTPUT_DIR = os.getenv("NOTE_OUTPUT_DIR", "note_results")
 VECTOR_DB_DIR = os.getenv("VECTOR_DB_DIR", "vector_db")
+VECTOR_EMBEDDING_DIM = int(os.getenv("VECTOR_EMBEDDING_DIM", "384"))
+
+
+def _tokenize_for_embedding(text: str) -> list[str]:
+    """面向中英文笔记的轻量分词，避免依赖线上运行时模型下载。"""
+    text = (text or "").lower()
+    tokens = re.findall(r"[a-z0-9_]+", text)
+
+    cjk_chars = re.findall(r"[\u4e00-\u9fff]", text)
+    tokens.extend(cjk_chars)
+    for size in (2, 3):
+        tokens.extend(
+            "".join(cjk_chars[i:i + size])
+            for i in range(0, max(len(cjk_chars) - size + 1, 0))
+        )
+
+    compact = re.sub(r"\s+", "", text)
+    compact = re.sub(r"[^\w\u4e00-\u9fff]+", "", compact)
+    for size in (2, 3, 4):
+        if len(compact) >= size:
+            tokens.extend(compact[i:i + size] for i in range(len(compact) - size + 1))
+
+    return [t for t in tokens if t]
+
+
+class LocalHashEmbeddingFunction:
+    """无外部模型依赖的确定性 embedding，避免 Chroma 默认 ONNX 模型在线上下载失败。
+
+    Chroma 会校验 ``__call__`` 的参数名，必须保持为 ``input``。
+    """
+
+    def __init__(self, dimensions: int = VECTOR_EMBEDDING_DIM):
+        self.dimensions = max(int(dimensions), 32)
+
+    def __call__(self, input):  # noqa: A002 - Chroma requires this parameter name.
+        embeddings = []
+        for text in input:
+            vector = [0.0] * self.dimensions
+            for token in _tokenize_for_embedding(str(text)):
+                digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+                value = int.from_bytes(digest, "big")
+                index = value % self.dimensions
+                sign = 1.0 if (value >> 8) & 1 else -1.0
+                vector[index] += sign
+
+            norm = math.sqrt(sum(v * v for v in vector))
+            if norm:
+                vector = [v / norm for v in vector]
+            embeddings.append(vector)
+        return embeddings
 
 
 def _chunk_markdown(markdown: str) -> list[dict]:
@@ -106,6 +158,7 @@ class VectorStoreManager:
 
     def __init__(self):
         os.makedirs(VECTOR_DB_DIR, exist_ok=True)
+        self._embedding_function = LocalHashEmbeddingFunction()
         self._client = chromadb.PersistentClient(
             path=VECTOR_DB_DIR,
             settings=Settings(anonymized_telemetry=False),
@@ -151,6 +204,7 @@ class VectorStoreManager:
         collection = self._client.create_collection(
             name=col_name,
             metadata={"hnsw:space": "cosine"},
+            embedding_function=self._embedding_function,
         )
 
         documents = [c["text"] for c in all_chunks]
@@ -180,7 +234,10 @@ class VectorStoreManager:
         """
         col_name = self._collection_name(task_id)
         try:
-            collection = self._client.get_collection(col_name)
+            collection = self._client.get_collection(
+                col_name,
+                embedding_function=self._embedding_function,
+            )
         except Exception:
             logger.warning(f"Collection 不存在: {col_name}")
             return []
@@ -213,7 +270,10 @@ class VectorStoreManager:
         for task_id in task_ids:
             col_name = self._collection_name(task_id)
             try:
-                collection = self._client.get_collection(col_name)
+                collection = self._client.get_collection(
+                    col_name,
+                    embedding_function=self._embedding_function,
+                )
             except Exception:
                 continue
 
@@ -242,7 +302,10 @@ class VectorStoreManager:
         """检查指定任务是否已建立完整索引（含 meta 信息）。"""
         col_name = self._collection_name(task_id)
         try:
-            col = self._client.get_collection(col_name)
+            col = self._client.get_collection(
+                col_name,
+                embedding_function=self._embedding_function,
+            )
             if col.count() == 0:
                 return False
             # 检查是否包含 meta chunk，旧索引可能缺失
