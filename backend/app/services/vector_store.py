@@ -43,6 +43,8 @@ class LocalHashEmbeddingFunction:
     """无外部模型依赖的确定性 embedding，避免 Chroma 默认 ONNX 模型在线上下载失败。
 
     Chroma 会校验 ``__call__`` 的参数名，必须保持为 ``input``。
+    不同 Chroma 版本在查询阶段可能调用 ``embed_query``，在写入阶段可能调用
+    ``embed_documents``，所以这里同时兼容两套接口。
     """
 
     def __init__(self, dimensions: int = VECTOR_EMBEDDING_DIM):
@@ -50,6 +52,12 @@ class LocalHashEmbeddingFunction:
 
     def name(self) -> str:
         return "noteflow-local-hash-v1"
+
+    def embed_documents(self, input):  # noqa: A002 - Chroma may pass this keyword.
+        return self(input)
+
+    def embed_query(self, input):  # noqa: A002 - Chroma may pass this keyword.
+        return self(input)
 
     def __call__(self, input):  # noqa: A002 - Chroma requires this parameter name.
         embeddings = []
