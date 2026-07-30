@@ -114,10 +114,13 @@ def get_task_ids_by_batch_id(batch_id: str, user_id: Optional[int] = None) -> li
         db.close()
 
 
-def get_task_ids_by_user(user_id: int) -> list:
+def get_task_ids_by_user(user_id: int, status: Optional[str] = None) -> list:
     db = next(get_db())
     try:
-        rows = db.query(VideoTask).filter_by(user_id=user_id).order_by(VideoTask.created_at.desc()).all()
+        query = db.query(VideoTask).filter_by(user_id=user_id)
+        if status is not None:
+            query = query.filter(VideoTask.status == status)
+        rows = query.order_by(VideoTask.created_at.desc()).all()
         return [t.task_id for t in rows]
     except Exception as e:
         logger.error(f"Failed to get task ids by user: {e}")

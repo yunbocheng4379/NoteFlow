@@ -55,7 +55,7 @@ def _start_backfill(task_ids: list[str]) -> None:
 
 def get_index_coverage(user_id: int) -> dict:
     """返回当前用户笔记的索引覆盖情况，并自愈缺失的索引状态。"""
-    task_ids = get_task_ids_by_user(user_id)
+    task_ids = get_task_ids_by_user(user_id, status="SUCCESS")
     if not task_ids:
         return {"total": 0, "indexed": 0}
     statuses = get_index_statuses(task_ids)
@@ -88,7 +88,7 @@ def _get_indexed_task_ids(user_id: int, task_ids: Optional[list[str]] = None) ->
     :param task_ids: 若传入，限定在该笔记子集内检索（与用户名下笔记取交集，防止越权）；
                       否则默认使用该用户全部笔记。
     """
-    owned_ids = get_task_ids_by_user(user_id)
+    owned_ids = get_task_ids_by_user(user_id, status="SUCCESS")
     if not owned_ids:
         return []
 

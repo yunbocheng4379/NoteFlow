@@ -30,8 +30,8 @@ def test_get_index_coverage_counts_indexed_subset():
     video_id_b = f"video-{uuid.uuid4().hex[:8]}"
     task_a = f"test-{uuid.uuid4().hex[:8]}"
     task_b = f"test-{uuid.uuid4().hex[:8]}"
-    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id)
-    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id)
+    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id, status="SUCCESS")
+    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id, status="SUCCESS")
     set_status(task_a, "indexed")
     set_status(task_b, "failed")
 
@@ -41,6 +41,37 @@ def test_get_index_coverage_counts_indexed_subset():
     finally:
         delete_task_by_video(video_id_a, "bilibili", user_id=user_id)
         delete_task_by_video(video_id_b, "bilibili", user_id=user_id)
+
+
+def test_get_index_coverage_ignores_failed_video_tasks():
+    user_id = 999016
+    success_video_id = f"video-{uuid.uuid4().hex[:8]}"
+    failed_video_id = f"video-{uuid.uuid4().hex[:8]}"
+    success_task = f"test-{uuid.uuid4().hex[:8]}"
+    failed_task = f"test-{uuid.uuid4().hex[:8]}"
+    insert_video_task(
+        video_id=success_video_id,
+        platform="bilibili",
+        task_id=success_task,
+        user_id=user_id,
+        status="SUCCESS",
+    )
+    insert_video_task(
+        video_id=failed_video_id,
+        platform="bilibili",
+        task_id=failed_task,
+        user_id=user_id,
+        status="FAILED",
+    )
+    set_status(success_task, "indexed")
+    set_status(failed_task, "failed")
+
+    try:
+        coverage = get_index_coverage(user_id)
+        assert coverage == {"total": 1, "indexed": 1}
+    finally:
+        delete_task_by_video(success_video_id, "bilibili", user_id=user_id)
+        delete_task_by_video(failed_video_id, "bilibili", user_id=user_id)
 
 
 def test_get_index_coverage_repairs_missing_status_when_vector_exists():
@@ -101,8 +132,8 @@ def test_get_indexed_task_ids_scopes_to_requested_subset():
     video_id_b = f"video-{uuid.uuid4().hex[:8]}"
     task_a = f"test-{uuid.uuid4().hex[:8]}"
     task_b = f"test-{uuid.uuid4().hex[:8]}"
-    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id)
-    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id)
+    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id, status="SUCCESS")
+    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id, status="SUCCESS")
     set_status(task_a, "indexed")
     set_status(task_b, "indexed")
 
@@ -366,8 +397,8 @@ def test_ask_stream_note_task_ids_scopes_retrieval():
     video_id_b = f"video-{uuid.uuid4().hex[:8]}"
     task_a = f"test-{uuid.uuid4().hex[:8]}"
     task_b = f"test-{uuid.uuid4().hex[:8]}"
-    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id)
-    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id)
+    insert_video_task(video_id=video_id_a, platform="bilibili", task_id=task_a, user_id=user_id, status="SUCCESS")
+    insert_video_task(video_id=video_id_b, platform="bilibili", task_id=task_b, user_id=user_id, status="SUCCESS")
     set_status(task_a, "indexed")
     set_status(task_b, "indexed")
 
