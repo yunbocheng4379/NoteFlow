@@ -48,6 +48,9 @@ class LocalHashEmbeddingFunction:
     def __init__(self, dimensions: int = VECTOR_EMBEDDING_DIM):
         self.dimensions = max(int(dimensions), 32)
 
+    def name(self) -> str:
+        return "noteflow-local-hash-v1"
+
     def __call__(self, input):  # noqa: A002 - Chroma requires this parameter name.
         embeddings = []
         for text in input:
