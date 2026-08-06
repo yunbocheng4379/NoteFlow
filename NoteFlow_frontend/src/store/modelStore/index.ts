@@ -25,6 +25,7 @@ interface IModelListItem {
   model_name: string
   tier?: 'normal' | 'pro'
   supports_reasoning?: boolean
+  supports_vision?: boolean
   created_at?: string
 }
 
@@ -42,6 +43,7 @@ interface ModelStore {
     modelId: string,
     tier?: 'normal' | 'pro',
     supportsReasoning?: boolean,
+    supportsVision?: boolean,
   ) => Promise<void>
   deleteModel: (modelId: number) => Promise<void>
   updateModelTier: (modelId: number, tier: 'normal' | 'pro') => Promise<boolean>
@@ -113,9 +115,16 @@ export const useModelStore = create<ModelStore>()(
       modelId: string,
       tier: 'normal' | 'pro' = 'normal',
       supportsReasoning = false,
+      supportsVision = false,
     ) => {
       await addModel(
-        { provider_id: providerId, model_name: modelId, tier, supports_reasoning: supportsReasoning },
+        {
+          provider_id: providerId,
+          model_name: modelId,
+          tier,
+          supports_reasoning: supportsReasoning,
+          supports_vision: supportsVision,
+        },
         { silent: true },
       )
       // “选择模型”下拉列表里的 models 来自供应商原始模型列表（fetchModels），本身已经包含这条模型，

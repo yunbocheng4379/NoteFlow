@@ -3,7 +3,7 @@
 -- 或在 Docker 中：docker exec -i noteflow-mysql mysql -uroot -p$MYSQL_ROOT_PASSWORD noteflow < init.sql
 --
 -- 本文件为一次性建表脚本，面向全新 (空库) 部署；不是幂等迁移脚本。
--- 覆盖当前线上/本地实际存在的全部 19 张表 (以本地库结构为准，已核对 SQLAlchemy 模型)，
+-- 覆盖当前线上/本地实际存在的全部 28 张表 (以本地库结构为准，已核对 SQLAlchemy 模型)，
 -- 并统一所有表的 collation 为 utf8mb4_unicode_ci (原 7 张计费相关表曾因 billing_init.sql
 -- 未显式声明 COLLATE 而被 MySQL 8 默认落到 utf8mb4_0900_ai_ci，此处已统一修正)。
 --
@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS `models` (
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `tier` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'normal',
   `supports_reasoning` tinyint NOT NULL DEFAULT '0' COMMENT '是否原生支持深度思考(reasoning)：1=支持，0=不支持',
+  `supports_vision` tinyint NOT NULL DEFAULT '0' COMMENT '是否支持视觉/多模态输入(vision)：1=支持，0=不支持',
   PRIMARY KEY (`id`),
   KEY `ix_models_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -308,6 +309,40 @@ CREATE TABLE IF NOT EXISTS `update_logs` (
   KEY `ix_update_logs_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='更新日志: pending=未通知 (仅管理员可见), active=通知中 (顶部横幅 + 用户页), ended=已结束 (仅用户页)';
 
+CREATE TABLE IF NOT EXISTS `kb_conversations` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '会话 ID，主键，自增',
+  `user_id` int NOT NULL COMMENT '所属用户 ID',
+  `title` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '会话标题，首次提问后取问题前 30 字自动生成',
+  `provider_id` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '该会话最近使用的供应商 ID，用于下次打开默认选中',
+  `model_name` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '该会话最近使用的模型名',
+  `is_pinned` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否置顶，置顶会话在列表最上方',
+  `is_unread` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否标记为未读，仅前端展示提醒用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近一次问答时间，用于会话列表排序',
+  PRIMARY KEY (`id`),
+  KEY `ix_kb_conversations_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kb_messages` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '消息 ID，主键，自增',
+  `conversation_id` int NOT NULL COMMENT '所属会话 ID',
+  `role` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '角色：user / assistant',
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '最终答案正文（不含思考过程），或用户提问内容',
+  `reasoning_content` text COLLATE utf8mb4_unicode_ci COMMENT '深度思考过程内容，仅 assistant 且开启深度思考时有值',
+  `sources` text COLLATE utf8mb4_unicode_ci COMMENT 'JSON 字符串，引用的跨笔记片段列表（含 task_id、笔记标题、片段文本）',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间，决定消息在会话内的顺序',
+  PRIMARY KEY (`id`),
+  KEY `ix_kb_messages_conversation_id` (`conversation_id`),
+  CONSTRAINT `kb_messages_ibfk_1` FOREIGN KEY (`conversation_id`) REFERENCES `kb_conversations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `kb_index_status` (
+  `task_id` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '对应 video_tasks.task_id',
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '索引状态：indexing / indexed / failed',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近状态变更时间',
+  PRIMARY KEY (`task_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `credit_pricing` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键',
   `model_name` varchar(128) NOT NULL COMMENT '模型名称, 与 VideoTask.model_name 一致; __default__ 为兜底',
@@ -321,6 +356,19 @@ CREATE TABLE IF NOT EXISTS `credit_pricing` (
   UNIQUE KEY `model_name` (`model_name`),
   KEY `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='模型计费率配置表 (按分钟单价)';
+
+CREATE TABLE IF NOT EXISTS `credit_format_pricing` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `format_key` varchar(64) NOT NULL COMMENT '格式标识: toc/link/screenshot/summary, 与前端 note_formats.value 一致',
+  `rate_per_minute` int NOT NULL DEFAULT '0' COMMENT '每分钟消耗电力数 (整数)',
+  `is_active` tinyint NOT NULL DEFAULT '1' COMMENT '是否启用: 1=启用, 0=停用',
+  `description` varchar(255) DEFAULT NULL COMMENT '描述, 展示用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `format_key` (`format_key`),
+  KEY `idx_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='笔记格式计费率配置表 (按分钟单价, 与模型费率叠加)';
 
 CREATE TABLE IF NOT EXISTS `recharge_packages` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -458,16 +506,16 @@ CREATE TABLE IF NOT EXISTS `referral_rewards` (
 -- Seed 数据
 -- ============================================================================
 
--- 模型计费率
+-- 模型计费率 (只播种兜底行, 具体模型费率由管理员在「电力规则」页面按需添加)
 INSERT INTO credit_pricing (model_name, rate_per_minute, is_active, is_default, description) VALUES
-  ('gpt-4o',          5,  1, 0, 'OpenAI GPT-4o'),
-  ('gpt-4o-mini',     1,  1, 0, 'OpenAI GPT-4o mini'),
-  ('claude-opus',     10, 1, 0, 'Anthropic Claude Opus (顶级模型)'),
-  ('claude-sonnet',   5,  1, 0, 'Anthropic Claude Sonnet'),
-  ('claude-haiku',    1,  1, 0, 'Anthropic Claude Haiku'),
-  ('deepseek-v3',     1,  1, 0, 'DeepSeek V3'),
-  ('gemini-2.0-pro',  5,  1, 0, 'Google Gemini 2.0 Pro'),
   ('__default__',     3,  1, 1, '未匹配模型时的兜底单价');
+
+-- 笔记格式计费率 (初始建议值, 管理员可在后台调整; 未配置的格式按 0 计)
+INSERT INTO credit_format_pricing (format_key, rate_per_minute, is_active, description) VALUES
+  ('toc',        1, 1, '目录 (成本低, 仅解析标题生成锚点)'),
+  ('link',       1, 1, '原片跳转 (成本低, 仅插入时间戳文本)'),
+  ('screenshot', 3, 1, '原片截图 (成本高, 需抽帧+视觉模型分析)'),
+  ('summary',    1, 1, 'AI总结 (成本低, 仅多生成一段总结文字)');
 
 -- 充值套餐 (与截图严格对齐)
 INSERT INTO recharge_packages (code, name, price_cents, credits, unit_price_text, sort_order, badge, is_active, description) VALUES

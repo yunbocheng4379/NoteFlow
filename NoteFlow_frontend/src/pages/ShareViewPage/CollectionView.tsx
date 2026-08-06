@@ -4,11 +4,21 @@ import ReactMarkdown from 'react-markdown'
 import gfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
+import 'github-markdown-css/github-markdown-light.css'
 import { ChevronDown, ChevronRight, Eye, Folder, Loader2 } from 'lucide-react'
-import { getSharedCollection, type SharedCollection } from '@/services/share.ts'
+import toast from 'react-hot-toast'
+import {
+  exportSharedCollectionNote,
+  getSharedCollection,
+  type SharedCollection,
+  type ShareExportFormat,
+} from '@/services/share.ts'
+import { ExportMenu } from '@/pages/ShareViewPage/ExportMenu'
 
-function NoteEntry({ note }: { note: SharedCollection['notes'][number] }) {
+function NoteEntry({ note, token }: { note: SharedCollection['notes'][number]; token: string }) {
   const [expanded, setExpanded] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const audioMeta = note.note.audio_meta || {}
   const markdownContent = Array.isArray(note.note.markdown)
     ? note.note.markdown.map((m: any) => m.content ?? '').join('\n\n---\n\n')
@@ -30,10 +40,34 @@ function NoteEntry({ note }: { note: SharedCollection['notes'][number] }) {
         )}
       </button>
       {expanded && (
-        <div className="prose prose-neutral max-w-none border-t border-neutral-100 px-5 py-5">
-          <ReactMarkdown remarkPlugins={[gfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
-            {markdownContent}
-          </ReactMarkdown>
+        <div className="border-t border-neutral-100 px-5 py-5">
+          <div className="mb-3 flex justify-end">
+            <ExportMenu
+              size="xs"
+              label="导出此篇"
+              loading={exporting}
+              onSelect={async (format: ShareExportFormat) => {
+                setExporting(true)
+                try {
+                  await exportSharedCollectionNote(
+                    token,
+                    note.task_id,
+                    format,
+                    audioMeta.title || note.task_id,
+                  )
+                } catch {
+                  toast.error('导出失败，请稍后重试')
+                } finally {
+                  setExporting(false)
+                }
+              }}
+            />
+          </div>
+          <div className="markdown-body !bg-transparent !text-inherit">
+            <ReactMarkdown remarkPlugins={[gfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+              {markdownContent}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
@@ -72,7 +106,7 @@ export default function CollectionShareViewPage() {
   const { collection, notes, view_count } = data
 
   return (
-    <div className="mx-auto min-h-screen max-w-3xl px-4 py-10">
+    <div className="mx-auto h-screen max-w-4xl overflow-y-auto px-4 py-10">
       <div className="mb-8 flex items-start gap-4">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-200 bg-neutral-50">
           {collection.cover_url ? (
@@ -98,7 +132,7 @@ export default function CollectionShareViewPage() {
 
       <div className="space-y-3">
         {notes.map((note) => (
-          <NoteEntry key={note.task_id} note={note} />
+          <NoteEntry key={note.task_id} note={note} token={token!} />
         ))}
       </div>
 

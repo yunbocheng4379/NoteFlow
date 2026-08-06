@@ -7,6 +7,7 @@ import {
   Bell,
   Cookie,
   Megaphone,
+  Zap,
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
 import { useUserStore } from '@/store/userStore'
@@ -60,6 +61,12 @@ const Menu = () => {
             name: '系统通知',
             icon: <Bell />,
             path: '/settings/notifications',
+          },
+          {
+            id: 'pricing',
+            name: '电力规则',
+            icon: <Zap />,
+            path: '/settings/pricing',
           },
           {
             id: 'update-logs-admin',

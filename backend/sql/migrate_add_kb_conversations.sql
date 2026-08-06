@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS kb_conversations (
   title         VARCHAR(200) NULL                                    COMMENT '会话标题，首次提问后取问题前 30 字自动生成',
   provider_id   VARCHAR(64)  NULL                                    COMMENT '该会话最近使用的供应商 ID',
   model_name    VARCHAR(128) NULL                                    COMMENT '该会话最近使用的模型名',
+  is_pinned     TINYINT(1)   NOT NULL DEFAULT 0                      COMMENT '是否置顶，置顶会话在列表最上方',
+  is_unread     TINYINT(1)   NOT NULL DEFAULT 0                      COMMENT '是否手动标记为未读，仅前端红点提示',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP       COMMENT '创建时间',
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近一次问答时间，用于会话列表排序',
   PRIMARY KEY (id),

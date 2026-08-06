@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy import Boolean, Column, Integer, String, Text, DateTime, ForeignKey, func
 
 from app.db.engine import Base
 
@@ -12,6 +12,8 @@ class KbConversation(Base):
     title = Column(String(200), nullable=True, comment="会话标题，首次提问后取问题前 30 字自动生成")
     provider_id = Column(String(64), nullable=True, comment="该会话最近使用的供应商 ID，用于下次打开默认选中")
     model_name = Column(String(128), nullable=True, comment="该会话最近使用的模型名")
+    is_pinned = Column(Boolean, nullable=False, server_default="0", default=False, comment="是否置顶，置顶会话在列表最上方")
+    is_unread = Column(Boolean, nullable=False, server_default="0", default=False, comment="是否标记为未读，仅前端展示提醒用")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="最近一次问答时间，用于会话列表排序")
 

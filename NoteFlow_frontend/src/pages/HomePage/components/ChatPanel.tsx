@@ -361,6 +361,9 @@ export default function ChatPanel({ taskId, mode, onModeChange }: ChatPanelProps
           loading={loading}
           placeholder="输入你的问题..."
         />
+        <p className="mt-1.5 text-center text-[11px] text-neutral-400">
+          每次提问将按所选模型价格消耗一定电力
+        </p>
       </div>
     </div>
   )

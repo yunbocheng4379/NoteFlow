@@ -154,6 +154,10 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
           </div>
         </div>
 
+        <p className="mt-2 text-xs text-neutral-400">
+          生成闪记卡会调用 AI 模型，按所选模型价格消耗电力，失败将自动退回。
+        </p>
+
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             取消

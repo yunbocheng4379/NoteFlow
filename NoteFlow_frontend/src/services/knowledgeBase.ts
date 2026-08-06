@@ -5,6 +5,8 @@ export interface KbConversation {
   title: string | null
   provider_id: string | null
   model_name: string | null
+  is_pinned?: boolean
+  is_unread?: boolean
   created_at: string
   updated_at: string
 }
@@ -43,6 +45,13 @@ export const getConversationMessages = async (conversationId: number): Promise<K
 
 export const deleteConversation = async (conversationId: number): Promise<void> => {
   return await request.delete(`/kb/conversations/${conversationId}`)
+}
+
+export const updateConversation = async (
+  conversationId: number,
+  patch: { title?: string; is_pinned?: boolean; is_unread?: boolean }
+): Promise<KbConversation> => {
+  return await request.patch(`/kb/conversations/${conversationId}`, patch)
 }
 
 export const getKbIndexStatus = async (): Promise<KbIndexCoverage> => {

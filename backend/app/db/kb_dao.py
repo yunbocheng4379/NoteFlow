@@ -15,6 +15,8 @@ def _conversation_to_dict(c: KbConversation) -> dict:
         "title": c.title,
         "provider_id": c.provider_id,
         "model_name": c.model_name,
+        "is_pinned": bool(getattr(c, "is_pinned", False)),
+        "is_unread": bool(getattr(c, "is_unread", False)),
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
     }
@@ -53,7 +55,7 @@ def list_conversations(user_id: int) -> List[dict]:
         rows = (
             db.query(KbConversation)
             .filter_by(user_id=user_id)
-            .order_by(KbConversation.updated_at.desc())
+            .order_by(KbConversation.is_pinned.desc(), KbConversation.updated_at.desc())
             .all()
         )
         return [_conversation_to_dict(c) for c in rows]
@@ -116,6 +118,37 @@ def update_conversation_meta(
     except Exception as e:
         db.rollback()
         logger.error(f"update_conversation_meta failed: conversation_id={conversation_id}, {e}")
+    finally:
+        db.close()
+
+
+def patch_conversation(
+    conversation_id: int,
+    user_id: int,
+    *,
+    title: Optional[str] = None,
+    is_pinned: Optional[bool] = None,
+    is_unread: Optional[bool] = None,
+) -> Optional[dict]:
+    """按用户身份幂等地更新会话可编辑属性；返回最新会话 dict 或 None（未找到/无权访问）。"""
+    db = next(get_db())
+    try:
+        c = db.query(KbConversation).filter_by(id=conversation_id, user_id=user_id).first()
+        if not c:
+            return None
+        if title is not None:
+            c.title = title
+        if is_pinned is not None:
+            c.is_pinned = bool(is_pinned)
+        if is_unread is not None:
+            c.is_unread = bool(is_unread)
+        db.commit()
+        db.refresh(c)
+        return _conversation_to_dict(c)
+    except Exception as e:
+        db.rollback()
+        logger.error(f"patch_conversation failed: conversation_id={conversation_id}, {e}")
+        return None
     finally:
         db.close()
 

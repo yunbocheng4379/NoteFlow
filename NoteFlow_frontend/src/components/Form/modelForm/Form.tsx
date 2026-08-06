@@ -61,6 +61,7 @@ interface IEnabledModel {
   model_name: string
   tier?: 'normal' | 'pro'
   supports_reasoning?: boolean
+  supports_vision?: boolean
 }
 const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
   let { id } = useParams()
@@ -362,6 +363,18 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
                         title="仅展示，如需修改请通过上方「保存模型」重新添加"
                       >
                         {model.supports_reasoning ? '支持思考' : '不支持思考'}
+                      </span>
+                    )}
+                    {isAdmin && (
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                          model.supports_vision
+                            ? 'bg-sky-200 text-sky-700'
+                            : 'bg-neutral-200 text-neutral-600'
+                        }`}
+                        title="仅展示，如需修改请通过上方「保存模型」重新添加"
+                      >
+                        {model.supports_vision ? '支持视觉' : '不支持视觉'}
                       </span>
                     )}
                     {!isAdmin && isPro && (

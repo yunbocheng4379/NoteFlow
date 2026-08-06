@@ -75,6 +75,8 @@ class PricingPreviewReq(BaseModel):
     model_name: Optional[str] = None
     duration_sec: Optional[float] = None
     # 前端如果只有 url 没 duration, 由前端先调 /api/video_info 拿到再传过来
+    formats: Optional[list[str]] = None
+    # 用户勾选的笔记格式 (toc/link/screenshot/summary), 会叠加到模型费率上
 
 
 @router.post("/pricing/preview")
@@ -86,14 +88,22 @@ def pricing_preview(
     """
     预览生成一份笔记所需电力.
     duration_sec 由前端提前调 /api/video_info 拿到 (真实计费在 generate_note 里后端独立再算一次).
+    formats 是用户当前勾选的笔记格式列表, 每个启用格式的每分钟单价会叠加到模型费率之上.
     """
-    rate = pricing.get_model_rate(db, body.model_name or "")
-    required = pricing.calculate_required_credits(db, body.model_name, body.duration_sec or 0)
+    model_rate = pricing.get_model_rate(db, body.model_name or "")
+    fmt_rate_map = pricing.get_format_rate_map(db, body.formats)
+    fmt_rate_sum = sum(fmt_rate_map.values())
+    required = pricing.calculate_required_credits(
+        db, body.model_name, body.duration_sec or 0, body.formats
+    )
     balance = int((db.get(User, current_user.id).credits) or 0)
     return R.success({
         "model_name": body.model_name,
         "duration_sec": body.duration_sec,
-        "model_rate_per_minute": rate,
+        "model_rate_per_minute": model_rate,
+        "format_rate_per_minute": fmt_rate_sum,
+        "format_rate_breakdown": fmt_rate_map,
+        "total_rate_per_minute": model_rate + fmt_rate_sum,
         "required_credits": required,
         "current_balance": balance,
         "sufficient": balance >= required,

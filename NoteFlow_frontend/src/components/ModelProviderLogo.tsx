@@ -1,3 +1,4 @@
+import type React from 'react'
 import Anthropic from '@lobehub/icons/es/Anthropic'
 import Azure from '@lobehub/icons/es/Azure'
 import AzureAI from '@lobehub/icons/es/AzureAI'
@@ -85,7 +86,14 @@ export function ModelProviderLogo({
   className?: string
 }) {
   const logoName = getModelProviderLogoName(providerId, modelName, providers)
-  const Icon = LOGO_MAP[logoName as keyof typeof LOGO_MAP]
+  const Icon = LOGO_MAP[logoName as keyof typeof LOGO_MAP] as
+    | (React.ComponentType<{ size?: number }> & {
+        Color?: React.ComponentType<{ size?: number }>
+      })
+    | undefined
+  // @lobehub/icons 里 Anthropic / OpenAI / Ollama / Groq / Moonshot / OpenRouter 这些
+  // 单色图标默认导出没有 .Color 子组件；直接用默认导出（Mono）渲染即可，避免 undefined 崩溃。
+  const ColorIcon = Icon?.Color ?? Icon
 
   return (
     <span
@@ -95,8 +103,8 @@ export function ModelProviderLogo({
       )}
       style={{ width: size, height: size }}
     >
-      {Icon ? (
-        <Icon.Color size={size} />
+      {ColorIcon ? (
+        <ColorIcon size={size} />
       ) : (
         <img src={CustomLogo} alt="" className="h-full w-full object-contain" />
       )}

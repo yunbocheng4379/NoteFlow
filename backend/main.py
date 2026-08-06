@@ -76,6 +76,25 @@ async def lifespan(app: FastAPI):
         logger.info("[startup 4.5/5] seed_system_styles() — 初始化内置笔记风格")
         seed_system_styles()
 
+        logger.info("[startup 4.6/5] seed_default_format_pricing() — 初始化默认笔记格式费率")
+        try:
+            from app.db.engine import SessionLocal
+            from app.db.credit_format_pricing_dao import CreditFormatPricingDAO
+            _s = SessionLocal()
+            try:
+                CreditFormatPricingDAO(_s).seed_default_if_empty()
+            finally:
+                _s.close()
+
+            # 回填: 每个已存在的模型都要在 credit_pricing 里有一行, 便于管理员在电力规则页面看到.
+            # 幂等: 只补缺, 已有的费率行原样保留.
+            from app.db.model_dao import get_all_models
+            from app.db.credit_pricing_dao import sync_add_model_rate
+            for m in get_all_models():
+                sync_add_model_rate(m["model_name"])
+        except Exception:
+            logger.exception("           初始化格式费率失败, 继续启动 (计费按 0 处理)")
+
         logger.info("[startup 4.8/5] start_scheduler() — 启动计费定时任务")
         from app.services.billing.scheduler import start_scheduler
         start_scheduler()

@@ -68,6 +68,7 @@ const CollectionShareViewPage = lazy(() => import('@/pages/ShareViewPage/Collect
 const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'))
 const CookiePoolPage = lazy(() => import('@/pages/SettingPage/CookiePool'))
 const NotificationsPage = lazy(() => import('@/pages/SettingPage/Notifications'))
+const PricingPage = lazy(() => import('@/pages/SettingPage/Pricing'))
 const UpgradePage = lazy(() => import('@/pages/UpgradePage'))
 const BillingPage = lazy(() => import('@/pages/BillingPage'))
 const ReferralPage = lazy(() => import('@/pages/ReferralPage'))
@@ -200,6 +201,7 @@ function App() {
                 <Route path="feedback" element={<FeedbackPage />} />
                 <Route path="cookie-pool" element={<CookiePoolPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="pricing" element={<PricingPage />} />
                 <Route path="update-logs-admin" element={<UpdateLogsAdminPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

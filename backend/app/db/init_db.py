@@ -18,6 +18,7 @@ from app.db.models.update_logs import UpdateLog
 
 # === 电力 / 计费 / 订阅 / 推荐相关模型 ===
 from app.db.models.credit_pricing import CreditPricing
+from app.db.models.credit_format_pricing import CreditFormatPricing
 from app.db.models.credit_transactions import CreditTransaction
 from app.db.models.recharge_packages import RechargePackage
 from app.db.models.subscription_plans import SubscriptionPlan

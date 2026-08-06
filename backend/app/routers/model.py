@@ -27,6 +27,7 @@ class CreateModelRequest(BaseModel):
     model_name: str
     tier: str = "normal"
     supports_reasoning: bool = False
+    supports_vision: bool = False
 
 
 class UpdateModelTierRequest(BaseModel):
@@ -35,6 +36,10 @@ class UpdateModelTierRequest(BaseModel):
 
 class UpdateModelSupportsReasoningRequest(BaseModel):
     supports_reasoning: bool
+
+
+class UpdateModelSupportsVisionRequest(BaseModel):
+    supports_vision: bool
 
 
 class ModelItem(BaseModel):
@@ -87,7 +92,8 @@ def create_model(data: CreateModelRequest, current_user: User = Depends(get_curr
     try:
         result = ModelService.add_new_model(
             data.provider_id, data.model_name, tier=data.tier,
-            supports_reasoning=data.supports_reasoning, created_by=current_user.id
+            supports_reasoning=data.supports_reasoning, supports_vision=data.supports_vision,
+            created_by=current_user.id
         )
         if result == "provider_not_found":
             return R.error("模型添加失败，供应商不存在")
@@ -129,6 +135,20 @@ def update_model_supports_reasoning(
         return R.success(msg="深度思考支持状态已更新")
     except Exception as e:
         logger.error(f"更新模型 {model_id} 深度思考支持状态失败: {e}", exc_info=True)
+        return R.error("更新失败，请重试")
+
+
+@router.post("/models/{model_id}/supports_vision")
+def update_model_supports_vision(
+    model_id: int, data: UpdateModelSupportsVisionRequest, current_user: User = Depends(get_current_admin)
+):
+    try:
+        success = ModelService.set_model_supports_vision(model_id, data.supports_vision)
+        if not success:
+            return R.error("模型不存在或无权修改")
+        return R.success(msg="视觉支持状态已更新")
+    except Exception as e:
+        logger.error(f"更新模型 {model_id} 视觉支持状态失败: {e}", exc_info=True)
         return R.error("更新失败，请重试")
 
 

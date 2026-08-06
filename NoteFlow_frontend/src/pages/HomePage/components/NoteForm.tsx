@@ -465,6 +465,9 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   const videoUnderstandingEnabled = useWatch({ control: form.control, name: 'video_understanding' })
   const videoInterval = useWatch({ control: form.control, name: 'video_interval' })
   const gridSize = useWatch({ control: form.control, name: 'grid_size' })
+  const formatValue = useWatch({ control: form.control, name: 'format' })
+  const selectedModelSupportsVision =
+    modelList.find(m => m.model_name === modelName)?.supports_vision ?? false
 
   const isLocal = platform === 'local'
   const detectedPlatform = useMemo(() => detectPlatform(videoUrl || ''), [videoUrl])
@@ -496,13 +499,15 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       return
     }
     let cancelled = false
+    const formats = Array.isArray(formatValue) ? formatValue : []
     const timer = setTimeout(async () => {
       // 拿真实视频 duration 后再预估, 与后端生成时的 duration 计费口径保持一致.
+      // formats 传给后端: 每个启用格式的每分钟单价会叠加到模型费率上.
       try {
         const info = await getVideoInfo(videoUrl, platform)
         if (cancelled) return
         const durationSec = info?.duration || 0
-        const preview = await billingApi.pricingPreview(modelName, durationSec)
+        const preview = await billingApi.pricingPreview(modelName, durationSec, formats)
         if (cancelled) return
         setCostPreview({
           required: preview.required_credits,
@@ -513,7 +518,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
         if (cancelled) return
         // 拿不到 duration 时按 1 分钟 rate 兜底展示
         try {
-          const preview = await billingApi.pricingPreview(modelName, 0)
+          const preview = await billingApi.pricingPreview(modelName, 0, formats)
           if (cancelled) return
           setCostPreview({
             required: preview.required_credits,
@@ -529,7 +534,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       cancelled = true
       clearTimeout(timer)
     }
-  }, [videoUrl, modelName, platform, isLocal, userCredits])
+  }, [videoUrl, modelName, platform, isLocal, userCredits, formatValue])
 
   useEffect(() => {
     loadEnabledModels()
@@ -716,6 +721,13 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       }
     }
   }, [videoUnderstandingEnabled])
+
+  // When the selected model doesn't support vision, force video_understanding off
+  useEffect(() => {
+    if (!selectedModelSupportsVision && videoUnderstandingEnabled) {
+      form.setValue('video_understanding', false)
+    }
+  }, [selectedModelSupportsVision, videoUnderstandingEnabled])
 
   const isGenerating = () => !['SUCCESS', 'FAILED', undefined].includes(getCurrentTask()?.status)
   const generating = isGenerating()
@@ -1384,15 +1396,20 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   <div>
                     <p className="text-sm font-medium text-neutral-700">视频理解</p>
                     <p className="text-xs text-neutral-400">将视频截图发给多模态模型辅助分析</p>
+                    {!selectedModelSupportsVision && (
+                      <p className="text-xs text-amber-500">当前模型不支持视觉/多模态，无法开启</p>
+                    )}
                   </div>
                   <button
                     type="button"
+                    disabled={!selectedModelSupportsVision}
                     onClick={() => {
                       field.onChange(!field.value)
                     }}
                     className={cn(
                       'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200',
-                      field.value ? 'bg-primary' : 'bg-neutral-300'
+                      field.value ? 'bg-primary' : 'bg-neutral-300',
+                      !selectedModelSupportsVision && 'cursor-not-allowed opacity-40'
                     )}
                   >
                     <span
@@ -1461,7 +1478,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 <FormatMultiSelect
                   value={field.value}
                   onChange={field.onChange}
-                  screenshotDisabled={!videoUnderstandingEnabled}
+                  screenshotDisabled={!videoUnderstandingEnabled || !selectedModelSupportsVision}
                   linkDisabled={isLocal}
                   scrollAreaRef={scrollAreaRef}
                 />

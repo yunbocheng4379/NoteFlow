@@ -80,6 +80,7 @@ class ModelService:
                 "model_name": model.get("model_name"),
                 "tier": model.get("tier", "normal"),
                 "supports_reasoning": bool(model.get("supports_reasoning", False)),
+                "supports_vision": bool(model.get("supports_vision", False)),
                 "created_at": model.get("created_at", None),
             })
         return formatted
@@ -175,9 +176,9 @@ class ModelService:
 
     @staticmethod
     def add_new_model(provider_id: int, model_name: str, tier: str = "normal", supports_reasoning: bool = False,
-                      created_by: Optional[int] = None) -> str:
+                      supports_vision: bool = False, created_by: Optional[int] = None) -> str:
         """新增或更新全局模型（仅管理员可调用）；created_by 记录操作的管理员 id
-        模型已存在时视为「保存模型」的修改场景，直接更新其 tier / supports_reasoning，而不是报错拒绝
+        模型已存在时视为「保存模型」的修改场景，直接更新其 tier / supports_reasoning / supports_vision，而不是报错拒绝
         返回 "ok" / "updated" / "provider_not_found" / "error"，供路由层区分提示文案"""
         try:
             provider = ProviderService.get_provider_by_id(provider_id)
@@ -187,12 +188,14 @@ class ModelService:
 
             existing = get_model_by_provider_and_name(provider_id, model_name)
             if existing:
-                update_model(existing["id"], tier=tier, supports_reasoning=int(supports_reasoning))
-                print(f"模型 {model_name} 已存在于供应商ID {provider_id} 下，已更新等级/深度思考配置")
+                update_model(existing["id"], tier=tier, supports_reasoning=int(supports_reasoning),
+                             supports_vision=int(supports_vision))
+                print(f"模型 {model_name} 已存在于供应商ID {provider_id} 下，已更新等级/深度思考/视觉配置")
                 return "updated"
 
             insert_model(provider_id=provider_id, model_name=model_name, tier=tier,
-                         supports_reasoning=int(supports_reasoning), created_by=created_by)
+                         supports_reasoning=int(supports_reasoning), supports_vision=int(supports_vision),
+                         created_by=created_by)
             print(f"模型 {model_name} 已成功添加到供应商ID {provider_id}")
             return "ok"
         except Exception as e:
@@ -210,6 +213,11 @@ class ModelService:
     def set_model_supports_reasoning(model_id: int, enabled: bool) -> bool:
         from app.db.model_dao import update_model_supports_reasoning
         return update_model_supports_reasoning(model_id, enabled)
+
+    @staticmethod
+    def set_model_supports_vision(model_id: int, enabled: bool) -> bool:
+        from app.db.model_dao import update_model_supports_vision
+        return update_model_supports_vision(model_id, enabled)
 
     @staticmethod
     def assert_model_accessible(provider_id: str, model_name: str, user: "User") -> None:

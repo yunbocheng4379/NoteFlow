@@ -15,4 +15,6 @@ class Model(Base):
                   comment="模型等级：normal=普通用户可用，pro=仅 Pro 会员可用")
     supports_reasoning = Column(Integer, nullable=False, default=0, server_default="0",
                                  comment="是否原生支持深度思考(reasoning)：1=支持，0=不支持；仅管理员可勾选")
+    supports_vision = Column(Integer, nullable=False, default=0, server_default="0",
+                              comment="是否支持视觉/多模态输入(vision)：1=支持，0=不支持；仅管理员可勾选")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")

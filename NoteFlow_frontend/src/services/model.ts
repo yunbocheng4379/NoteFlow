@@ -33,7 +33,13 @@ export const fetchEnableModelById = async (id: string) => {
 }
 
 export async function addModel(
-  data: { provider_id: string; model_name: string; tier?: 'normal' | 'pro'; supports_reasoning?: boolean },
+  data: {
+    provider_id: string
+    model_name: string
+    tier?: 'normal' | 'pro'
+    supports_reasoning?: boolean
+    supports_vision?: boolean
+  },
   opts?: CallOpts,
 ) {
   return request.post('/models', data, cfg(opts))
@@ -53,6 +59,14 @@ export const updateModelSupportsReasoning = async (
   opts?: CallOpts,
 ) => {
   return await request.post(`/models/${modelId}/supports_reasoning`, { supports_reasoning: supportsReasoning }, cfg(opts))
+}
+
+export const updateModelSupportsVision = async (
+  modelId: number,
+  supportsVision: boolean,
+  opts?: CallOpts,
+) => {
+  return await request.post(`/models/${modelId}/supports_vision`, { supports_vision: supportsVision }, cfg(opts))
 }
 
 export const fetchEnableModels = async () => {

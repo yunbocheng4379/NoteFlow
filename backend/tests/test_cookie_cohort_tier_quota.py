@@ -16,6 +16,8 @@ import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
+_ORIGINAL_CWD = os.getcwd()
+_ORIGINAL_DATABASE_URL = os.environ.get("DATABASE_URL")
 
 # === 同 smoke test: 避开 SQLite pool 兼容问题 ===
 import sqlalchemy as _sa
@@ -49,6 +51,27 @@ os.environ.setdefault("COOKIE_POOL_FAILURE_THRESHOLD", "3")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.chdir(_tmpdir)
+
+
+def tearDownModule():
+    """恢复模块导入时改过的全局状态，避免污染后续数据库测试。"""
+    if _ORIGINAL_DATABASE_URL is None:
+        os.environ.pop("DATABASE_URL", None)
+    else:
+        os.environ["DATABASE_URL"] = _ORIGINAL_DATABASE_URL
+    os.chdir(_ORIGINAL_CWD)
+
+    _sa.create_engine = _original_create_engine
+    try:
+        import sqlalchemy.engine.create as _sa_create_mod
+        _sa_create_mod.create_engine = _original_create_engine
+    except Exception:
+        pass
+
+    # 本模块可能已按临时 SQLite 导入 app.db.engine；后续测试需要按恢复后的
+    # DATABASE_URL 重新创建 engine/SessionLocal。
+    for module_name in ("app.db.init_db", "app.db.engine"):
+        sys.modules.pop(module_name, None)
 
 
 class TestParseTierList(unittest.TestCase):

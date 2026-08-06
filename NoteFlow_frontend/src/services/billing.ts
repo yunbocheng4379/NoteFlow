@@ -101,6 +101,9 @@ export interface PricingPreview {
   model_name: string | null
   duration_sec: number | null
   model_rate_per_minute: number
+  format_rate_per_minute: number
+  format_rate_breakdown: Record<string, number>
+  total_rate_per_minute: number
   required_credits: number
   current_balance: number
   sufficient: boolean
@@ -118,8 +121,12 @@ export interface Paginated<T> {
 export const billingApi = {
   balance: () => request.get<any, BalanceResp>('/billing/balance'),
 
-  pricingPreview: (model_name: string, duration_sec: number) =>
-    request.post<any, PricingPreview>('/billing/pricing/preview', { model_name, duration_sec }),
+  pricingPreview: (model_name: string, duration_sec: number, formats?: string[]) =>
+    request.post<any, PricingPreview>('/billing/pricing/preview', {
+      model_name,
+      duration_sec,
+      formats: formats && formats.length ? formats : undefined,
+    }),
 
   rechargePackages: () => request.get<any, RechargePackage[]>('/billing/recharge/packages'),
 

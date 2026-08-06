@@ -167,7 +167,6 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         className="max-w-lg max-h-[90vh] p-0 flex flex-col [&>button[data-slot=dialog-close]]:top-[7px]"
-        onPointerDownOutside={(e) => e.preventDefault()}
       >
         {/* 固定标题栏 */}
         <DialogHeader className="shrink-0 border-b border-neutral-200 px-6 py-4">

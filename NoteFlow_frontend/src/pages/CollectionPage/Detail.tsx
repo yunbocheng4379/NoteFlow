@@ -893,6 +893,9 @@ const CollectionDetailPage = () => {
               </SelectContent>
             </Select>
           </div>
+          <p className="mt-1.5 text-xs text-neutral-400">
+            融合笔记会调用 AI 模型，按所选模型价格消耗电力，失败将自动退回。
+          </p>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setMergeOpen(false)}>
               取消

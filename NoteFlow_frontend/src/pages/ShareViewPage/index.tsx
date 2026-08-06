@@ -4,13 +4,18 @@ import ReactMarkdown from 'react-markdown'
 import gfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
+import 'github-markdown-css/github-markdown-light.css'
 import { Eye, Loader2 } from 'lucide-react'
-import { getSharedNote, type SharedNote } from '@/services/share.ts'
+import toast from 'react-hot-toast'
+import { exportSharedNote, getSharedNote, type SharedNote, type ShareExportFormat } from '@/services/share.ts'
+import { ExportMenu } from '@/pages/ShareViewPage/ExportMenu'
 
 export default function ShareViewPage() {
   const { token } = useParams<{ token: string }>()
   const [data, setData] = useState<SharedNote | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     if (!token) return
@@ -50,7 +55,7 @@ export default function ShareViewPage() {
     : null
 
   return (
-    <div className="mx-auto min-h-screen max-w-3xl px-4 py-10">
+    <div className="mx-auto h-screen max-w-4xl overflow-y-auto px-4 py-10">
       {/* 视频元信息头部 */}
       <div className="mb-8 flex items-start gap-4">
         {coverSrc && (
@@ -69,10 +74,24 @@ export default function ShareViewPage() {
             <span>{view_count} 次浏览</span>
           </div>
         </div>
+        <ExportMenu
+          loading={exporting}
+          onSelect={async (format: ShareExportFormat) => {
+            if (!token) return
+            setExporting(true)
+            try {
+              await exportSharedNote(token, format, audioMeta.title || '分享笔记')
+            } catch {
+              toast.error('导出失败，请稍后重试')
+            } finally {
+              setExporting(false)
+            }
+          }}
+        />
       </div>
 
       {/* 笔记正文 */}
-      <div className="prose prose-neutral max-w-none">
+      <div className="markdown-body !bg-transparent !text-inherit">
         <ReactMarkdown
           remarkPlugins={[gfm, remarkMath]}
           rehypePlugins={[rehypeKatex]}

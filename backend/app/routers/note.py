@@ -315,7 +315,9 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks,
                     logger.warning(f"generate_note 元数据解析失败: {e}")
                     return R.error(msg=f"视频信息获取失败: {e}", code=2001)
 
-            required = billing_pricing.calculate_required_credits(db, data.model_name, duration_sec)
+            required = billing_pricing.calculate_required_credits(
+                db, data.model_name, duration_sec, data.format
+            )
 
             try:
                 credit_ledger.consume(
@@ -718,7 +720,9 @@ def generate_notes_batch(data: GenerateNotesBatchRequest, background_tasks: Back
                 preview_meta = downloader.download(item.video_url, skip_download=True)
                 duration_sec = float(getattr(preview_meta, "duration", 0) or 0)
 
-                required = billing_pricing.calculate_required_credits(db, data.model_name, duration_sec)
+                required = billing_pricing.calculate_required_credits(
+                    db, data.model_name, duration_sec, data.format
+                )
                 try:
                     credit_ledger.consume(
                         db, user_id=current_user.id, amount=required, task_id=task_id,

@@ -12,7 +12,12 @@ import {
   BookOpen,
   ArrowRight,
   FileText,
+  Pin,
+  PinOff,
   Plus,
+  Pencil,
+  MailPlus,
+  MailOpen,
   Trash2,
   UserRound,
   Sparkles,
@@ -23,6 +28,14 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -31,6 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import MarqueeOnHover from '@/components/MarqueeOnHover'
 import NoteScopeSelect from './NoteScopeSelect'
 import { useKnowledgeBaseStore } from '@/store/knowledgeBaseStore'
 import { useModelStore } from '@/store/modelStore'
@@ -151,6 +165,11 @@ export default function KnowledgeBasePage() {
   const [noteTaskIds, setNoteTaskIds] = useState<string[] | null>(null)
   const [coverage, setCoverage] = useState<{ total: number; indexed: number } | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+  // 右键菜单：点击会话时记录鼠标位置和目标会话
+  const [menuState, setMenuState] = useState<{ x: number; y: number; convId: number } | null>(null)
+  // 重命名对话框状态：受控 Dialog + 编辑中的标题
+  const [renameTargetId, setRenameTargetId] = useState<number | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
 
   const conversations = useKnowledgeBaseStore(s => s.conversations)
   const activeConversationId = useKnowledgeBaseStore(s => s.activeConversationId)
@@ -159,6 +178,9 @@ export default function KnowledgeBasePage() {
   const newConversation = useKnowledgeBaseStore(s => s.newConversation)
   const selectConversation = useKnowledgeBaseStore(s => s.selectConversation)
   const removeConversation = useKnowledgeBaseStore(s => s.removeConversation)
+  const renameConversation = useKnowledgeBaseStore(s => s.renameConversation)
+  const togglePinConversation = useKnowledgeBaseStore(s => s.togglePinConversation)
+  const markConversationUnread = useKnowledgeBaseStore(s => s.markConversationUnread)
   const addMessage = useKnowledgeBaseStore(s => s.addMessage)
   const appendToLastMessage = useKnowledgeBaseStore(s => s.appendToLastMessage)
   const appendToLastReasoning = useKnowledgeBaseStore(s => s.appendToLastReasoning)
@@ -286,6 +308,74 @@ export default function KnowledgeBasePage() {
     await removeConversation(deleteTargetId)
     setDeleteTargetId(null)
   }, [deleteTargetId, removeConversation])
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, convId: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setMenuState({ x: e.clientX, y: e.clientY, convId })
+  }, [])
+
+  const closeMenu = useCallback(() => setMenuState(null), [])
+
+  const menuTarget = useMemo(
+    () => (menuState ? conversations.find(c => c.id === menuState.convId) ?? null : null),
+    [menuState, conversations]
+  )
+
+  const handleTogglePin = useCallback(async () => {
+    if (!menuTarget) return
+    closeMenu()
+    await togglePinConversation(menuTarget.id)
+  }, [menuTarget, closeMenu, togglePinConversation])
+
+  const handleOpenRename = useCallback(() => {
+    if (!menuTarget) return
+    setRenameTargetId(menuTarget.id)
+    setRenameDraft(menuTarget.title || '')
+    closeMenu()
+  }, [menuTarget, closeMenu])
+
+  const handleConfirmRename = useCallback(async () => {
+    if (renameTargetId == null) return
+    const ok = await renameConversation(renameTargetId, renameDraft)
+    if (ok) setRenameTargetId(null)
+    else toast.error('标题不能为空')
+  }, [renameTargetId, renameDraft, renameConversation])
+
+  const handleToggleUnread = useCallback(async () => {
+    if (!menuTarget) return
+    closeMenu()
+    await markConversationUnread(menuTarget.id, !menuTarget.is_unread)
+  }, [menuTarget, closeMenu, markConversationUnread])
+
+  const handleAskDelete = useCallback(() => {
+    if (!menuTarget) return
+    setDeleteTargetId(menuTarget.id)
+    closeMenu()
+  }, [menuTarget, closeMenu])
+
+  // 菜单在 Escape 或点击其他区域时关闭；点击菜单自身由内部按钮处理。
+  useEffect(() => {
+    if (!menuState) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeMenu()
+    }
+    // 右键按下（button === 2）不视为“点击其他区域”，否则新开菜单时旧的关闭事件会
+    // 立刻把新菜单一起关掉。左键或中键才关闭。
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 2) return
+      closeMenu()
+    }
+    const onScroll = () => closeMenu()
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('mousedown', onMouseDown)
+    window.addEventListener('scroll', onScroll, true)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mousedown', onMouseDown)
+      window.removeEventListener('scroll', onScroll, true)
+    }
+  }, [menuState, closeMenu])
 
   const bubbleItems = useMemo(() => {
     return messages.map((msg, i) => {
@@ -510,28 +600,39 @@ export default function KnowledgeBasePage() {
             {conversations.length === 0 ? (
               <p className="px-2 py-4 text-center text-xs text-neutral-400">还没有历史对话</p>
             ) : (
-              conversations.map(c => (
-                <div
-                  key={c.id}
-                  onClick={() => selectConversation(c.id)}
-                  className={`group flex cursor-pointer items-center justify-between rounded-lg px-2.5 py-2 text-sm transition-colors ${
-                    activeConversationId === c.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-neutral-100'
-                  }`}
-                >
-                  <span className="truncate">{c.title || '新对话'}</span>
-                  <button
-                    onClick={e => {
-                      e.stopPropagation()
-                      setDeleteTargetId(c.id)
-                    }}
-                    className="shrink-0 text-neutral-300 opacity-0 group-hover:opacity-100 hover:text-red-500"
+              conversations.map(c => {
+                const isActive = activeConversationId === c.id
+                const isMenuOpen = menuState?.convId === c.id
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => selectConversation(c.id)}
+                    onContextMenu={e => handleContextMenu(e, c.id)}
+                    className={`group flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm transition-colors ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : isMenuOpen
+                          ? 'bg-neutral-100 text-gray-700'
+                          : 'text-gray-700 hover:bg-neutral-100'
+                    }`}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))
+                    {c.is_pinned && (
+                      <Pin
+                        className={`h-3 w-3 shrink-0 ${isActive ? 'text-primary' : 'text-neutral-400'}`}
+                      />
+                    )}
+                    <MarqueeOnHover className={`min-w-0 flex-1 ${c.is_unread ? 'font-semibold' : ''}`}>
+                      {c.title || '新对话'}
+                    </MarqueeOnHover>
+                    {c.is_unread && (
+                      <span
+                        className="ml-auto inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
+                        aria-label="未读"
+                      />
+                    )}
+                  </div>
+                )
+              })
             )}
           </div>
         </div>
@@ -632,11 +733,111 @@ export default function KnowledgeBasePage() {
               />
             </div>
             <p className="mt-1.5 text-center text-xs text-neutral-300">
-              Enter 发送 · Shift+Enter 换行 · 知识库为会员功能
+              Enter 发送 · Shift+Enter 换行 · 每次提问将按所选模型价格消耗一定电力
             </p>
           </div>
         </div>
       </div>
+
+      {menuState && menuTarget && (
+        <div
+          role="menu"
+          onMouseDown={e => e.stopPropagation()}
+          onContextMenu={e => e.preventDefault()}
+          style={{
+            // 简单夹取到视口内，避免菜单被裁掉；菜单宽 ~176px、单项高约 32px、共 4 项 + 内边距。
+            left: Math.min(menuState.x, window.innerWidth - 200),
+            top: Math.min(menuState.y, window.innerHeight - 180),
+          }}
+          className="fixed z-50 w-44 overflow-hidden rounded-md border border-neutral-200 bg-white py-1 text-sm text-gray-700 shadow-lg"
+        >
+          <button
+            type="button"
+            onClick={handleTogglePin}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100"
+          >
+            {menuTarget.is_pinned ? (
+              <>
+                <PinOff className="h-4 w-4 text-neutral-500" />
+                <span>取消置顶</span>
+              </>
+            ) : (
+              <>
+                <Pin className="h-4 w-4 text-neutral-500" />
+                <span>置顶聊天</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenRename}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100"
+          >
+            <Pencil className="h-4 w-4 text-neutral-500" />
+            <span>重命名聊天</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleUnread}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-neutral-100"
+          >
+            {menuTarget.is_unread ? (
+              <>
+                <MailOpen className="h-4 w-4 text-neutral-500" />
+                <span>标记为已读</span>
+              </>
+            ) : (
+              <>
+                <MailPlus className="h-4 w-4 text-neutral-500" />
+                <span>标记为未读</span>
+              </>
+            )}
+          </button>
+          <div className="my-1 border-t border-neutral-100" />
+          <button
+            type="button"
+            onClick={handleAskDelete}
+            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span>删除聊天</span>
+          </button>
+        </div>
+      )}
+
+      <Dialog
+        open={renameTargetId != null}
+        onOpenChange={open => {
+          if (!open) setRenameTargetId(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>重命名聊天</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameDraft}
+            onChange={e => setRenameDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleConfirmRename()
+              }
+            }}
+            maxLength={200}
+            autoFocus
+            placeholder="给这段聊天起个名字"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameTargetId(null)}>
+              取消
+            </Button>
+            <Button onClick={handleConfirmRename} disabled={!renameDraft.trim()}>
+              确认
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={deleteTargetId != null}

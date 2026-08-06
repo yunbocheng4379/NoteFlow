@@ -30,6 +30,7 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
   const [submitting, setSubmitting] = useState(false)
   const [tier, setTier] = useState<'normal' | 'pro'>('normal')
   const [supportsReasoning, setSupportsReasoning] = useState<'yes' | 'no'>('no')
+  const [supportsVision, setSupportsVision] = useState<'yes' | 'no'>('no')
 
   const effectiveApiKey = isMasked(apiKey) ? undefined : apiKey
 
@@ -53,7 +54,7 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
     }
     try {
       setSubmitting(true)
-      await addNewModel(providerId, selectedModel, tier, supportsReasoning === 'yes')
+      await addNewModel(providerId, selectedModel, tier, supportsReasoning === 'yes', supportsVision === 'yes')
       toast.success('保存模型成功 🎉')
       onSaved?.()
     } catch (error: any) {
@@ -120,6 +121,22 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
         <Select
           value={supportsReasoning}
           onValueChange={v => setSupportsReasoning(v as 'yes' | 'no')}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="no">不支持</SelectItem>
+            <SelectItem value="yes">支持</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground text-sm">支持视觉/多模态</span>
+        <Select
+          value={supportsVision}
+          onValueChange={v => setSupportsVision(v as 'yes' | 'no')}
         >
           <SelectTrigger className="w-[160px]">
             <SelectValue />
