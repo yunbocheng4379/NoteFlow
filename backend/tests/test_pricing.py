@@ -120,6 +120,9 @@ def test_sync_add_creates_row_with_default_rate(db):
     dao = CreditPricingDAO(db)
     dao.delete(name)
     sync_add_model_rate(name)
+    # MySQL 默认 REPEATABLE READ 下, expire_all 只会刷新对象, 不会结束
+    # 外层会话已经建立的事务快照; 先 rollback 才能看到独立会话的新提交。
+    db.rollback()
     db.expire_all()
     row = dao.get_by_model_name(name)
     assert row is not None
@@ -136,6 +139,7 @@ def test_sync_add_is_idempotent_and_preserves_existing_rate(db):
     dao.delete(name)
     dao.create(model_name=name, rate_per_minute=99)
     sync_add_model_rate(name)
+    db.rollback()
     db.expire_all()
     row = dao.get_by_model_name(name)
     assert row.rate_per_minute == 99  # 未被覆盖
@@ -149,5 +153,6 @@ def test_sync_skips_dunder_names(db):
     dao = CreditPricingDAO(db)
     dao.delete(name)
     sync_add_model_rate(name)
+    db.rollback()
     db.expire_all()
     assert dao.get_by_model_name(name) is None
