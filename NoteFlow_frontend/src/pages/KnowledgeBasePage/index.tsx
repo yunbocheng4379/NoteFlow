@@ -65,6 +65,18 @@ const DEFAULT_QUESTIONS = [
 
 const CHAT_PANEL_WIDTH = 'w-full max-w-[960px]'
 
+function KnowledgeBrainIcon() {
+  return (
+    <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-[var(--primary-light)] text-primary shadow-[inset_0_0_0_1px_rgba(22,122,110,0.04)]">
+      <div className="absolute inset-3 rounded-full bg-white/45 blur-md" />
+      <BrainCircuit className="relative h-10 w-10 stroke-[1.8]" />
+      <Sparkles className="absolute right-4 top-3.5 h-4 w-4 stroke-[2.1]" />
+      <span className="absolute bottom-4 left-4 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+      <span className="absolute bottom-5 right-5 h-1 w-1 rounded-full bg-current opacity-45" />
+    </div>
+  )
+}
+
 function SourceBadges({ sources }: { sources: KbSource[] }) {
   const [expanded, setExpanded] = useState(false)
   const uniqueSources = useMemo(() => {
@@ -642,9 +654,7 @@ export default function KnowledgeBasePage() {
           <div className={`flex min-h-0 flex-1 flex-col px-5 ${CHAT_PANEL_WIDTH}`}>
             {messages.length === 0 && !loading ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-6">
-                <div className="text-primary flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--primary-light)]">
-                  <Sparkles className="h-9 w-9" />
-                </div>
+                <KnowledgeBrainIcon />
                 <div className="text-center">
                   <h1 className="text-xl font-semibold text-gray-800">你的第二大脑，随时开问</h1>
                   <p className="mt-1.5 text-sm text-neutral-400">
