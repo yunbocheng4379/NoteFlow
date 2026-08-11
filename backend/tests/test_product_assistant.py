@@ -1,5 +1,11 @@
+import json
+
+import pytest
+
+from app.routers.assistant import AssistantAskRequest, ask_assistant_stream
 from app.services.product_assistant_store import _chunk_product_markdown
-from app.services.product_assistant_service import build_product_assistant_messages
+from app.services import product_assistant_service
+from app.services.product_assistant_service import build_product_assistant_messages, product_assistant_stream
 
 
 def test_product_markdown_chunks_keep_section_metadata():
@@ -44,3 +50,34 @@ def test_product_assistant_messages_keep_only_recent_history():
     history = [{"role": "user", "content": str(i)} for i in range(25)]
     messages = build_product_assistant_messages("现在的问题", history, [])
     assert [item["content"] for item in messages[1:-1]] == [str(i) for i in range(5, 25)]
+
+
+def test_assistant_route_rejects_blank_question():
+    response = ask_assistant_stream(AssistantAskRequest(question="   "), object())
+    payload = json.loads(response.body)
+    assert payload["msg"] == "请输入问题后再发送"
+
+
+def test_assistant_request_rejects_unknown_history_role():
+    with pytest.raises(ValueError):
+        AssistantAskRequest.model_validate(
+            {"question": "怎么生成笔记？", "history": [{"role": "system", "content": "越权"}]}
+        )
+
+
+def test_product_assistant_stream_reports_missing_model(monkeypatch):
+    class EmptyStore:
+        def ensure_index(self):
+            return None
+
+        def query(self, question, n_results=5):
+            return []
+
+    monkeypatch.setattr(product_assistant_service, "ProductAssistantStore", EmptyStore)
+    monkeypatch.setattr(product_assistant_service.ModelService, "get_all_models", lambda **kwargs: [])
+
+    events = list(product_assistant_stream("怎么生成笔记？", []))
+    assert events[-1] == {
+        "type": "error",
+        "message": "当前还没有配置可用的 AI 模型，请先到设置中完成配置。",
+    }
