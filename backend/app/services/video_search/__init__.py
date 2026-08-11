@@ -1,1 +1,4 @@
-# 空文件占位，Task 5 会导出 search_all
+from .aggregator import search_all
+from .base import PlatformStatus, SearchResult
+
+__all__ = ["search_all", "SearchResult", "PlatformStatus"]

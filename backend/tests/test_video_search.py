@@ -190,3 +190,96 @@ async def test_youtube_search_parses_flat_result():
 async def test_youtube_search_empty_keyword_returns_empty():
     results = await youtube_search("", 20)
     assert results == []
+
+
+from app.services.video_search.aggregator import search_all, interleave
+
+
+def _mk(platform: str, i: int) -> SearchResult:
+    return SearchResult(
+        platform=platform,
+        video_url=f"https://ex/{platform}/{i}",
+        title=f"{platform}-{i}",
+        cover_url=None, author=None, duration=None,
+        publish_time=None, play_count=None,
+    )
+
+
+def test_interleave_two_platforms():
+    b = [_mk("bilibili", i) for i in range(3)]
+    y = [_mk("youtube", i) for i in range(3)]
+    merged = interleave([b, y])
+    assert [r.title for r in merged] == [
+        "bilibili-0", "youtube-0",
+        "bilibili-1", "youtube-1",
+        "bilibili-2", "youtube-2",
+    ]
+
+
+def test_interleave_unequal_lengths():
+    b = [_mk("bilibili", i) for i in range(1)]
+    y = [_mk("youtube", i) for i in range(3)]
+    merged = interleave([b, y])
+    assert [r.title for r in merged] == [
+        "bilibili-0", "youtube-0", "youtube-1", "youtube-2",
+    ]
+
+
+def test_interleave_dedupes_by_url():
+    dup = _mk("bilibili", 0)
+    b = [dup, _mk("bilibili", 1)]
+    y = [dup]  # same URL appears in both
+    merged = interleave([b, y])
+    urls = [r.video_url for r in merged]
+    assert len(urls) == len(set(urls))
+
+
+@pytest.mark.asyncio
+async def test_search_all_both_ok():
+    async def fake_bili(kw, lim):
+        return [_mk("bilibili", 0), _mk("bilibili", 1)]
+
+    async def fake_yt(kw, lim):
+        return [_mk("youtube", 0), _mk("youtube", 1)]
+
+    with patch("app.services.video_search.aggregator.bilibili_search",
+               side_effect=fake_bili), \
+         patch("app.services.video_search.aggregator.youtube_search",
+               side_effect=fake_yt):
+        items, status = await search_all("kw", 20)
+
+    assert len(items) == 4
+    assert status == {"bilibili": "ok", "youtube": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_search_all_bilibili_fails():
+    async def fake_bili(kw, lim):
+        raise RuntimeError("boom")
+
+    async def fake_yt(kw, lim):
+        return [_mk("youtube", 0)]
+
+    with patch("app.services.video_search.aggregator.bilibili_search",
+               side_effect=fake_bili), \
+         patch("app.services.video_search.aggregator.youtube_search",
+               side_effect=fake_yt):
+        items, status = await search_all("kw", 20)
+
+    assert [r.platform for r in items] == ["youtube"]
+    assert status == {"bilibili": "failed", "youtube": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_search_all_both_fail():
+    async def boom(kw, lim):
+        raise RuntimeError("x")
+
+    with patch("app.services.video_search.aggregator.bilibili_search",
+               side_effect=boom), \
+         patch("app.services.video_search.aggregator.youtube_search",
+               side_effect=boom):
+        items, status = await search_all("kw", 20)
+
+    assert items == []
+    assert status == {"bilibili": "failed", "youtube": "failed"}
