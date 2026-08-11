@@ -1,4 +1,5 @@
 from app.services.product_assistant_store import _chunk_product_markdown
+from app.services.product_assistant_service import build_product_assistant_messages
 
 
 def test_product_markdown_chunks_keep_section_metadata():
@@ -19,3 +20,27 @@ def test_product_markdown_chunks_keep_section_metadata():
 
 def test_product_markdown_ignores_short_heading_only_sections():
     assert _chunk_product_markdown("## 空标题\n\n太短", "测试") == []
+
+
+def test_product_assistant_prompt_forbids_private_note_claims():
+    messages = build_product_assistant_messages(
+        "我的某条笔记里说了什么？",
+        [],
+        [
+            {
+                "text": "NoteFlow 可将视频转成结构化 Markdown 笔记。",
+                "metadata": {"title": "快速开始", "section_title": "视频转笔记"},
+            }
+        ],
+    )
+
+    system = messages[0]["content"]
+    assert "只依据产品资料" in system
+    assert "不会读取用户私人笔记" in system
+    assert messages[-1]["content"] == "我的某条笔记里说了什么？"
+
+
+def test_product_assistant_messages_keep_only_recent_history():
+    history = [{"role": "user", "content": str(i)} for i in range(25)]
+    messages = build_product_assistant_messages("现在的问题", history, [])
+    assert [item["content"] for item in messages[1:-1]] == [str(i) for i in range(5, 25)]

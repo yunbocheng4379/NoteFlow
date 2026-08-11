@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .routers import note, provider, model, config, chat, auth, note_style, profile, export_note, share, feedback, billing, billing_notify, admin, admin_cookies, admin_notifications, admin_pricing, platform, update_logs, admin_update_logs, note_collection, flashcard, knowledge_base
+from .routers import note, provider, model, config, chat, auth, note_style, profile, export_note, share, feedback, billing, billing_notify, admin, admin_cookies, admin_notifications, admin_pricing, platform, update_logs, admin_update_logs, note_collection, flashcard, knowledge_base, assistant
 
 
 def create_app(lifespan) -> FastAPI:
@@ -28,5 +28,6 @@ def create_app(lifespan) -> FastAPI:
     app.include_router(note_collection.router, prefix="/api")
     app.include_router(flashcard.router, prefix="/api")
     app.include_router(knowledge_base.router, prefix="/api")
+    app.include_router(assistant.router, prefix="/api")
 
     return app
