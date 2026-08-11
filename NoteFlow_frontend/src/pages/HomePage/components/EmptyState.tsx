@@ -351,8 +351,8 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
             )}
           </div>
 
-          {/* 支持平台（紧贴输入区） */}
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-1.5">
+          {/* 支持平台 */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-1.5">
             {supportedPlatforms.map(({ key, label, Logo }) => (
               <div
                 key={key}
