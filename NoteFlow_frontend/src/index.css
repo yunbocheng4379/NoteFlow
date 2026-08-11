@@ -158,6 +158,33 @@ html, body, #root {
 }
 
 @layer components {
+  .assistant-launcher-pulse {
+    animation: assistant-launcher-pulse 3.2s ease-in-out infinite;
+  }
+
+  .assistant-markdown p {
+    margin: 0;
+  }
+
+  .assistant-markdown p + p,
+  .assistant-markdown ul,
+  .assistant-markdown ol {
+    margin-top: 0.45rem;
+  }
+
+  .assistant-markdown ul,
+  .assistant-markdown ol {
+    padding-left: 1.1rem;
+  }
+
+  .assistant-markdown code {
+    border-radius: 0.25rem;
+    background: #e6f7f5;
+    padding: 0.08rem 0.25rem;
+    color: #0f6b60;
+    font-size: 0.9em;
+  }
+
   .noteflow-chat-sender .ant-sender-actions-btn.ant-btn-primary {
     background-color: var(--primary) !important;
     border-color: var(--primary) !important;
@@ -211,5 +238,25 @@ html, body, #root {
     border-color: color-mix(in srgb, var(--primary) 56%, white) !important;
     color: #fff !important;
     opacity: 0.72;
+  }
+}
+
+@keyframes assistant-launcher-pulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: scale(1.08);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-launcher-pulse {
+    animation: none;
+    opacity: 0;
   }
 }

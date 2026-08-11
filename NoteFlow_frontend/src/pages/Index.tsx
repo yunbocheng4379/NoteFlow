@@ -22,6 +22,8 @@ import { useUserStore } from '@/store/userStore'
 import { clearTaskStoreForLogout } from '@/store/taskStore'
 import { clearDismissedUpdateLogs } from '@/services/updateLog'
 import FeedbackDialog from '@/components/FeedbackDialog'
+import WorkspaceAssistant from '@/components/WorkspaceAssistant'
+import { useAssistantStore } from '@/store/assistantStore'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '')
 
@@ -40,6 +42,7 @@ const NAV_ITEMS = [
 const Index = () => {
   const location = useLocation()
   const { user, clearAuth, credits, activeSubscription } = useUserStore()
+  const clearAssistant = useAssistantStore(state => state.clear)
   const isAdmin = !!user?.is_admin
   const [showFeedback, setShowFeedback] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -48,6 +51,7 @@ const Index = () => {
 
   const handleLogout = () => {
     clearTaskStoreForLogout()
+    clearAssistant()
     clearDismissedUpdateLogs()
     clearAuth()
     window.location.href = '/login'
@@ -295,6 +299,7 @@ const Index = () => {
       </div>
 
       <FeedbackDialog open={showFeedback} onClose={() => setShowFeedback(false)} />
+      <WorkspaceAssistant />
     </div>
   )
 }
