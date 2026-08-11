@@ -131,3 +131,62 @@ async def test_bilibili_search_data_missing_returns_empty():
         instance.get = AsyncMock(return_value=mock_response)
         results = await bilibili_search("kw", 20)
     assert results == []
+
+
+from app.services.video_search.youtube_searcher import youtube_search
+
+
+YT_SAMPLE = {
+    "entries": [
+        {
+            "id": "abc123",
+            "title": "YouTube 视频 A",
+            "url": "abc123",
+            "thumbnails": [
+                {"url": "https://i.ytimg.com/vi/abc123/default.jpg"},
+                {"url": "https://i.ytimg.com/vi/abc123/hqdefault.jpg"},
+            ],
+            "uploader": "Channel A",
+            "duration": 300,
+            "view_count": 5000,
+        },
+        {
+            "id": "def456",
+            "title": "YouTube 视频 B",
+            "thumbnails": [],
+            "channel": "Channel B",
+            "duration": None,
+            "view_count": None,
+        },
+    ]
+}
+
+
+@pytest.mark.asyncio
+async def test_youtube_search_parses_flat_result():
+    with patch("app.services.video_search.youtube_searcher.yt_dlp.YoutubeDL") as mock_ydl_cls:
+        instance = mock_ydl_cls.return_value.__enter__.return_value
+        instance.extract_info = lambda query, download=False: YT_SAMPLE
+        results = await youtube_search("test", 20)
+
+    assert len(results) == 2
+    assert results[0].platform == "youtube"
+    assert results[0].video_url == "https://www.youtube.com/watch?v=abc123"
+    assert results[0].title == "YouTube 视频 A"
+    assert results[0].cover_url == "https://i.ytimg.com/vi/abc123/hqdefault.jpg"
+    assert results[0].author == "Channel A"
+    assert results[0].duration == 300
+    assert results[0].play_count == 5000
+    assert results[0].publish_time is None
+
+    # Fallback: no thumbnails -> use hqdefault URL from id
+    assert results[1].cover_url == "https://i.ytimg.com/vi/def456/hqdefault.jpg"
+    assert results[1].author == "Channel B"
+    assert results[1].duration is None
+    assert results[1].play_count is None
+
+
+@pytest.mark.asyncio
+async def test_youtube_search_empty_keyword_returns_empty():
+    results = await youtube_search("", 20)
+    assert results == []
