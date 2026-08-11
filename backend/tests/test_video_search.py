@@ -283,3 +283,60 @@ async def test_search_all_both_fail():
 
     assert items == []
     assert status == {"bilibili": "failed", "youtube": "failed"}
+
+
+# ---------------------------------------------------------------------------
+# HTTP router tests (Task 5)
+# ---------------------------------------------------------------------------
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def client():
+    # Lazy import so DB init doesn't happen unless test runs
+    from main import app  # backend/main.py exposes `app`
+    return TestClient(app)
+
+
+def test_router_rejects_empty_q(client):
+    resp = client.get("/api/video_search?q=")
+    assert resp.status_code == 400
+
+
+def test_router_rejects_too_long_q(client):
+    resp = client.get("/api/video_search?q=" + "a" * 51)
+    assert resp.status_code == 400
+
+
+def test_router_happy_path(client):
+    async def fake_search(kw, per):
+        return (
+            [_mk("bilibili", 0), _mk("youtube", 0)],
+            {"bilibili": "ok", "youtube": "ok"},
+        )
+
+    with patch("app.routers.video_search.search_all", side_effect=fake_search):
+        resp = client.get("/api/video_search?q=rick")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["code"] == 0
+    assert body["data"]["keyword"] == "rick"
+    assert body["data"]["total"] == 2
+    assert len(body["data"]["items"]) == 2
+    assert body["data"]["platform_status"] == {"bilibili": "ok", "youtube": "ok"}
+
+
+def test_router_clamps_limit(client):
+    calls = {}
+
+    async def fake_search(kw, per):
+        calls["per"] = per
+        return ([], {"bilibili": "ok", "youtube": "ok"})
+
+    with patch("app.routers.video_search.search_all", side_effect=fake_search):
+        client.get("/api/video_search?q=x&limit=999")
+    assert calls["per"] == 20
+
+    with patch("app.routers.video_search.search_all", side_effect=fake_search):
+        client.get("/api/video_search?q=x&limit=0")
+    assert calls["per"] == 1
