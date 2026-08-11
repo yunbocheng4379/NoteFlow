@@ -110,6 +110,15 @@ def _create_stream(gpt, messages: list[dict[str, str]]):
         return gpt.client.chat.completions.create(model=gpt.model, messages=messages, stream=True)
 
 
+def product_assistant_error_message(exc: Exception) -> str:
+    """Map provider failures to actionable, safe customer-facing messages."""
+    raw = str(exc).lower()
+    status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+    if status == 402 or "insufficient balance" in raw or "error code: 402" in raw:
+        return "当前 AI 模型余额不足，请补充供应商余额或更换可用模型后重试。"
+    return "AI 客服暂时无法回答，请稍后重试。"
+
+
 def product_assistant_stream(question: str, history: list[dict[str, str]]) -> Iterator[dict[str, Any]]:
     try:
         store = ProductAssistantStore()
@@ -131,9 +140,9 @@ def product_assistant_stream(question: str, history: list[dict[str, str]]) -> It
     except ValueError as exc:
         logger.warning("产品客服请求被拒绝: %s", exc)
         yield {"type": "error", "message": str(exc)}
-    except Exception:
+    except Exception as exc:
         logger.exception("产品客服请求失败")
-        yield {"type": "error", "message": "AI 客服暂时无法回答，请稍后重试。"}
+        yield {"type": "error", "message": product_assistant_error_message(exc)}
 
 
 def encode_sse_event(event: dict[str, Any]) -> str:

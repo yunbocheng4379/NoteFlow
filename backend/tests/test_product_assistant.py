@@ -5,7 +5,11 @@ import pytest
 from app.routers.assistant import AssistantAskRequest, ask_assistant_stream
 from app.services.product_assistant_store import _chunk_product_markdown
 from app.services import product_assistant_service
-from app.services.product_assistant_service import build_product_assistant_messages, product_assistant_stream
+from app.services.product_assistant_service import (
+    build_product_assistant_messages,
+    product_assistant_error_message,
+    product_assistant_stream,
+)
 
 
 def test_product_markdown_chunks_keep_section_metadata():
@@ -81,3 +85,8 @@ def test_product_assistant_stream_reports_missing_model(monkeypatch):
         "type": "error",
         "message": "当前还没有配置可用的 AI 模型，请先到设置中完成配置。",
     }
+
+
+def test_product_assistant_translates_provider_balance_error():
+    error = RuntimeError("Error code: 402 - Insufficient Balance")
+    assert product_assistant_error_message(error) == "当前 AI 模型余额不足，请补充供应商余额或更换可用模型后重试。"

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MessageCircle, X } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 import xiaoliu from '@/assets/assistant/xiaoliu.png'
 import AssistantPanel from '@/components/AssistantPanel'
 
@@ -31,16 +31,6 @@ export default function WorkspaceAssistant() {
           <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#ff9b8a] text-white shadow-sm transition-transform group-hover:rotate-12">
             <MessageCircle className="h-3.5 w-3.5 fill-current" />
           </span>
-        </button>
-      )}
-      {open && (
-        <button
-          type="button"
-          aria-label="关闭小流 AI 客服"
-          onClick={() => setOpen(false)}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#d9ebe6] bg-white text-[#167a6e] shadow-md transition-colors hover:bg-[#e6f7f5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff9b8a]/70"
-        >
-          <X className="h-4 w-4" />
         </button>
       )}
     </div>
