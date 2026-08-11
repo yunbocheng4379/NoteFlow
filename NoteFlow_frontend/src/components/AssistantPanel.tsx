@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { BookOpen, ChevronDown, ChevronUp, Loader2, Send, Sparkles, X } from 'lucide-react'
 import xiaoliu from '@/assets/assistant/xiaoliu.png'
-import { askAssistantStream } from '@/services/assistant'
+import { askAssistantStream, getLatestUserQuestion } from '@/services/assistant'
 import { useAssistantStore } from '@/store/assistantStore'
 
 const QUICK_QUESTIONS = [
@@ -67,6 +67,7 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const latestQuestion = getLatestUserQuestion(messages)
 
   useEffect(() => {
     const node = scrollRef.current
@@ -122,6 +123,14 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
       event.preventDefault()
       void handleSend()
     }
+  }
+
+  const handleInputAction = () => {
+    if (input.trim()) {
+      void handleSend()
+      return
+    }
+    if (latestQuestion) setInput(latestQuestion)
   }
 
   return (
@@ -224,9 +233,10 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
           />
           <button
             type="button"
-            onClick={() => void handleSend()}
-            disabled={loading || !input.trim()}
-            aria-label="发送问题"
+            onClick={handleInputAction}
+            disabled={loading || (!input.trim() && !latestQuestion)}
+            aria-label={input.trim() ? '发送问题' : '回填上一次问题'}
+            title={input.trim() ? '发送问题' : '回填上一次问题'}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#167a6e] text-white transition-colors hover:bg-[#0f6b60] disabled:cursor-not-allowed disabled:bg-[#b4d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff9b8a]/70"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

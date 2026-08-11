@@ -11,6 +11,13 @@ export interface AssistantMessage {
   sources?: AssistantSource[]
 }
 
+export const getLatestUserQuestion = (messages: AssistantMessage[]): string => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role === 'user') return messages[index].content
+  }
+  return ''
+}
+
 export type AssistantStreamEvent =
   | { type: 'sources'; sources: AssistantSource[] }
   | { type: 'delta'; content: string }

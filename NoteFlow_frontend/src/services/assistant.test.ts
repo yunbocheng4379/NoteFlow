@@ -1,5 +1,5 @@
 import type { AssistantStreamEvent } from './assistant'
-import { parseAssistantSseEvent } from './assistant'
+import { getLatestUserQuestion, parseAssistantSseEvent } from './assistant'
 
 export function assistantSseParserContract(): AssistantStreamEvent | null {
   const source = parseAssistantSseEvent(
@@ -13,4 +13,19 @@ export function assistantSseParserContract(): AssistantStreamEvent | null {
   }
 
   return parseAssistantSseEvent('data: {"type":"done"}')
+}
+
+export function assistantLastQuestionContract(): string {
+  const question = getLatestUserQuestion([
+    { role: 'user', content: '第一条问题' },
+    { role: 'assistant', content: '第一条回答' },
+    { role: 'user', content: '最近一条问题' },
+  ])
+  if (question !== '最近一条问题') throw new Error('latest user question was not selected')
+
+  if (getLatestUserQuestion([{ role: 'assistant', content: '只有回答' }]) !== '') {
+    throw new Error('missing user question should return an empty string')
+  }
+
+  return question
 }
