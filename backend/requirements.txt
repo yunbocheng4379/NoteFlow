@@ -135,3 +135,4 @@ alibabacloud-tea-openapi==0.4.5
 alibabacloud-tea-util==0.3.14
 python-alipay-sdk==3.4.0
 wechatpayv3==2.0
+pytest-asyncio==0.24.0
