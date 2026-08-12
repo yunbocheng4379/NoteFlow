@@ -1,0 +1,47 @@
+<!--订单记录页面-->
+<view class="container">
+  <!-- 空状态 -->
+  <empty-state
+    wx:if="{{orders.length === 0 && !loading}}"
+    variant="generic"
+    title="暂无订单"
+    description="完成一笔充值或订阅后，订单将显示在这里"
+  />
+
+  <!-- 加载中 -->
+  <view class="loading-tip" wx:if="{{loading && orders.length === 0}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 订单列表 -->
+  <view class="order-list" wx:if="{{orders.length > 0}}">
+    <view
+      class="order-card"
+      wx:for="{{orders}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onTapOrder"
+    >
+      <view class="order-header">
+        <text class="order-title">{{item.description || item.package_name || '充值订单'}}</text>
+        <text class="order-status" style="color:{{item._status.color}}">{{item._status.label}}</text>
+      </view>
+
+      <view class="order-body">
+        <text class="order-amount">{{item._amount}}</text>
+        <text class="order-info" wx:if="{{item.credits}}">+{{item.credits}} 积分</text>
+      </view>
+
+      <view class="order-footer">
+        <text class="order-time">{{item._time}}</text>
+        <text class="order-id">#{{item.id}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 触底提示 -->
+  <view class="list-footer" wx:if="{{orders.length > 0}}">
+    <text wx:if="{{loading}}">加载更多...</text>
+    <text wx:elif="{{!hasMore}}">-- 没有更多了 --</text>
+  </view>
+</view>

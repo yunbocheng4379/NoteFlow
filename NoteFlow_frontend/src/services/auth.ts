@@ -108,4 +108,21 @@ export const authApi = {
 
   verifyContact: (params: VerifyContactParams) =>
     request.post<any, { ticket: string }>('/auth/verify-contact', params, { suppressToast: true }),
+
+  // —— 微信开放平台『网站应用』扫码登录 (Web) ——
+  wechatQrUrl: () =>
+    request.get<any, { qr_url: string; state: string }>('/auth/wechat/qr-url', { suppressToast: true }),
+
+  wechatExchange: (state: string) =>
+    request.post<any, WechatExchangeResult>(
+      '/auth/wechat/exchange',
+      { state },
+      { suppressToast: true },
+    ),
+}
+
+export interface WechatExchangeResult {
+  token: string
+  user: UserInfo
+  is_new: boolean
 }

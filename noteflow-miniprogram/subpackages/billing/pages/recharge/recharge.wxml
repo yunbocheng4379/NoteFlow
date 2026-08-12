@@ -1,0 +1,55 @@
+<!--积分充值页面-->
+<view class="container">
+  <!-- 当前余额 -->
+  <view class="balance-card">
+    <text class="balance-label">当前积分</text>
+    <view class="balance-row">
+      <text class="balance-value">{{credits}}</text>
+      <text class="balance-unit">积分</text>
+    </view>
+  </view>
+
+  <!-- 套餐列表 -->
+  <view class="section">
+    <text class="section-title">选择充值套餐</text>
+    <view class="package-list">
+      <view
+        wx:for="{{packages}}"
+        wx:key="id"
+        class="package-card {{selectedIdx === index ? 'selected' : ''}}"
+        data-idx="{{index}}"
+        bindtap="onSelectPackage"
+      >
+        <view class="package-badge" wx:if="{{item.badge}}">{{item.badge}}</view>
+        <text class="package-name">{{item.name}}</text>
+        <view class="package-credits">
+          <text class="credits-num">{{item.credits}}</text>
+          <text class="credits-label">积分</text>
+        </view>
+        <view class="package-price">
+          <text class="price-symbol">¥</text>
+          <text class="price-num">{{item.price}}</text>
+        </view>
+        <view class="package-unit-price">
+          <text>约 ¥{{(item.price / item.credits * 100).toFixed(2)}}/积分</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 支付按钮 -->
+  <view class="footer-bar">
+    <view class="footer-info">
+      <text class="footer-label">实付金额</text>
+      <text class="footer-price">¥{{packages[selectedIdx].price}}</text>
+    </view>
+    <button
+      class="pay-btn {{loading ? 'loading' : ''}}"
+      bindtap="onPurchase"
+      disabled="{{loading}}"
+      loading="{{loading}}"
+    >
+      {{loading ? '支付中...' : '微信支付'}}
+    </button>
+  </view>
+</view>

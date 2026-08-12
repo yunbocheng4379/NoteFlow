@@ -1,9 +1,17 @@
 import uuid
+import os
+import re
+import json
+import secrets
 from datetime import datetime
+from urllib.parse import quote_plus, urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth.jwt_handler import hash_password, verify_password, create_access_token
@@ -544,6 +552,439 @@ def bind_email(
         r.eval(_LOCK_RELEASE_SCRIPT, 1, lock_key, lock_token)
 
     return R.success({"email": email})
+
+
+class WechatLoginRequest(BaseModel):
+    code: str  # 小程序调用 wx.login() 获取的临时登录凭证
+
+
+@router.post("/wechat-login")
+async def wechat_login(body: WechatLoginRequest, db: Session = Depends(get_db)):
+    """微信小程序一键登录：code → openid → 查/建用户 → 签发 JWT"""
+    from app.services.billing import credit_ledger, referral_service
+    from app.utils.logger import get_logger
+    logger = get_logger(__name__)
+
+    appid = os.getenv("WECHAT_MP_APPID", "wxc7bd21a33355b95f")
+    secret = os.getenv("WECHAT_MP_SECRET", "")
+    if not secret:
+        raise HTTPException(status_code=500, detail="微信小程序登录未配置 (缺少 WECHAT_MP_SECRET)")
+
+    # Step 1: 用 code 换取 openid
+    code2session_url = (
+        "https://api.weixin.qq.com/sns/jscode2session"
+        f"?appid={appid}&secret={secret}&js_code={body.code}&grant_type=authorization_code"
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(code2session_url)
+            resp.raise_for_status()
+            session_data = resp.json()
+    except Exception as e:
+        logger.error(f"[wechat-login] code2session 请求失败: {e}")
+        return R.error(code=StatusCode.SEND_CODE_FAILED, msg="微信登录服务异常，请稍后重试")
+
+    if session_data.get("errcode"):
+        errcode = session_data.get("errcode")
+        errmsg = session_data.get("errmsg", "未知错误")
+        logger.error(f"[wechat-login] code2session 返回错误: errcode={errcode}, errmsg={errmsg}")
+        return R.error(code=StatusCode.CODE_INVALID, msg=f"微信登录失败: {errmsg}")
+
+    openid = session_data.get("openid")
+    unionid = session_data.get("unionid")
+
+    if not openid:
+        return R.error(code=StatusCode.CODE_INVALID, msg="获取微信用户标识失败")
+
+    # Step 2: 根据 openid 查找用户
+    user = db.query(User).filter(User.wechat_openid == openid).first()
+
+    if user:
+        # 已有用户 — 更新 unionid 和登录时间
+        if unionid and not user.wechat_unionid:
+            user.wechat_unionid = unionid
+        user.last_login_at = datetime.now()
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token(user.id, user.username)
+        return R.success({
+            "token": token,
+            "user": _user_payload(user),
+            "is_new": False,
+        })
+
+    # Step 3: 新用户 — 自动注册
+    username = f"wx_{openid[:10]}_{secrets.token_hex(2)}"
+
+    try:
+        user = User(
+            username=username,
+            email=None,
+            hashed_password=None,
+            wechat_openid=openid,
+            wechat_unionid=unionid,
+            credits=0,
+            total_points=0,
+            used_points=0,
+        )
+        db.add(user)
+        db.flush()
+
+        # 生成邀请码
+        referral_service.generate_referral_code(db, user.id)
+
+        # 新用户注册赠送 100 电力
+        credit_ledger.grant(
+            db,
+            user_id=user.id,
+            amount=referral_service.REGISTER_GRANT_CREDITS,
+            type_="REGISTER_GRANT",
+            note="微信小程序新用户注册赠送",
+        )
+
+        db.commit()
+        db.refresh(user)
+    except Exception:
+        db.rollback()
+        logger.exception("[wechat-login] 创建用户失败")
+        return R.error(code=StatusCode.FAIL, msg="创建用户失败，请稍后重试")
+
+    token = create_access_token(user.id, user.username)
+    return R.success({
+        "token": token,
+        "user": _user_payload(user),
+        "is_new": True,
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+# 微信开放平台『网站应用』扫码登录 (Web 端)
+#   小程序登录 (/wechat-login) 走 jscode2session, 网站扫码走 oauth2.
+#   两者是不同 AppID 下的两套 openid, 但同一开放平台账号下 unionid 相同,
+#   建号时优先按 unionid 合并, 避免同一微信号在两端各建一个账号.
+# ─────────────────────────────────────────────────────────────
+
+_WECHAT_WEB_STATE_TTL = 300   # 二维码 state 有效期 (秒)
+_WECHAT_WEB_TICKET_TTL = 60   # 扫码结果暂存有效期; 前端弹窗打开后 60s 内必须 exchange 掉
+_WECHAT_WEB_QR_BASE = "https://open.weixin.qq.com/connect/qrconnect"
+_WECHAT_WEB_TOKEN_URL = "https://api.weixin.qq.com/sns/oauth2/access_token"
+_WECHAT_WEB_USERINFO_URL = "https://api.weixin.qq.com/sns/userinfo"
+
+# 部分微信昵称包含 emoji ZWJ / 变体选择符 / 控制字符, 存进某些 collation 的 MySQL 列可能报错.
+# 清洗成"仅保留可打印 Unicode + 常见符号"; 若清洗后为空, 由调用方 fallback 到 wx_xxx.
+_NICKNAME_STRIP_RE = re.compile(r"[​-‏ - ︀-️﻿]")
+
+
+def _clean_wechat_nickname(raw: str | None) -> str:
+    if not raw:
+        return ""
+    s = _NICKNAME_STRIP_RE.sub("", raw).strip()
+    # 太长的截断到 32 (users.username 上限)
+    return s[:32]
+
+
+def _wechat_web_state_key(state: str) -> str:
+    return f"wechat:oauth_state:{state}"
+
+
+def _wechat_web_ticket_key(state: str) -> str:
+    return f"wechat:qr_ticket:{state}"
+
+
+class WechatExchangeRequest(BaseModel):
+    state: str
+
+    @field_validator("state")
+    @classmethod
+    def state_len(cls, v):
+        v = (v or "").strip()
+        if not v or len(v) > 64:
+            raise ValueError("state 参数不合法")
+        return v
+
+
+@router.get("/wechat/qr-url")
+def wechat_qr_url():
+    """生成微信扫码登录的二维码 URL + 一次性 state.
+
+    前端拿到 qr_url 后放进 iframe.src 即可展示官方二维码;
+    state 会在 callback 阶段被消费, 防 CSRF.
+    """
+    appid = os.getenv("WECHAT_WEB_APPID", "").strip()
+    secret = os.getenv("WECHAT_WEB_SECRET", "").strip()
+    mock = os.getenv("WECHAT_WEB_MOCK", "false").strip().lower() == "true"
+
+    if not (appid and secret) and not mock:
+        raise HTTPException(
+            status_code=500,
+            detail="微信 Web 登录未配置 (缺少 WECHAT_WEB_APPID / WECHAT_WEB_SECRET, 或设置 WECHAT_WEB_MOCK=true 走 mock)",
+        )
+
+    redirect_base = os.getenv("WECHAT_WEB_REDIRECT_BASE", "http://localhost:8483").rstrip("/")
+    redirect_uri = f"{redirect_base}/api/auth/wechat/callback"
+
+    # state 用于将扫码流程"再穿回"当前浏览器 tab: qr-url 阶段生成 → 前端在 iframe 里
+    # 打开 qr_url → 微信 302 时带回 → callback 校验消费. 生成 + 存入 Redis (SETNX 防重放).
+    state = secrets.token_urlsafe(24)
+    r = get_redis()
+    if not r.set(_wechat_web_state_key(state), "1", nx=True, ex=_WECHAT_WEB_STATE_TTL):
+        # 极小概率碰撞, 重生成一次
+        state = secrets.token_urlsafe(24)
+        r.set(_wechat_web_state_key(state), "1", ex=_WECHAT_WEB_STATE_TTL)
+
+    if mock and not (appid and secret):
+        # mock 模式: 直接把 qr_url 指向后端 mock 回调, 前端无需真扫码
+        qr_url = f"{redirect_base}/api/auth/wechat/callback?code=MOCK_{state[:8]}&state={state}"
+    else:
+        qr_params = {
+            "appid": appid,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": "snsapi_login",
+            "state": state,
+        }
+        qr_url = f"{_WECHAT_WEB_QR_BASE}?{urlencode(qr_params)}#wechat_redirect"
+
+    return R.success({"qr_url": qr_url, "state": state})
+
+
+def _wechat_frontend_callback(state: str, error: str | None = None) -> str:
+    base = os.getenv("WECHAT_WEB_FRONTEND_CALLBACK", "http://localhost:3015/wechat/callback")
+    params = {"state": state}
+    if error:
+        params["error"] = error
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}{urlencode(params)}"
+
+
+async def _wechat_web_fetch_openid(code: str) -> dict:
+    """调 sns/oauth2/access_token + sns/userinfo, 返回统一格式.
+
+    mock 模式下不发外网请求, 直接根据 code 造一个稳定的 openid.
+    """
+    mock = os.getenv("WECHAT_WEB_MOCK", "false").strip().lower() == "true"
+    if mock:
+        # code 形如 MOCK_xxxxxxxx, 用它保证同一次扫码稳定拿到同一 openid;
+        # 不同浏览器 tab 产生不同 code, 因此可以 mock 出多个"用户"
+        suffix = code.replace("MOCK_", "")[:8] or "default"
+        return {
+            "openid": f"mock_web_{suffix}",
+            "unionid": None,
+            "nickname": f"微信用户_{suffix[:4]}",
+            "headimgurl": None,
+        }
+
+    appid = os.getenv("WECHAT_WEB_APPID", "").strip()
+    secret = os.getenv("WECHAT_WEB_SECRET", "").strip()
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        # Step 1: code → access_token + openid + unionid
+        token_resp = await client.get(
+            _WECHAT_WEB_TOKEN_URL,
+            params={
+                "appid": appid,
+                "secret": secret,
+                "code": code,
+                "grant_type": "authorization_code",
+            },
+        )
+        token_resp.raise_for_status()
+        token_data = token_resp.json()
+
+        if token_data.get("errcode"):
+            raise ValueError(f"errcode={token_data.get('errcode')} errmsg={token_data.get('errmsg')}")
+
+        access_token = token_data.get("access_token")
+        openid = token_data.get("openid")
+        unionid = token_data.get("unionid")
+        if not (access_token and openid):
+            raise ValueError("missing access_token/openid")
+
+        # Step 2: 拿昵称+头像; userinfo 失败不影响登录, 只是新用户没头像/用兜底 username
+        nickname = ""
+        headimgurl = None
+        try:
+            info_resp = await client.get(
+                _WECHAT_WEB_USERINFO_URL,
+                params={"access_token": access_token, "openid": openid, "lang": "zh_CN"},
+            )
+            info_resp.raise_for_status()
+            info_data = info_resp.json()
+            if not info_data.get("errcode"):
+                nickname = info_data.get("nickname") or ""
+                headimgurl = info_data.get("headimgurl") or None
+                if not unionid:
+                    unionid = info_data.get("unionid") or None
+        except Exception:
+            pass
+
+        return {
+            "openid": openid,
+            "unionid": unionid,
+            "nickname": nickname,
+            "headimgurl": headimgurl,
+        }
+
+
+def _find_or_create_wechat_web_user(db: Session, profile: dict) -> tuple[User, bool]:
+    """按 unionid → web_openid 顺序查用户; 都没命中则建新号. 返回 (user, is_new)."""
+    from app.services.billing import credit_ledger, referral_service
+
+    openid = profile["openid"]
+    unionid = profile.get("unionid")
+    nickname = _clean_wechat_nickname(profile.get("nickname"))
+    headimgurl = profile.get("headimgurl")
+
+    user: User | None = None
+    if unionid:
+        user = db.query(User).filter(User.wechat_unionid == unionid).first()
+    if user is None:
+        user = db.query(User).filter(User.wechat_web_openid == openid).first()
+
+    if user is not None:
+        # 复用已有账号: 补齐可能空缺的字段 (小程序先注册 → Web 扫码时补 web_openid)
+        changed = False
+        if not user.wechat_web_openid:
+            user.wechat_web_openid = openid
+            changed = True
+        if unionid and not user.wechat_unionid:
+            user.wechat_unionid = unionid
+            changed = True
+        if not user.avatar and headimgurl:
+            user.avatar = headimgurl
+            changed = True
+        user.last_login_at = datetime.now()
+        if changed:
+            db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user, False
+
+    # 建新号 —— 与 /wechat-login 小程序注册流程保持完全一致的收尾 (邀请码 + 100 电力赠送)
+    fallback_username = f"wx_{openid[:10]}_{secrets.token_hex(2)}"
+    username = nickname or fallback_username
+
+    for attempt in range(3):
+        candidate = username if attempt == 0 else f"{username}_{secrets.token_hex(2)}"
+        try:
+            user = User(
+                username=candidate,
+                email=None,
+                hashed_password=None,
+                wechat_openid=None,
+                wechat_web_openid=openid,
+                wechat_unionid=unionid,
+                avatar=headimgurl or None,
+                phone=None,
+                credits=0,
+                total_points=0,
+                used_points=0,
+            )
+            db.add(user)
+            db.flush()
+            referral_service.generate_referral_code(db, user.id)
+            credit_ledger.grant(
+                db,
+                user_id=user.id,
+                amount=referral_service.REGISTER_GRANT_CREDITS,
+                type_="REGISTER_GRANT",
+                note="微信网站扫码新用户注册赠送",
+            )
+            db.commit()
+            db.refresh(user)
+            return user, True
+        except IntegrityError:
+            db.rollback()
+            # username 冲突: 换个后缀重试
+            continue
+
+    # 3 次都撞: 直接用 fallback 兜底
+    user = User(
+        username=fallback_username,
+        email=None,
+        hashed_password=None,
+        wechat_openid=None,
+        wechat_web_openid=openid,
+        wechat_unionid=unionid,
+        avatar=headimgurl or None,
+        phone=None,
+        credits=0,
+        total_points=0,
+        used_points=0,
+    )
+    db.add(user)
+    db.flush()
+    referral_service.generate_referral_code(db, user.id)
+    credit_ledger.grant(
+        db,
+        user_id=user.id,
+        amount=referral_service.REGISTER_GRANT_CREDITS,
+        type_="REGISTER_GRANT",
+        note="微信网站扫码新用户注册赠送",
+    )
+    db.commit()
+    db.refresh(user)
+    return user, True
+
+
+@router.get("/wechat/callback")
+async def wechat_web_callback(code: str = "", state: str = "", db: Session = Depends(get_db)):
+    """微信扫码后 302 命中的入口. 处理完把结果塞进 Redis ticket, 再 302 回前端 /wechat/callback."""
+    from app.utils.logger import get_logger
+    logger = get_logger(__name__)
+
+    if not (code and state):
+        return RedirectResponse(_wechat_frontend_callback(state, error="invalid_request"))
+
+    r = get_redis()
+    # 消费 state (一次性), 防重放/防 CSRF
+    if not r.delete(_wechat_web_state_key(state)):
+        return RedirectResponse(_wechat_frontend_callback(state, error="state_invalid"))
+
+    try:
+        profile = await _wechat_web_fetch_openid(code)
+    except Exception as e:
+        logger.exception(f"[wechat-web-login] fetch openid failed: {e}")
+        return RedirectResponse(_wechat_frontend_callback(state, error="wechat_error"))
+
+    try:
+        user, is_new = _find_or_create_wechat_web_user(db, profile)
+    except Exception:
+        db.rollback()
+        logger.exception("[wechat-web-login] find_or_create failed")
+        return RedirectResponse(_wechat_frontend_callback(state, error="server_error"))
+
+    if not user.is_active:
+        return RedirectResponse(_wechat_frontend_callback(state, error="account_disabled"))
+
+    token = create_access_token(user.id, user.username)
+    payload = json.dumps({
+        "token": token,
+        "user": _user_payload(user),
+        "is_new": is_new,
+    })
+    r.set(_wechat_web_ticket_key(state), payload, ex=_WECHAT_WEB_TICKET_TTL)
+
+    return RedirectResponse(_wechat_frontend_callback(state))
+
+
+@router.post("/wechat/exchange")
+def wechat_web_exchange(body: WechatExchangeRequest):
+    """前端 iframe 落地 /wechat/callback 后, 通过 postMessage 触发父页调此接口拿 token + user."""
+    r = get_redis()
+    key = _wechat_web_ticket_key(body.state)
+    raw = r.get(key)
+    if raw is None:
+        return R.error(code=StatusCode.CODE_INVALID, msg="登录链接已失效, 请重新扫码")
+    # 一次性消费
+    r.delete(key)
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return R.error(code=StatusCode.FAIL, msg="登录数据异常, 请重新扫码")
+    return R.success(data)
 
 
 @router.get("/me")

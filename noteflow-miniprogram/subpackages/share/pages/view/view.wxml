@@ -1,0 +1,57 @@
+<!--分享落地页-->
+<view class="container">
+  <!-- 加载 -->
+  <view class="state" wx:if="{{loading}}">
+    <text class="state-text">加载中...</text>
+  </view>
+
+  <!-- 过期/失效 -->
+  <view class="state" wx:elif="{{expired}}">
+    <text class="state-icon">⏰</text>
+    <text class="state-title">链接已过期</text>
+    <text class="state-desc">该分享链接已超过有效期</text>
+    <button class="enter-btn" bindtap="onEnterApp">进入 NoteFlow</button>
+  </view>
+
+  <!-- 错误 -->
+  <view class="state" wx:elif="{{error}}">
+    <text class="state-icon">😕</text>
+    <text class="state-title">{{error}}</text>
+    <button class="enter-btn" bindtap="onEnterApp">进入 NoteFlow</button>
+  </view>
+
+  <!-- 笔记内容 -->
+  <block wx:else>
+    <!-- 头部信息 -->
+    <view class="note-header">
+      <text class="note-title">{{note.title}}</text>
+      <view class="note-meta">
+        <text class="meta-item" wx:if="{{note._platform}}">{{note._platform}}</text>
+        <text class="meta-sep" wx:if="{{note._platform}}">·</text>
+        <text class="meta-item">{{note._time}}</text>
+      </view>
+      <view class="note-banner" wx:if="{{note.video_thumbnail}}">
+        <image src="{{note.video_thumbnail}}" mode="aspectFill" />
+      </view>
+    </view>
+
+    <!-- Markdown 内容 -->
+    <view class="note-body">
+      <markdown-viewer nodes="{{nodes}}" />
+    </view>
+
+    <!-- 底部引导 -->
+    <view class="footer-banner">
+      <view class="footer-info">
+        <text class="footer-title">NoteFlow</text>
+        <text class="footer-desc">AI 视频笔记 — 一键生成结构化笔记</text>
+      </view>
+      <button class="footer-btn" bindtap="onEnterApp">打开小程序</button>
+    </view>
+  </block>
+
+  <!-- 悬浮分享按钮 -->
+  <view class="share-fab" wx:if="{{note}}" bindtap="onCopyLink">
+    <text class="share-fab-icon">🔗</text>
+  </view>
+</view>

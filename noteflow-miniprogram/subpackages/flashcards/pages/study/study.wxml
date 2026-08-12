@@ -1,0 +1,89 @@
+<!--复习闪记卡页-->
+<view class="container">
+  <!-- 加载中 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载闪记卡中...</text>
+  </view>
+
+  <!-- 无卡片 -->
+  <empty-state
+    wx:elif="{{cards.length === 0}}"
+    variant="tasks"
+    title="暂无闪记卡"
+    description="从笔记详情页生成你的第一套闪记卡"
+  />
+
+  <!-- 完成页 -->
+  <view class="finished" wx:elif="{{finished}}">
+    <view class="finished-icon">🎉</view>
+    <text class="finished-title">复习完成！</text>
+
+    <view class="stats-grid">
+      <view class="stat-item">
+        <text class="stat-num">{{stats.total}}</text>
+        <text class="stat-label">总卡片</text>
+      </view>
+      <view class="stat-item" style="color:#07C160">
+        <text class="stat-num">{{stats.good}}</text>
+        <text class="stat-label">已掌握</text>
+      </view>
+      <view class="stat-item" style="color:#FFC300">
+        <text class="stat-num">{{stats.hard}}</text>
+        <text class="stat-label">有点难</text>
+      </view>
+      <view class="stat-item" style="color:#FA5151">
+        <text class="stat-num">{{stats.again}}</text>
+        <text class="stat-label">需复习</text>
+      </view>
+    </view>
+
+    <view class="finished-actions">
+      <button class="action-btn retry-btn" bindtap="onRetryWrong">复习错题</button>
+      <button class="action-btn restart-btn" bindtap="onRestart">重新开始</button>
+    </view>
+  </view>
+
+  <!-- 学习模式 -->
+  <view class="study-area" wx:else>
+    <!-- 进度条 -->
+    <view class="progress-bar">
+      <view class="progress-fill" style="width:{{(currentIdx / cards.length) * 100}}%"></view>
+      <text class="progress-text">{{currentIdx + 1}} / {{cards.length}}</text>
+    </view>
+
+    <!-- 卡片 -->
+    <view class="card-wrapper" bindtap="onFlip">
+      <view class="study-card {{flipped ? 'flipped' : ''}}">
+        <view class="study-card-inner">
+          <view class="study-card-front">
+            <text class="study-card-label">问题</text>
+            <text class="study-card-content">{{cards[currentIdx].front || cards[currentIdx].question}}</text>
+          </view>
+          <view class="study-card-back">
+            <text class="study-card-label">答案</text>
+            <text class="study-card-content">{{cards[currentIdx].back || cards[currentIdx].answer}}</text>
+          </view>
+        </view>
+      </view>
+      <text class="flip-hint" wx:if="{{!flipped}}">点击翻转查看答案</text>
+    </view>
+
+    <!-- 评分按钮 -->
+    <view class="ratings" wx:if="{{showRatings}}">
+      <text class="ratings-label">掌握程度：</text>
+      <view class="rating-buttons">
+        <view
+          wx:for="{{ratings}}"
+          wx:key="key"
+          class="rating-btn"
+          style="--r-color:{{item.color}}"
+          data-key="{{item.key}}"
+          bindtap="onRate"
+        >
+          <text class="rating-emoji">{{item.emoji}}</text>
+          <text class="rating-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,64 @@
+<!--合集详情页-->
+<view class="container">
+  <block wx:if="{{!loading}}">
+    <!-- 合集头部 -->
+    <view class="header">
+      <view wx:if="{{!renaming}}" class="title-row">
+        <text class="title">{{collection.name}}</text>
+        <text class="edit-btn" bindtap="onRename">编辑</text>
+      </view>
+
+      <view wx:else class="title-row">
+        <input
+          class="title-input"
+          value="{{collection.name}}"
+          focus="{{true}}"
+          bindconfirm="onConfirmRename"
+          bindblur="onCancelRename"
+          maxlength="30"
+        />
+        <text class="cancel-btn" bindtap="onCancelRename">取消</text>
+      </view>
+
+      <view class="meta">
+        <text>{{collection._count}} 篇笔记</text>
+        <text class="meta-sep">·</text>
+        <text>更新于 {{collection._time}}</text>
+      </view>
+    </view>
+
+    <!-- 笔记列表 -->
+    <view class="note-list" wx:if="{{notes.length > 0}}">
+      <view
+        class="note-card"
+        wx:for="{{notes}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onTapNote"
+      >
+        <view class="note-cover" wx:if="{{item.video_thumbnail}}">
+          <image src="{{item.video_thumbnail}}" mode="aspectFill" lazy-load />
+        </view>
+        <view class="note-info">
+          <text class="note-title">{{item.title}}</text>
+          <text class="note-time">{{item._time}}</text>
+        </view>
+        <view class="note-action" data-id="{{item.id}}" data-title="{{item.title}}" catchtap="onRemoveNote">
+          <text class="remove-icon">−</text>
+        </view>
+      </view>
+    </view>
+
+    <empty-state
+      wx:else
+      variant="tasks"
+      title="合集中暂无笔记"
+      description="在笔记详情页中可将笔记添加到本合集"
+    />
+
+    <!-- 底部危险操作 -->
+    <view class="danger-zone">
+      <text class="delete-btn" bindtap="onDelete">删除合集</text>
+    </view>
+  </block>
+</view>

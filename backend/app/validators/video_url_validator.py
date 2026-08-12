@@ -13,6 +13,10 @@ SUPPORTED_PLATFORMS = {
 def is_supported_video_url(url: str) -> bool:
     parsed = urlparse(url)
 
+    # cloud://baidu_pan/... 走网盘 downloader
+    if parsed.scheme == "cloud":
+        return True
+
     # 检查是否为Bilibili的短链接
     if parsed.netloc == "b23.tv":
         return True

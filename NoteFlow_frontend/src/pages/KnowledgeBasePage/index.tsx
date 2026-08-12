@@ -525,7 +525,24 @@ export default function KnowledgeBasePage() {
     )
   }
 
-  if (coverage && coverage.total === 0) {
+  if (coverage === null) {
+    return (
+      <div className="flex h-full w-full min-w-0 flex-1 flex-col bg-[#fbfcfc]">
+        <div className="flex shrink-0 items-center gap-2.5 border-b bg-white px-4 py-3">
+          <div className="text-primary flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--primary-light)]">
+            <BookOpen className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">知识库</h2>
+            <p className="text-xs text-neutral-400">跨笔记检索并引用来源，帮你梳理积累的知识</p>
+          </div>
+        </div>
+        <div className="flex min-h-0 flex-1" />
+      </div>
+    )
+  }
+
+  if (coverage.total === 0) {
     return (
       <div className="flex h-full w-full min-w-0 flex-1 flex-col bg-[#fbfcfc]">
         <div className="flex shrink-0 items-center gap-2.5 border-b bg-white px-4 py-3">
@@ -540,13 +557,18 @@ export default function KnowledgeBasePage() {
 
         <div className="flex min-h-0 flex-1 items-center justify-center px-8 py-10">
           <div className="flex w-full max-w-[720px] flex-col items-center text-center">
+            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              Pro 专属
+            </div>
+
             <div className="relative mb-7 h-28 w-36">
-              <div className="absolute top-7 left-0 h-16 w-24 rounded-2xl border border-teal-100 bg-white shadow-sm" />
-              <div className="absolute top-2 right-0 h-20 w-28 rounded-2xl border border-teal-100 bg-white shadow-sm" />
-              <div className="text-primary absolute top-1/2 left-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-3xl bg-[var(--primary-light)] shadow-[0_18px_45px_rgba(20,140,126,0.12)]">
+              <div className="absolute top-7 left-0 h-16 w-24 rounded-2xl border border-amber-100 bg-white shadow-sm" />
+              <div className="absolute top-2 right-0 h-20 w-28 rounded-2xl border border-amber-100 bg-white shadow-sm" />
+              <div className="absolute top-1/2 left-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-3xl bg-amber-50 text-amber-600 shadow-[0_18px_45px_rgba(245,158,11,0.14)]">
                 <Sparkles className="h-9 w-9" />
               </div>
-              <div className="text-primary absolute right-4 bottom-2 flex h-9 w-9 items-center justify-center rounded-xl border border-teal-100 bg-white shadow-sm">
+              <div className="absolute right-4 bottom-2 flex h-9 w-9 items-center justify-center rounded-xl border border-amber-100 bg-white text-amber-600 shadow-sm">
                 <FileText className="h-4 w-4" />
               </div>
             </div>
@@ -573,6 +595,27 @@ export default function KnowledgeBasePage() {
                     {index + 1}
                   </span>
                   <span>{step}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 grid w-full max-w-[620px] gap-2 sm:grid-cols-3">
+              {[
+                { title: '跨笔记检索', desc: '从全部笔记中找到关联内容', Icon: BookOpen },
+                { title: '引用来源', desc: '回答下方展示来源笔记', Icon: FileText },
+                { title: '深度思考', desc: '支持推理模型展开思路', Icon: BrainCircuit },
+              ].map(item => (
+                <div
+                  key={item.title}
+                  className="flex items-start gap-3 rounded-xl border border-neutral-200 bg-white p-3 text-left shadow-sm shadow-neutral-100/60"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                    <item.Icon className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-gray-800">{item.title}</p>
+                    <p className="mt-1 text-xs leading-5 text-neutral-400">{item.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>

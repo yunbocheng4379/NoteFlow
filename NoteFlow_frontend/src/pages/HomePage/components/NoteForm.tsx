@@ -53,6 +53,7 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { ModelOptionLabel, ModelProviderLogo } from '@/components/ModelProviderLogo'
+import CloudDrivePanel from './CloudDrivePanel'
 
 /* ---------- Schema ---------- */
 const formSchema = z
@@ -435,6 +436,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
     Array<ChannelVideoItem & { platform: string; checked: boolean }>
   >([])
   const [batchSubmitting, setBatchSubmitting] = useState(false)
+  const [cloudMode, setCloudMode] = useState(false)
 
   const { addPendingTask, currentTaskId, getCurrentTask, retryTask } = useTaskStore()
   const { loadEnabledModels, modelList } = useModelStore()
@@ -968,12 +970,13 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 type="button"
                 onClick={() => {
                   setBatchMode(false)
+                  setCloudMode(false)
                   form.setValue('_batch_mode', false)
                   form.setValue('platform', 'bilibili')
                 }}
                 className={cn(
                   'px-4 pb-2 text-sm font-medium transition-colors',
-                  !isLocal && !batchMode
+                  !isLocal && !batchMode && !cloudMode
                     ? 'border-primary text-primary -mb-px border-b-2'
                     : 'text-neutral-500 hover:text-neutral-700'
                 )}
@@ -984,12 +987,13 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 type="button"
                 onClick={() => {
                   setBatchMode(false)
+                  setCloudMode(false)
                   form.setValue('_batch_mode', false)
                   form.setValue('platform', 'local')
                 }}
                 className={cn(
                   'px-4 pb-2 text-sm font-medium transition-colors',
-                  isLocal && !batchMode
+                  isLocal && !batchMode && !cloudMode
                     ? 'border-primary text-primary -mb-px border-b-2'
                     : 'text-neutral-500 hover:text-neutral-700'
                 )}
@@ -1001,6 +1005,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   type="button"
                   onClick={() => {
                     setBatchMode(true)
+                    setCloudMode(false)
                     form.setValue('_batch_mode', true)
                   }}
                   className={cn(
@@ -1013,9 +1018,30 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                   批量模式
                 </button>
               )}
+              {mode === 'create' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBatchMode(false)
+                    setCloudMode(true)
+                    form.setValue('_batch_mode', false)
+                    form.setValue('platform', 'baidu_pan')
+                  }}
+                  className={cn(
+                    'px-4 pb-2 text-sm font-medium transition-colors',
+                    cloudMode
+                      ? 'border-primary text-primary -mb-px border-b-2'
+                      : 'text-neutral-500 hover:text-neutral-700'
+                  )}
+                >
+                  网盘
+                </button>
+              )}
             </div>
 
-            {batchMode && !isPro ? (
+            {cloudMode ? (
+              <CloudDrivePanel onSubmitSuccess={() => onSubmitSuccess?.()} />
+            ) : batchMode && !isPro ? (
               <BatchModeProPrompt />
             ) : batchMode ? (
               /* Batch: channel/collection URL + manual multi-URL textarea + preview list */
@@ -1588,32 +1614,34 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={
-              batchMode
-                ? !isPro || batchSubmitting || batchPreview.filter(v => v.checked).length === 0
-                : generating ||
-                  (costPreview !== null && !costPreview.sufficient) ||
-                  !!platformDisabled
-            }
-          >
-            {(batchMode ? batchSubmitting : generating) && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {batchMode && !isPro
-              ? '升级 Pro 使用批量模式'
-              : batchMode
-                ? batchSubmitting
-                  ? '正在提交…'
-                  : `批量生成 (${batchPreview.filter(v => v.checked).length})`
-                : generating
-                  ? '正在生成…'
-                  : costPreview
-                    ? `消耗 ${costPreview.required} 电力生成笔记`
-                    : '生成笔记'}
-          </Button>
+          {!cloudMode && (
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={
+                batchMode
+                  ? !isPro || batchSubmitting || batchPreview.filter(v => v.checked).length === 0
+                  : generating ||
+                    (costPreview !== null && !costPreview.sufficient) ||
+                    !!platformDisabled
+              }
+            >
+              {(batchMode ? batchSubmitting : generating) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {batchMode && !isPro
+                ? '升级 Pro 使用批量模式'
+                : batchMode
+                  ? batchSubmitting
+                    ? '正在提交…'
+                    : `批量生成 (${batchPreview.filter(v => v.checked).length})`
+                  : generating
+                    ? '正在生成…'
+                    : costPreview
+                      ? `消耗 ${costPreview.required} 电力生成笔记`
+                      : '生成笔记'}
+            </Button>
+          )}
         </div>
       </form>
     </Form>

@@ -287,7 +287,7 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
           </div>
 
           {/* 解析预览 */}
-          <div className="mt-3 min-h-[3.5rem]">
+          <div className="mt-3 min-h-0">
             {parsing && (
               <div className="animate-in fade-in flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-2.5 shadow-sm duration-300">
                 <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-md bg-neutral-100">

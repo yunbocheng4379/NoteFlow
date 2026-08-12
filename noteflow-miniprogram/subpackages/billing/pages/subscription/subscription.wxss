@@ -1,0 +1,153 @@
+/* 会员订阅页样式 */
+.container {
+  background: #F1EFE8;
+  min-height: 100vh;
+  padding-bottom: 160rpx;
+}
+
+/* 头部 */
+.hero {
+  padding: 48rpx 24rpx 32rpx;
+  text-align: center;
+}
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #1A1A1A;
+  display: block;
+}
+.hero-desc {
+  font-size: 28rpx;
+  color: #999;
+  margin-top: 8rpx;
+  display: block;
+}
+
+/* 方案卡片 */
+.plans {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 24rpx;
+}
+.plan-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 32rpx 16rpx;
+  position: relative;
+  border: 3rpx solid transparent;
+  transition: border-color 0.2s;
+}
+.plan-card.selected {
+  border-color: #378ADD;
+  background: #F0F7FF;
+  transform: scale(1.03);
+}
+.plan-badge {
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  background: linear-gradient(135deg, #FF6B35, #FF3D00);
+  color: #fff;
+  font-size: 20rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+}
+.plan-name {
+  font-size: 26rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.plan-price-row {
+  margin-bottom: 4rpx;
+}
+.plan-symbol {
+  font-size: 24rpx;
+  color: #378ADD;
+  font-weight: 600;
+}
+.plan-price {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #378ADD;
+}
+.plan-period {
+  font-size: 24rpx;
+  color: #999;
+}
+.original-price {
+  font-size: 22rpx;
+  color: #BBB;
+  text-decoration: line-through;
+  margin-bottom: 20rpx;
+}
+.divider {
+  height: 1rpx;
+  background: #EEE;
+  margin-bottom: 20rpx;
+}
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+.feature {
+  display: flex;
+  align-items: center;
+}
+.feature-check {
+  color: #07C160;
+  font-size: 24rpx;
+  font-weight: 700;
+  margin-right: 8rpx;
+}
+.feature-text {
+  font-size: 22rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* 底部 */
+.footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -2rpx 12rpx rgba(0,0,0,0.05);
+}
+.footer-info {
+  display: flex;
+  flex-direction: column;
+}
+.footer-label {
+  font-size: 24rpx;
+  color: #999;
+}
+.footer-plan-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+.subscribe-btn {
+  background: #378ADD;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 20rpx 40rpx;
+  border-radius: 40rpx;
+  border: none;
+  line-height: 1;
+}
+.subscribe-btn.loading {
+  opacity: 0.7;
+}
+.subscribe-btn[disabled] {
+  background: #95BBDD;
+}

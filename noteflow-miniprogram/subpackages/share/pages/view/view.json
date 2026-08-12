@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "NoteFlow",
+  "usingComponents": {
+    "markdown-viewer": "/components/markdown-viewer/markdown-viewer"
+  }
+}

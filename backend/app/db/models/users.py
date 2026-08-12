@@ -9,8 +9,13 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True, comment="用户 ID，主键，自增")
     username = Column(String(64), unique=True, nullable=False, index=True, comment="登录用户名，全局唯一，最长 64 字符")
-    email = Column(String(128), unique=True, nullable=False, index=True, comment="邮箱地址，全局唯一，用于注册/找回密码")
-    hashed_password = Column(String(256), nullable=False, comment="bcrypt 哈希后的密码，禁止明文存储")
+    email = Column(String(128), unique=True, nullable=True, index=True, comment="邮箱地址，全局唯一，微信用户可为空")
+    hashed_password = Column(String(256), nullable=True, comment="bcrypt 哈希后的密码，微信用户可为空")
+
+    # ===== 微信小程序登录 =====
+    wechat_openid = Column(String(64), unique=True, nullable=True, index=True, comment="微信小程序 openid, 用于快捷登录")
+    wechat_web_openid = Column(String(64), unique=True, nullable=True, index=True, comment="微信开放平台『网站应用』openid, 用于 Web 扫码登录; 与 wechat_openid 是不同 AppID 下的两个值")
+    wechat_unionid = Column(String(64), unique=True, nullable=True, comment="微信开放平台 unionid, 跨应用统一用户标识")
     avatar = Column(String(512), nullable=True, comment="头像图片 URL，可为空")
     phone = Column(String(20), nullable=True, comment="手机号")
     is_active = Column(Integer, default=1, comment="账号激活状态：1=正常，0=已停用/封禁")

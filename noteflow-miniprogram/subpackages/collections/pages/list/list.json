@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "笔记合集",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/empty-state",
+    "loading-skeleton": "/components/loading-skeleton/loading-skeleton"
+  }
+}

@@ -1,0 +1,153 @@
+/* 积分充值页样式 */
+.container {
+  padding-bottom: 160rpx;
+  background: #F1EFE8;
+  min-height: 100vh;
+}
+
+/* 余额卡片 */
+.balance-card {
+  background: linear-gradient(135deg, #378ADD 0%, #2B6CB0 100%);
+  margin: 24rpx;
+  padding: 40rpx;
+  border-radius: 20rpx;
+  color: #fff;
+}
+.balance-label {
+  font-size: 26rpx;
+  opacity: 0.85;
+}
+.balance-row {
+  margin-top: 8rpx;
+  display: flex;
+  align-items: baseline;
+}
+.balance-value {
+  font-size: 56rpx;
+  font-weight: 700;
+}
+.balance-unit {
+  font-size: 28rpx;
+  margin-left: 8rpx;
+  opacity: 0.85;
+}
+
+/* 套餐区域 */
+.section {
+  padding: 0 24rpx;
+}
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1A1A1A;
+  display: block;
+  margin-bottom: 20rpx;
+}
+.package-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+.package-card {
+  width: calc(50% - 8rpx);
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx 20rpx;
+  text-align: center;
+  position: relative;
+  border: 3rpx solid transparent;
+  transition: border-color 0.2s;
+}
+.package-card.selected {
+  border-color: #378ADD;
+  background: #F0F7FF;
+}
+.package-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, #FF6B35, #FF3D00);
+  color: #fff;
+  font-size: 20rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 0 14rpx 0 12rpx;
+}
+.package-name {
+  font-size: 28rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 16rpx;
+}
+.package-credits {
+  margin-bottom: 12rpx;
+}
+.credits-num {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+.credits-label {
+  font-size: 24rpx;
+  color: #999;
+  margin-left: 4rpx;
+}
+.package-price {
+  margin-bottom: 8rpx;
+}
+.price-symbol {
+  font-size: 24rpx;
+  color: #FF3D00;
+}
+.price-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #FF3D00;
+}
+.package-unit-price {
+  font-size: 22rpx;
+  color: #BBB;
+}
+
+/* 底部支付栏 */
+.footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  padding: 20rpx 24rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -2rpx 12rpx rgba(0,0,0,0.05);
+}
+.footer-label {
+  font-size: 26rpx;
+  color: #999;
+}
+.footer-price {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #FF3D00;
+}
+.footer-info {
+  display: flex;
+  flex-direction: column;
+}
+.pay-btn {
+  background: #07C160;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 20rpx 48rpx;
+  border-radius: 40rpx;
+  border: none;
+  line-height: 1;
+}
+.pay-btn.loading {
+  opacity: 0.7;
+}
+.pay-btn[disabled] {
+  background: #95D5A8;
+}

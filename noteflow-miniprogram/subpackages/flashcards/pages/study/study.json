@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "复习闪记卡",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

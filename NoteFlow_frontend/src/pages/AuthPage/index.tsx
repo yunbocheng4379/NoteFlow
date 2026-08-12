@@ -7,6 +7,7 @@ import { useUserStore } from '@/store/userStore'
 import { rehydrateTaskStore, useTaskStore } from '@/store/taskStore'
 import BrandLogo from '@/components/BrandLogo'
 import ForgotPasswordDialog from '@/components/ForgotPasswordDialog'
+import WechatLoginDialog from '@/components/WechatLoginDialog'
 import toast from 'react-hot-toast'
 
 type TopMode = 'password' | 'code'
@@ -71,6 +72,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showWechatLogin, setShowWechatLogin] = useState(false)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // 从 URL ?invite=XXX 预填邀请码, 若存在则自动切到注册 tab
@@ -649,6 +651,37 @@ export default function AuthPage() {
             </button>
           </form>
 
+          {mode === 'login' && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 text-[11px] text-gray-300">
+                <div className="h-px flex-1 bg-gray-200" />
+                <span>其他登录方式</span>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+              <div className="mt-4 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => setShowWechatLogin(true)}
+                  className="flex flex-col items-center gap-1.5 group"
+                  aria-label="微信登录"
+                >
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-full transition-transform group-hover:scale-105"
+                    style={{ background: '#07C160' }}
+                  >
+                    <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true">
+                      <path
+                        fill="#fff"
+                        d="M20.5 12.1c.4 0 .8 0 1.2.1-.6-3.3-4.2-5.7-8.2-5.7-4.5 0-8.1 3-8.1 6.7 0 2.2 1.2 4.1 3.2 5.5l-.8 2.4 2.8-1.4c1 .2 1.8.4 2.9.4h.9c-.1-.5-.2-.9-.2-1.4 0-3.7 3.6-6.6 6.3-6.6zM16.2 9.8c.6 0 1 .4 1 1s-.4 1-1 1-1.2-.4-1.2-1c0-.7.6-1 1.2-1zm-5.7 2c-.6 0-1.2-.4-1.2-1s.6-1 1.2-1c.6 0 1 .4 1 1s-.4 1-1 1zm16.1 6.9c0-3.1-3.2-5.7-6.7-5.7-3.8 0-6.7 2.6-6.7 5.7 0 3.2 3 5.7 6.7 5.7.8 0 1.6-.2 2.4-.4l2.2 1.2-.6-2c1.7-1.3 2.7-2.9 2.7-4.5zm-8.9-1c-.4 0-.8-.4-.8-.8s.4-.8.8-.8.9.4.9.8-.4.8-.9.8zm4.5 0c-.4 0-.8-.4-.8-.8s.4-.8.8-.8c.5 0 .9.4.9.8s-.4.8-.9.8z"
+                      />
+                    </svg>
+                  </span>
+                  <span className="text-[11px] text-gray-500">微信登录</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           <p className="mt-6 text-center text-[13px] text-gray-400">
             {mode === 'login' ? (
               <>
@@ -684,6 +717,7 @@ export default function AuthPage() {
       </div>
 
       <ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
+      <WechatLoginDialog open={showWechatLogin} onClose={() => setShowWechatLogin(false)} />
     </div>
   )
 }

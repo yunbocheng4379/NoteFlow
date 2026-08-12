@@ -1,0 +1,58 @@
+<!--会员订阅页面-->
+<view class="container">
+  <!-- 头部标语 -->
+  <view class="hero">
+    <text class="hero-title">升级 NoteFlow Pro</text>
+    <text class="hero-desc">解锁全部 AI 笔记功能</text>
+  </view>
+
+  <!-- 方案卡片 -->
+  <view class="plans">
+    <view
+      wx:for="{{plans}}"
+      wx:key="id"
+      class="plan-card {{selectedIdx === index ? 'selected' : ''}}"
+      data-idx="{{index}}"
+      bindtap="onSelectPlan"
+    >
+      <view class="plan-badge" wx:if="{{item.badge}}">{{item.badge}}</view>
+
+      <text class="plan-name">{{item.name}}</text>
+
+      <view class="plan-price-row">
+        <text class="plan-symbol">¥</text>
+        <text class="plan-price">{{item.price}}</text>
+        <text class="plan-period">/{{item.period}}</text>
+      </view>
+
+      <view class="original-price" wx:if="{{item.originalPrice}}">
+        <text>原价 ¥{{item.originalPrice}}</text>
+      </view>
+
+      <view class="divider"></view>
+
+      <view class="features">
+        <view class="feature" wx:for="{{item.features}}" wx:key="*this" wx:for-item="f">
+          <text class="feature-check">✓</text>
+          <text class="feature-text">{{f}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 订阅按钮 -->
+  <view class="footer-bar">
+    <view class="footer-info">
+      <text class="footer-label">选择方案</text>
+      <text class="footer-plan-name">{{plans[selectedIdx].name}}</text>
+    </view>
+    <button
+      class="subscribe-btn {{loading ? 'loading' : ''}}"
+      bindtap="onSubscribe"
+      disabled="{{loading || hasSubscription}}"
+      loading="{{loading}}"
+    >
+      {{hasSubscription ? '已订阅' : (loading ? '支付中...' : '立即订阅')}}
+    </button>
+  </view>
+</view>

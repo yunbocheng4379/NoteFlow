@@ -1,0 +1,74 @@
+/* 订单记录页样式 */
+.container {
+  background: #F1EFE8;
+  min-height: 100vh;
+  padding: 24rpx;
+}
+
+.loading-tip {
+  padding: 80rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 订单卡片 */
+.order-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+.order-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A1A1A;
+  max-width: 420rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.order-status {
+  font-size: 24rpx;
+  font-weight: 600;
+}
+.order-body {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 12rpx;
+}
+.order-amount {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1A1A1A;
+}
+.order-info {
+  font-size: 24rpx;
+  color: #07C160;
+  margin-left: 16rpx;
+}
+.order-footer {
+  display: flex;
+  justify-content: space-between;
+}
+.order-time {
+  font-size: 24rpx;
+  color: #999;
+}
+.order-id {
+  font-size: 24rpx;
+  color: #BBB;
+}
+
+.list-footer {
+  text-align: center;
+  padding: 32rpx 0;
+  font-size: 24rpx;
+  color: #BBB;
+}

@@ -1,17 +1,65 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { ShieldCheck, Building2, Headphones, Github } from 'lucide-react'
+import FeedbackDialog from '@/components/FeedbackDialog'
+import {
+  ShieldCheck,
+  Building2,
+  Headphones,
+  Github,
+  Globe,
+  FileText,
+  Palette,
+  Sparkles,
+  Cpu,
+  Mic,
+  ListTree,
+  Camera,
+  Link2,
+  MessageSquareHeart,
+  ArrowRight,
+} from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import logo from '@/assets/icon.svg'
 import wechatQr from '@/assets/wechat-community-qr.png'
 import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
 
+type Accent = 'teal' | 'amber' | 'sky' | 'violet' | 'rose' | 'emerald' | 'orange' | 'blue' | 'indigo'
+
+const accentClasses: Record<Accent, { icon: string; ring: string }> = {
+  teal: { icon: 'bg-teal-50 text-teal-600', ring: 'ring-teal-100' },
+  amber: { icon: 'bg-amber-50 text-amber-600', ring: 'ring-amber-100' },
+  sky: { icon: 'bg-sky-50 text-sky-600', ring: 'ring-sky-100' },
+  violet: { icon: 'bg-violet-50 text-violet-600', ring: 'ring-violet-100' },
+  rose: { icon: 'bg-rose-50 text-rose-600', ring: 'ring-rose-100' },
+  emerald: { icon: 'bg-emerald-50 text-emerald-600', ring: 'ring-emerald-100' },
+  orange: { icon: 'bg-orange-50 text-orange-600', ring: 'ring-orange-100' },
+  blue: { icon: 'bg-blue-50 text-blue-600', ring: 'ring-blue-100' },
+  indigo: { icon: 'bg-indigo-50 text-indigo-600', ring: 'ring-indigo-100' },
+}
+
+const features: {
+  Icon: React.ComponentType<{ className?: string }>
+  title: string
+  desc: string
+  accent: Accent
+}[] = [
+  { Icon: Globe, title: '多平台支持', desc: '支持 Bilibili、YouTube、本地视频、抖音等多个平台', accent: 'teal' },
+  { Icon: FileText, title: '笔记格式选择', desc: '支持返回多种笔记格式，满足不同需求', accent: 'sky' },
+  { Icon: Palette, title: '笔记风格选择', desc: '支持多种笔记风格，个性化定制', accent: 'violet' },
+  { Icon: Sparkles, title: '多模态视频理解', desc: '结合视觉和音频内容，全面理解视频', accent: 'amber' },
+  { Icon: Cpu, title: '自定义 GPT 配置', desc: '支持自行配置 GPT 大模型', accent: 'blue' },
+  { Icon: Mic, title: '本地音频转写', desc: '支持 Fast-Whisper 等本地模型音频转写', accent: 'rose' },
+  { Icon: ListTree, title: '结构化笔记', desc: '自动生成结构化 Markdown 笔记', accent: 'emerald' },
+  { Icon: Camera, title: '智能截图', desc: '可选插入自动截取的关键画面', accent: 'orange' },
+  { Icon: Link2, title: '内容跳转', desc: '支持关联原视频的内容跳转链接', accent: 'indigo' },
+]
+
 export default function AboutPage() {
   const appVersion = __APP_VERSION__
   const [previewQr, setPreviewQr] = useState<{ src: string; alt: string } | null>(null)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   return (
     <ScrollArea className={'h-full w-full overflow-y-auto bg-white'}>
       <div className="w-full px-8 py-12 lg:px-16 xl:px-24">
@@ -81,26 +129,37 @@ export default function AboutPage() {
 
         {/* Features Section */}
         <section className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold">🔧 功能特性</h2>
-          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              { title: '多平台支持', desc: '支持 Bilibili、YouTube、本地视频、抖音等多个平台' },
-              { title: '笔记格式选择', desc: '支持返回多种笔记格式，满足不同需求' },
-              { title: '笔记风格选择', desc: '支持多种笔记风格，个性化定制' },
-              { title: '多模态视频理解', desc: '结合视觉和音频内容，全面理解视频' },
-              { title: '自定义 GPT 配置', desc: '支持自行配置 GPT 大模型' },
-              { title: '本地音频转写', desc: '支持 Fast-Whisper 等本地模型音频转写' },
-              { title: '结构化笔记', desc: '自动生成结构化 Markdown 笔记' },
-              { title: '智能截图', desc: '可选插入自动截取的关键画面' },
-              { title: '内容跳转', desc: '支持关联原视频的内容跳转链接' },
-            ].map((feature, index) => (
-              <Card key={index} className="h-full">
-                <CardContent className="pt-2">
-                  <h3 className="mb-2 text-xl font-semibold">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="mb-10 text-center">
+            <div className="text-primary mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-[var(--primary-light)] px-3 py-1 text-xs font-medium">
+              <Sparkles className="h-3.5 w-3.5" />
+              功能特性
+            </div>
+            <h2 className="text-3xl font-bold text-neutral-900">为视频学习设计的完整工具链</h2>
+            <p className="text-muted-foreground mt-2 text-sm">
+              从下载、转写、结构化到导出，每一步都为效率而生。
+            </p>
+          </div>
+
+          <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {features.map(({ Icon, title, desc, accent }) => {
+              const c = accentClasses[accent]
+              return (
+                <div
+                  key={title}
+                  className="group relative flex gap-4 rounded-2xl border border-neutral-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md hover:shadow-neutral-200/60"
+                >
+                  <span
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ${c.icon} ${c.ring}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-semibold text-neutral-900">{title}</h3>
+                    <p className="text-muted-foreground mt-1 text-sm leading-6">{desc}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </section>
 
@@ -145,10 +204,48 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="border-t pt-8 text-center">
-          <p className="mb-4">💬 你的支持与反馈是我们持续优化产品的动力，欢迎随时提出使用建议！</p>
-        </footer>
+        {/* Feedback CTA */}
+        <section className="mb-6">
+          <div className="from-primary/5 via-primary/[0.03] relative mx-auto flex max-w-5xl flex-col items-center gap-4 overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br to-transparent px-6 py-8 text-center md:flex-row md:items-center md:justify-between md:text-left">
+            <div
+              aria-hidden
+              className="bg-primary/10 pointer-events-none absolute -top-16 -right-10 h-40 w-40 rounded-full blur-3xl"
+            />
+            <div
+              aria-hidden
+              className="bg-primary/10 pointer-events-none absolute -bottom-14 -left-10 h-32 w-32 rounded-full blur-3xl"
+            />
+
+            <div className="relative flex items-start gap-4">
+              <span className="bg-primary/10 text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+                <MessageSquareHeart className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-neutral-900">你的反馈是我们前进的动力</p>
+                <p className="text-muted-foreground mt-1 text-sm leading-6">
+                  遇到问题、有想法或期待新功能，都欢迎告诉我们，我们会认真读完每一条。
+                </p>
+              </div>
+            </div>
+
+            <div className="relative flex shrink-0 flex-wrap items-center justify-center gap-2">
+              <Button size="sm" onClick={() => setFeedbackOpen(true)}>
+                提交反馈
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <a
+                  href="https://github.com/yunbocheng4379"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Github className="mr-1 h-3.5 w-3.5" />
+                  GitHub
+                </a>
+              </Button>
+            </div>
+          </div>
+        </section>
       </div>
 
       <Dialog open={!!previewQr} onOpenChange={open => !open && setPreviewQr(null)}>
@@ -159,6 +256,8 @@ export default function AboutPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </ScrollArea>
   )
 }

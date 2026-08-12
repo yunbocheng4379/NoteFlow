@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "合集详情",
+  "usingComponents": {
+    "task-card": "/components/task-card/task-card",
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

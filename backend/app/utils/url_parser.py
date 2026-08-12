@@ -32,6 +32,11 @@ def extract_video_id(url: str, platform: str) -> Optional[str]:
         match = re.search(r"/video/(\d+)", url)
         return match.group(1) if match else None
 
+    elif platform == "baidu_pan":
+        # cloud://baidu_pan/{fs_id}?name=xxx
+        match = re.search(r"cloud://baidu_pan/(\d+)", url)
+        return f"baidu_{match.group(1)}" if match else None
+
     return None
 
 

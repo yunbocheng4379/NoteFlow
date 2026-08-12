@@ -1,0 +1,212 @@
+/* 复习闪记卡页样式 */
+.container {
+  background: #F1EFE8;
+  min-height: 100vh;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 120rpx 0;
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 完成页 */
+.finished {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 48rpx 40rpx;
+}
+.finished-icon {
+  font-size: 96rpx;
+  margin-bottom: 16rpx;
+}
+.finished-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1A1A1A;
+  margin-bottom: 40rpx;
+}
+.stats-grid {
+  display: flex;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  width: 100%;
+  max-width: 600rpx;
+  margin-bottom: 40rpx;
+}
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 28rpx 0;
+  border-right: 1rpx solid #F5F5F5;
+}
+.stat-item:last-child {
+  border-right: none;
+}
+.stat-num {
+  font-size: 36rpx;
+  font-weight: 700;
+  display: block;
+}
+.stat-label {
+  font-size: 22rpx;
+  color: #999;
+  margin-top: 6rpx;
+  display: block;
+}
+.finished-actions {
+  display: flex;
+  gap: 16rpx;
+}
+.action-btn {
+  font-size: 28rpx;
+  padding: 20rpx 40rpx;
+  border-radius: 40rpx;
+  border: none;
+}
+.retry-btn {
+  background: #FFC300;
+  color: #fff;
+}
+.restart-btn {
+  background: #378ADD;
+  color: #fff;
+}
+
+/* 学习区 */
+.study-area {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 16rpx 24rpx 48rpx;
+}
+
+/* 进度条 */
+.progress-bar {
+  height: 8rpx;
+  background: #E0E0E0;
+  border-radius: 4rpx;
+  position: relative;
+  margin-bottom: 40rpx;
+}
+.progress-fill {
+  height: 100%;
+  background: #378ADD;
+  border-radius: 4rpx;
+  transition: width 0.3s;
+}
+.progress-text {
+  position: absolute;
+  right: 0;
+  top: -32rpx;
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 卡片 */
+.card-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.study-card {
+  width: 100%;
+  max-width: 600rpx;
+  height: 500rpx;
+  perspective: 1000rpx;
+}
+.study-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: transform 0.5s;
+  transform-style: preserve-3d;
+}
+.flipped .study-card-inner {
+  transform: rotateY(180deg);
+}
+.study-card-front,
+.study-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 24rpx;
+  padding: 48rpx 36rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8rpx 32rpx rgba(0,0,0,0.08);
+}
+.study-card-front {
+  background: #fff;
+  border: 3rpx solid #E8F4FD;
+}
+.study-card-back {
+  background: #FFF8E1;
+  border: 3rpx solid #FFE082;
+  transform: rotateY(180deg);
+}
+.study-card-label {
+  font-size: 24rpx;
+  color: #999;
+  font-weight: 600;
+  margin-bottom: 24rpx;
+  text-transform: uppercase;
+  letter-spacing: 2rpx;
+}
+.study-card-content {
+  font-size: 32rpx;
+  color: #1A1A1A;
+  line-height: 1.7;
+  flex: 1;
+  overflow-y: auto;
+}
+.flip-hint {
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  color: #BBB;
+}
+
+/* 评分区 */
+.ratings {
+  padding-top: 24rpx;
+}
+.ratings-label {
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+  display: block;
+  text-align: center;
+}
+.rating-buttons {
+  display: flex;
+  gap: 16rpx;
+}
+.rating-btn {
+  flex: 1;
+  text-align: center;
+  background: rgba(55,138,221,0.06);
+  border: 2rpx solid #E8E8E8;
+  border-radius: 16rpx;
+  padding: 16rpx 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+.rating-btn:active {
+  border-color: var(--r-color);
+  background: rgba(55,138,221,0.1);
+}
+.rating-emoji {
+  font-size: 36rpx;
+  display: block;
+  margin-bottom: 4rpx;
+}
+.rating-label {
+  font-size: 22rpx;
+  color: #666;
+}

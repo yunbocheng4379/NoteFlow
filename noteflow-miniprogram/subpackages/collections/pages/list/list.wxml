@@ -1,0 +1,53 @@
+<!--笔记合集列表页-->
+<view class="container">
+  <!-- 空状态 -->
+  <empty-state
+    wx:if="{{collections.length === 0 && !loading}}"
+    variant="tasks"
+    title="暂无合集"
+    description="将笔记归类整理，创建你的第一个合集吧"
+    actionText="新建合集"
+    bind:action="onCreateCollection"
+  />
+
+  <!-- 加载骨架 -->
+  <loading-skeleton wx:if="{{loading && collections.length === 0}}" variant="list" />
+
+  <!-- 合集网格 -->
+  <view class="grid" wx:if="{{collections.length > 0}}">
+    <view
+      class="collection-card"
+      wx:for="{{collections}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      data-name="{{item.name}}"
+      bindtap="onTapCollection"
+      bindlongpress="onLongPressCollection"
+    >
+      <view class="card-cover">
+        <view wx:if="{{item.cover_url}}" class="cover-img" style="background-image:url({{item.cover_url}})"></view>
+        <view wx:else class="cover-placeholder">
+          <text class="cover-icon">📁</text>
+        </view>
+      </view>
+
+      <view class="card-body">
+        <text class="card-name">{{item.name}}</text>
+        <text class="card-count">{{item._count}} 篇笔记</text>
+      </view>
+
+      <view class="card-time">{{item._time}}</view>
+    </view>
+  </view>
+
+  <!-- 新建按钮 -->
+  <view class="fab" bindtap="onCreatePublication">
+    <text class="fab-icon">+</text>
+  </view>
+
+  <!-- 底部提示 -->
+  <view class="list-footer" wx:if="{{collections.length > 0}}">
+    <text wx:if="{{loading}}">加载更多...</text>
+    <text wx:elif="{{!hasMore}}">-- 没有更多了 --</text>
+  </view>
+</view>

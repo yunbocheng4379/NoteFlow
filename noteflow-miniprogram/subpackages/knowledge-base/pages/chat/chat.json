@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "知识库问答",
+  "usingComponents": {
+    "chat-bubble": "/components/chat-bubble/chat-bubble",
+    "empty-state": "/components/empty-state/empty-state"
+  }
+}

@@ -12,6 +12,7 @@ from app.db.models.collection_share import CollectionShare
 from app.db.models.flashcards import FlashcardSet, Flashcard
 from app.db.models.feedbacks import Feedback
 from app.db.models.platform_cookies import PlatformCookie
+from app.db.models.cloud_credentials import CloudCredential
 from app.db.models.notifications import Notification
 from app.db.models.platforms import Platform
 from app.db.models.update_logs import UpdateLog
