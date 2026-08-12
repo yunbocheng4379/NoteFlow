@@ -7,6 +7,8 @@ const {
   buildGeneratePayload,
   unwrapResponse,
   mapTaskStatus,
+  normalizeTask,
+  buildChatPayload,
 } = require('../utils/contracts');
 const { parseUrl } = require('../utils/platform-detector');
 
@@ -50,6 +52,21 @@ test('builds VideoRequest field names', () => {
   });
 });
 
+test('builds a complete home generation form', () => {
+  const payload = buildGeneratePayload({
+    url: 'https://www.bilibili.com/video/BV1xx',
+    platform: 'bilibili',
+    provider: { id: 'p1' },
+    model: { name: 'model-a' },
+    style: { value: 'outline' },
+  });
+  assert.equal(payload.video_url, 'https://www.bilibili.com/video/BV1xx');
+  assert.equal(payload.platform, 'bilibili');
+  assert.equal(payload.model_name, 'model-a');
+  assert.equal(payload.provider_id, 'p1');
+  assert.equal(payload.style, 'outline');
+});
+
 test('unwraps success and throws business errors', () => {
   assert.deepEqual(unwrapResponse({ code: 200, data: { ok: true } }), { ok: true });
   assert.throws(() => unwrapResponse({ code: 400, msg: '参数错误' }), {
@@ -67,6 +84,34 @@ test('maps task states', () => {
   });
   assert.equal(mapTaskStatus('FAILED').terminal, true);
   assert.equal(mapTaskStatus('PENDING').progress, 12);
+});
+
+test('normalizes task list records', () => {
+  assert.deepEqual(normalizeTask({ task_id: 't1', status: 'SUCCESS' }), {
+    task_id: 't1',
+    status: 'success',
+    id: 't1',
+    title: '未命名笔记',
+    statusLabel: '已完成',
+    terminal: true,
+    progress: 100,
+  });
+});
+
+test('builds the non-streaming chat request', () => {
+  assert.deepEqual(buildChatPayload({
+    taskId: 't1',
+    question: '总结一下',
+    history: [{ role: 'user', content: '你好' }],
+    providerId: 'p1',
+    modelName: 'model-a',
+  }), {
+    task_id: 't1',
+    question: '总结一下',
+    history: [{ role: 'user', content: '你好' }],
+    provider_id: 'p1',
+    model_name: 'model-a',
+  });
 });
 
 test('recognizes supported platforms', () => {

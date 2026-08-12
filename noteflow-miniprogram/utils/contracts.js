@@ -73,6 +73,16 @@ function normalizeTask(task = {}) {
   };
 }
 
+function buildChatPayload(params = {}) {
+  return {
+    task_id: params.task_id || params.taskId || '',
+    question: params.question || '',
+    history: Array.isArray(params.history) ? params.history : [],
+    provider_id: params.provider_id || params.providerId || '',
+    model_name: params.model_name || params.modelName || '',
+  };
+}
+
 module.exports = {
   normalizeAuthResult,
   saveSessionPayload,
@@ -80,4 +90,5 @@ module.exports = {
   unwrapResponse,
   mapTaskStatus,
   normalizeTask,
+  buildChatPayload,
 };
