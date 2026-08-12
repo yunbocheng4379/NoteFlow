@@ -167,7 +167,7 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
       {/* Results area */}
       <div className="mt-6">
         {loading && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -194,7 +194,7 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
             <p className="mb-3 text-sm text-neutral-500">
               找到 {items.length} 个与「{searchedKeyword ?? trimmed}」相关的视频
             </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {items.map(item => (
                 <ResultCard
                   key={`${item.platform}:${item.video_url}`}
