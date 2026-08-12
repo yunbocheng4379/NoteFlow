@@ -140,7 +140,7 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
     !loading && searchedKeyword !== null && items.length === 0 && trimmed.length > 0
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="mx-auto w-full max-w-4xl">
       {/* Search box */}
       <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-lg shadow-[#167a6e]/10">
         <div className="relative flex flex-1 items-center gap-2 overflow-hidden px-3 before:absolute before:inset-y-0 before:left-0 before:w-1/4 before:-skew-x-[20deg] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:content-[''] before:pointer-events-none before:animate-[sweep_1.5s_linear_infinite]">
