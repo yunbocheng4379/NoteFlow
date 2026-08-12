@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { Loader2, Search } from 'lucide-react'
+import { Compass, FileText, Layers3, Loader2, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Button } from '@/components/ui/button.tsx'
@@ -36,6 +36,12 @@ const platformDisplay: Record<string, string> = {
 
 const DEBOUNCE_MS = 300
 const MAX_KEYWORD_LEN = 50
+
+const exploreTips = [
+  { label: '跨平台搜索', Icon: Layers3 },
+  { label: '先找素材', Icon: Compass },
+  { label: '一键生成笔记', Icon: FileText },
+]
 
 // 判定一个错误对象是否来自 AbortController.abort()（含拦截器改写后的形态）
 const isAbortError = (e: unknown): boolean => {
@@ -202,8 +208,26 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
         )}
 
         {showInitial && items.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-neutral-400">
-            <p>输入关键词，一键搜索 B站 + YouTube</p>
+          <div className="flex flex-col items-center justify-center px-4 py-14 text-center">
+            <div className="inline-flex items-center rounded-full border border-emerald-100 bg-emerald-50/70 px-3 py-1 text-xs font-medium text-emerald-700">
+              探索模式
+            </div>
+            <h3 className="mt-4 text-lg font-semibold text-neutral-800">先找到视频，再生成笔记</h3>
+            <p className="mt-2 max-w-md text-sm leading-6 text-neutral-500">
+              输入主题或关键词，同时搜索 B站与 YouTube，选中合适的视频后可直接生成
+              AI 笔记。
+            </p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              {exploreTips.map(({ label, Icon }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white/80 px-3 py-1.5 text-xs text-neutral-500 shadow-sm shadow-neutral-200/40"
+                >
+                  <Icon className="h-3.5 w-3.5 text-primary" />
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         )}
       </div>
