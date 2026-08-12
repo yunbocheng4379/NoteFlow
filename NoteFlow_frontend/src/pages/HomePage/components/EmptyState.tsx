@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button.tsx'
 import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import { BiliBiliLogo, YoutubeLogo, DouyinLogo, KuaishouLogo } from '@/components/Icons/platform.tsx'
 import { detectPlatform } from '@/constant/note.ts'
+import { cn } from '@/lib/utils.ts'
+import ExplorePanel from '@/pages/HomePage/components/ExplorePanel'
 
 interface EmptyStateProps {
   /** 用户点击「更多设置」时回调，打开新建笔记弹窗（透传 url/platform 用于预填） */
@@ -103,6 +105,7 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
   const [info, setInfo] = useState<VideoInfo | null>(null)
   const [parsing, setParsing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState<'link' | 'explore'>('link')
   const parseSeqRef = useRef(0)
 
   const navigate = useNavigate()
@@ -143,16 +146,22 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
     return () => clearTimeout(timer)
   }, [videoUrl, platform])
 
-  const handleQuickGenerate = async () => {
-    const url = videoUrl.trim()
+  /**
+   * 内部提交实现：接受一个必然带 video_url + platform 的 prefill，
+   * 供「链接」Tab 的输入区与「探索」Tab 的搜索结果卡片共用。
+   * 探索 Tab 点击卡片时不经过 URL 输入框防抖解析，因此 `info`（含标题/封面）
+   * 可能为 null；此时不附带 meta，任务列表会退化为纯 URL 展示。
+   */
+  const submitForPrefill = async (prefill: { video_url: string; platform: string }) => {
+    const url = prefill.video_url.trim()
     if (!url) {
-      toast.error('请先粘贴视频链接')
+      toast.error('请先选择视频')
       return
     }
     try {
       new URL(url)
     } catch {
-      toast.error('请输入正确的视频链接')
+      toast.error('视频链接无效')
       return
     }
 
@@ -162,10 +171,11 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
       return
     }
 
+    const targetPlatform = prefill.platform
     const model = modelList[0]
     const payload = {
       video_url: url,
-      platform,
+      platform: targetPlatform,
       quality: 'medium' as const,
       model_name: model.model_name,
       provider_id: model.provider_id,
@@ -181,16 +191,25 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
     setSubmitting(true)
     try {
       const data: any = await generateNote(payload as any)
-      const meta = info
-        ? {
-            title: info.title,
-            cover_url: info.cover_url,
-            duration: info.duration,
-            platform: info.platform,
-            video_id: info.video_id,
-          }
-        : undefined
-      addPendingTask(data.task_id, platform, payload, meta)
+      // `info` 始终是「链接」Tab 输入框 `videoUrl` 的防抖解析结果，因此
+      // 用字符串相等判定即可判断 meta 是否属于当前 URL：
+      // - 链接 Tab 走 handleQuickGenerate，url === videoUrl.trim() → 命中；
+      //   短链（b23.tv / v.douyin.com 等）即便 info.video_id 不在原始 URL
+      //   里，只要没换过输入框内容，cover/title/duration 仍会带上，避免
+      //   pending 卡片退化为纯 URL 展示。
+      // - 探索 Tab 走卡片点击，url 是搜索结果的规范化链接，与当前 videoUrl
+      //   不一致 → 自动丢弃，避免残留 meta 污染新任务。
+      const meta =
+        info && url === videoUrl.trim()
+          ? {
+              title: info.title,
+              cover_url: info.cover_url,
+              duration: info.duration,
+              platform: info.platform,
+              video_id: info.video_id,
+            }
+          : undefined
+      addPendingTask(data.task_id, targetPlatform, payload, meta)
     } catch (e: any) {
       if (e?.data?.reason === 'transcriber_model_not_ready') {
         toast.error('转写模型尚未下载，请先去「音频转写配置」页下载')
@@ -202,6 +221,8 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
       setSubmitting(false)
     }
   }
+
+  const handleQuickGenerate = () => submitForPrefill({ video_url: videoUrl, platform })
 
   const cover = info ? proxiedCover(info.cover_url) : ''
   const duration = info ? formatDuration(info.duration) : ''
@@ -227,8 +248,43 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
           AI 自动整理结构化笔记，可生成思维导图与原片回溯。
         </p>
 
-        {/* 输入区 */}
-        <div className="w-full max-w-2xl">
+        {/* 输入区：链接 / 探索 双 Tab */}
+        <div className={cn('w-full', activeTab === 'link' ? 'max-w-2xl' : 'max-w-5xl')}>
+          {/* Tab 切换 */}
+          <div className="mb-4 flex justify-center gap-1 border-b border-neutral-200">
+            <button
+              type="button"
+              onClick={() => setActiveTab('link')}
+              className={cn(
+                'px-4 pb-2 text-sm font-medium transition-colors',
+                activeTab === 'link'
+                  ? 'border-primary text-primary -mb-px border-b-2'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              )}
+            >
+              链接
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('explore')}
+              className={cn(
+                'px-4 pb-2 text-sm font-medium transition-colors',
+                activeTab === 'explore'
+                  ? 'border-primary text-primary -mb-px border-b-2'
+                  : 'text-neutral-500 hover:text-neutral-700'
+              )}
+            >
+              探索
+            </button>
+          </div>
+
+          {activeTab === 'explore' ? (
+            <ExplorePanel
+              onQuickGenerate={submitForPrefill}
+              onMoreSettings={prefill => onMoreSettings(prefill)}
+            />
+          ) : (
+          <div className="w-full">
           <div className="flex items-center gap-1 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-lg shadow-[#167a6e]/10">
             {/*
               还没有生成内容时（EmptyState 仅在 status === 'idle' 渲染）展示扫光动画：
@@ -365,6 +421,8 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
               </div>
             ))}
           </div>
+          </div>
+          )}
         </div>
 
         {/* 能力展示 */}
