@@ -1,0 +1,22 @@
+{
+  "libVersion": "3.17.0",
+  "projectname": "NoteFlow",
+  "condition": {},
+  "setting": {
+    "urlCheck": false,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "skylineRenderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "useApiHook": true,
+    "showShadowRootInWxmlPanel": true,
+    "useStaticServer": true,
+    "useLanDebug": false,
+    "showES6CompileOption": false,
+    "compileHotReLoad": true,
+    "checkInvalidKey": true,
+    "ignoreDevUnusedFiles": false,
+    "bigPackageSizeSupport": false
+  }
+}

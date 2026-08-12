@@ -1,0 +1,42 @@
+.credit-badge {
+  display: flex;
+  align-items: center;
+}
+
+.badge-full {
+  padding: 8rpx 24rpx;
+  background: #E6F7F5;
+  border-radius: 32rpx;
+  gap: 8rpx;
+}
+
+.badge-compact {
+  padding: 4rpx 16rpx;
+  gap: 4rpx;
+}
+
+.credit-icon {
+  font-size: 28rpx;
+}
+
+.badge-compact .credit-icon {
+  font-size: 24rpx;
+}
+
+.credit-num {
+  font-weight: 700;
+  color: #167A6E;
+}
+
+.badge-full .credit-num {
+  font-size: 28rpx;
+}
+
+.badge-compact .credit-num {
+  font-size: 24rpx;
+}
+
+.credit-label {
+  font-size: 24rpx;
+  color: #6E8983;
+}

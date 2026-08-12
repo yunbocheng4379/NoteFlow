@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "markdown-viewer": "/components/markdown-viewer/markdown-viewer",
+    "chat-bubble": "/components/chat-bubble/chat-bubble",
+    "loading-skeleton": "/components/loading-skeleton/loading-skeleton",
+    "empty-state": "/components/empty-state/empty-state"
+  },
+  "navigationBarTitleText": "笔记详情"
+}

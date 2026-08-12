@@ -1,0 +1,9 @@
+{
+  "usingComponents": {
+    "video-preview": "/components/video-preview/video-preview",
+    "model-selector": "/components/model-selector/model-selector",
+    "credit-badge": "/components/credit-badge/credit-badge",
+    "loading-skeleton": "/components/loading-skeleton/loading-skeleton"
+  },
+  "navigationBarTitleText": "NoteFlow"
+}

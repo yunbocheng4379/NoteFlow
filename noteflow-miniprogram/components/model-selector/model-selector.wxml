@@ -1,0 +1,68 @@
+<view wx:if="{{visible}}" class="selector-overlay {{animating ? 'overlay-show' : ''}}" bind:tap="onMaskTap">
+  <view class="selector-sheet {{animating ? 'sheet-show' : ''}}" catchtap="preventBubble">
+    <!-- Header -->
+    <view class="sheet-header">
+      <text class="sheet-title">选择模型与风格</text>
+      <view class="sheet-close" bind:tap="onClose">
+        <text>✕</text>
+      </view>
+    </view>
+
+    <!-- Tabs -->
+    <view class="sheet-tabs">
+      <view
+        class="tab-item {{activeTab === 'model' ? 'tab-active' : ''}}"
+        data-tab="model"
+        bind:tap="switchTab"
+      >
+        <text class="tab-text {{activeTab === 'model' ? 'tab-active-text' : ''}}">模型</text>
+      </view>
+      <view
+        class="tab-item {{activeTab === 'style' ? 'tab-active' : ''}}"
+        data-tab="style"
+        bind:tap="switchTab"
+      >
+        <text class="tab-text {{activeTab === 'style' ? 'tab-active-text' : ''}}">笔记风格</text>
+      </view>
+    </view>
+
+    <!-- Model Tab -->
+    <scroll-view wx:if="{{activeTab === 'model'}}" class="sheet-body" scroll-y>
+      <block wx:for="{{providers}}" wx:key="id" wx:for-item="provider">
+        <view class="provider-group">
+          <text class="provider-name">{{provider.name}}</text>
+          <view class="model-list">
+            <block wx:for="{{models}}" wx:key="id" wx:for-item="model">
+              <view
+                wx:if="{{model.provider_id === provider.id}}"
+                class="model-item {{selectedModel && selectedModel.id === model.id ? 'model-selected' : ''}}"
+                data-item="{{model}}"
+                bind:tap="onSelectModel"
+              >
+                <text class="model-name">{{model.name}}</text>
+                <text wx:if="{{selectedModel && selectedModel.id === model.id}}" class="model-check">✓</text>
+              </view>
+            </block>
+          </view>
+        </view>
+      </block>
+    </scroll-view>
+
+    <!-- Style Tab -->
+    <scroll-view wx:if="{{activeTab === 'style'}}" class="sheet-body" scroll-y>
+      <block wx:for="{{styles}}" wx:key="id" wx:for-item="style">
+        <view
+          class="style-item {{selectedStyle && selectedStyle.id === style.id ? 'style-selected' : ''}}"
+          data-item="{{style}}"
+          bind:tap="onSelectStyle"
+        >
+          <view class="style-info">
+            <text class="style-name">{{style.name}}</text>
+            <text class="style-desc" wx:if="{{style.description}}">{{style.description}}</text>
+          </view>
+          <text wx:if="{{selectedStyle && selectedStyle.id === style.id}}" class="style-check">✓</text>
+        </view>
+      </block>
+    </scroll-view>
+  </view>
+</view>

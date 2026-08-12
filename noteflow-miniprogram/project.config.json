@@ -1,0 +1,71 @@
+{
+  "description": "NoteFlow - AI视频笔记小程序",
+  "appid": "wxc7bd21a33355b95f",
+  "projectname": "NoteFlow",
+  "miniprogramRoot": "",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.0",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "urlCheck": true,
+    "coverView": true,
+    "nodeModules": true,
+    "autoAudits": false,
+    "showShadowRootInWxmlPanel": true,
+    "scopeDataCheck": false,
+    "uglifyFileName": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "compileHotReLoad": true,
+    "lazyloadPlaceholderEnable": false,
+    "useMultiFrameRuntime": true,
+    "useStaticServer": true,
+    "disableUseStrict": false,
+    "ignoreDevUnusedFiles": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "condition": false,
+    "skylineRenderEnable": false,
+    "compileWorklet": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "useCompilerPlugins": false
+  },
+  "simulatorType": "wechat",
+  "simulatorPluginLibVersion": {},
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "首页",
+          "pathName": "pages/home/home",
+          "query": ""
+        },
+        {
+          "name": "笔记详情",
+          "pathName": "pages/note-detail/note-detail",
+          "query": "id=test-task-id"
+        }
+      ]
+    }
+  },
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  }
+}

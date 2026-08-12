@@ -1,0 +1,28 @@
+.tasks-page { height: 100vh; background: #F7F8F6; }
+.tasks-shell { padding: 32rpx 32rpx 168rpx; }
+.tasks-header { display: flex; align-items: end; justify-content: space-between; margin-bottom: 48rpx; }
+.eyebrow { display: block; margin-bottom: 8rpx; color: #93A19D; font-size: 18rpx; letter-spacing: 3rpx; }
+.page-title { display: block; color: #243447; font-size: 48rpx; font-weight: 700; letter-spacing: -1rpx; }
+.tasks-count { color: #93A19D; font-size: 21rpx; }
+.card-accent { position: relative; overflow: hidden; }
+.card-accent::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4rpx; background: #167A6E; }
+.login-card, .error-card { display: flex; align-items: center; gap: 18rpx; padding: 28rpx 24rpx; background: #FFFFFF; border-radius: 20rpx; box-shadow: 0 10rpx 30rpx rgba(36, 52, 71, .05); }
+.login-mark { display: flex; align-items: center; justify-content: center; width: 58rpx; height: 58rpx; color: #167A6E; background: #E6F7F5; border-radius: 18rpx; font-size: 32rpx; }
+.login-copy { flex: 1; }
+.login-title, .login-desc { display: block; }
+.login-title { color: #243447; font-size: 25rpx; font-weight: 600; }
+.login-desc { margin-top: 5rpx; color: #93A19D; font-size: 21rpx; }
+.login-action, .error-action, .empty-action { color: #167A6E; font-size: 23rpx; }
+.filter-scroll { margin: 40rpx -32rpx 28rpx; padding: 0 32rpx; white-space: nowrap; }
+.filter-row { display: flex; gap: 12rpx; }
+.filter-pill { padding: 12rpx 22rpx; color: #6E8983; background: #FFFFFF; border-radius: 28rpx; font-size: 23rpx; }
+.filter-active { color: #FFFFFF; background: #167A6E; }
+.task-list { padding-top: 4rpx; }
+.empty-state { display: flex; align-items: center; flex-direction: column; padding: 150rpx 30rpx; text-align: center; }
+.empty-orbit { display: flex; align-items: center; justify-content: center; width: 76rpx; height: 76rpx; color: #167A6E; background: #E6F7F5; border-radius: 24rpx; font-size: 40rpx; }
+.empty-title { margin-top: 24rpx; color: #243447; font-size: 29rpx; font-weight: 600; }
+.empty-desc, .error-desc { margin-top: 8rpx; color: #93A19D; font-size: 23rpx; }
+.empty-action { margin-top: 28rpx; }
+.error-card { display: block; padding: 30rpx; }
+.error-title { display: block; color: #243447; font-size: 27rpx; font-weight: 600; }
+.error-action { margin-top: 22rpx; }

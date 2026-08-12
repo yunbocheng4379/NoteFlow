@@ -1,0 +1,36 @@
+<view class="task-card" bind:tap="onTap" bind:longpress="onLongPress">
+  <view class="card-thumb">
+    <image
+      wx:if="{{thumbnail}}"
+      class="thumb-img"
+      src="{{thumbnail}}"
+      mode="aspectFill"
+      lazy-load
+    />
+    <view wx:else class="thumb-placeholder">
+      <text class="placeholder-icon">NF</text>
+    </view>
+    <view
+      class="platform-badge"
+      style="background-color: {{platformColor}}"
+    >
+      <text class="badge-text">{{platformLabel}}</text>
+    </view>
+  </view>
+
+  <view class="card-body">
+    <view class="card-title">{{task.title || '未命名笔记'}}</view>
+    <view class="card-footer">
+      <view class="status-row">
+        <view class="status-dot {{statusClass}}"></view>
+        <text class="status-text">{{statusText}}</text>
+      </view>
+      <view class="meta-row">
+        <text class="meta-credits" wx:if="{{task.credits_used}}">
+          {{task.credits_used}} 积分
+        </text>
+        <text class="meta-time">{{relativeTime}}</text>
+      </view>
+    </view>
+  </view>
+</view>

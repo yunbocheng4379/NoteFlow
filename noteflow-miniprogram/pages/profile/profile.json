@@ -1,0 +1,7 @@
+{
+  "usingComponents": {
+    "credit-badge": "/components/credit-badge/credit-badge",
+    "empty-state": "/components/empty-state/empty-state"
+  },
+  "navigationBarTitleText": "我的"
+}

@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "task-card": "/components/task-card/task-card",
+    "empty-state": "/components/empty-state/empty-state",
+    "loading-skeleton": "/components/loading-skeleton/loading-skeleton"
+  },
+  "navigationBarTitleText": "我的笔记"
+}

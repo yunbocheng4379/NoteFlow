@@ -1,0 +1,46 @@
+<view class="video-preview">
+  <!-- Loading State -->
+  <view wx:if="{{loading}}" class="preview-loading">
+    <view class="loading-thumb shimmer"></view>
+    <view class="loading-info">
+      <view class="loading-line shimmer" style="width: 80%"></view>
+      <view class="loading-line shimmer" style="width: 50%"></view>
+      <view class="loading-line shimmer" style="width: 60%"></view>
+    </view>
+  </view>
+
+  <!-- Error State -->
+  <view wx:elif="{{error}}" class="preview-error">
+    <view class="error-icon">!</view>
+    <text class="error-text">{{error}}</text>
+  </view>
+
+  <!-- Loaded State -->
+  <view wx:elif="{{videoInfo}}" class="preview-loaded">
+    <view class="loaded-thumb">
+      <image
+        wx:if="{{videoInfo.cover_url}}"
+        class="cover-img"
+        src="{{videoInfo.cover_url}}"
+        mode="aspectFill"
+        lazy-load
+      />
+      <view wx:else class="cover-placeholder">
+        <text>NF</text>
+      </view>
+      <view class="duration-tag" wx:if="{{durationText !== '0:00'}}">
+        <text>{{durationText}}</text>
+      </view>
+      <view
+        class="platform-tag"
+        style="background-color: {{platformColor}}"
+      >
+        <text class="platform-tag-text">{{platformName}}</text>
+      </view>
+    </view>
+    <view class="loaded-body">
+      <text class="video-title">{{videoInfo.title}}</text>
+      <text class="video-desc" wx:if="{{videoInfo.description}}">{{videoInfo.description}}</text>
+    </view>
+  </view>
+</view>

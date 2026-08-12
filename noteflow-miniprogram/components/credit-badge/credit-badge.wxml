@@ -1,0 +1,5 @@
+<view class="credit-badge {{compact ? 'badge-compact' : 'badge-full'}}" bind:tap="onTap">
+  <text class="credit-icon">·</text>
+  <text class="credit-num">{{displayCredits}}</text>
+  <text wx:if="{{!compact}}" class="credit-label">积分</text>
+</view>

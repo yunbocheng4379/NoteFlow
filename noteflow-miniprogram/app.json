@@ -1,0 +1,111 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/tasks/tasks",
+    "pages/profile/profile",
+    "pages/note-detail/note-detail",
+    "pages/login/login"
+  ],
+  "subpackages": [
+    {
+      "root": "subpackages/billing",
+      "name": "billing",
+      "pages": [
+        "pages/recharge/recharge",
+        "pages/subscription/subscription",
+        "pages/orders/orders"
+      ]
+    },
+    {
+      "root": "subpackages/collections",
+      "name": "collections",
+      "pages": [
+        "pages/list/list",
+        "pages/detail/detail"
+      ]
+    },
+    {
+      "root": "subpackages/knowledge-base",
+      "name": "kb",
+      "pages": [
+        "pages/chat/chat"
+      ]
+    },
+    {
+      "root": "subpackages/flashcards",
+      "name": "flashcards",
+      "pages": [
+        "pages/generate/generate",
+        "pages/study/study"
+      ]
+    },
+    {
+      "root": "subpackages/share",
+      "name": "share",
+      "pages": [
+        "pages/view/view"
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/profile/profile": {
+      "network": "all",
+      "packages": ["billing"]
+    },
+    "pages/note-detail/note-detail": {
+      "network": "wifi",
+      "packages": ["flashcards"]
+    }
+  },
+  "window": {
+    "navigationBarTitleText": "NoteFlow",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F7F8F6",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": false,
+    "onReachBottomDistance": 50
+  },
+  "tabBar": {
+    "color": "#93A19D",
+    "selectedColor": "#167A6E",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "images/tab/home.png",
+        "selectedIconPath": "images/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/tasks/tasks",
+        "text": "笔记",
+        "iconPath": "images/tab/note.png",
+        "selectedIconPath": "images/tab/note-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab/profile.png",
+        "selectedIconPath": "images/tab/profile-active.png"
+      }
+    ]
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "__usePrivacyCheck__": true,
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于小程序位置接口的效果展示"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseAddress"
+  ],
+  "usingComponents": {},
+  "useExtendedLib": {
+    "weui": true
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2"
+}

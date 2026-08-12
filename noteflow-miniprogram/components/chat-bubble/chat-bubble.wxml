@@ -1,0 +1,33 @@
+<view class="chat-bubble {{isUser ? 'bubble-user' : 'bubble-ai'}}">
+  <!-- AI Avatar (left side) -->
+  <view wx:if="{{!isUser}}" class="avatar avatar-ai">
+    <text>AI</text>
+  </view>
+
+  <!-- Message Body -->
+  <view class="bubble-content">
+    <!-- Loading dots -->
+    <view wx:if="{{loading}}" class="bubble-loading">
+      <view class="dot"></view>
+      <view class="dot"></view>
+      <view class="dot"></view>
+    </view>
+
+    <!-- Error -->
+    <view wx:elif="{{error}}" class="bubble-error">
+      <text>回复生成失败，请重试</text>
+    </view>
+
+    <!-- Normal message -->
+    <view wx:else class="bubble-text">
+      <text>{{formattedContent}}</text>
+    </view>
+
+    <text class="bubble-time" wx:if="{{displayTime}}">{{displayTime}}</text>
+  </view>
+
+  <!-- User Avatar (right side) -->
+  <view wx:if="{{isUser}}" class="avatar avatar-user">
+    <text>我</text>
+  </view>
+</view>

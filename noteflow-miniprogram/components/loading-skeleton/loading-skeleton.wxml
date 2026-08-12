@@ -1,0 +1,41 @@
+<view class="skeleton-wrap">
+  <!-- Card skeleton -->
+  <block wx:if="{{variant === 'card'}}">
+    <view class="card-skel">
+      <view class="card-img skel-shimmer"></view>
+      <view class="card-info">
+        <view class="skel-line skel-shimmer" style="width: 80%"></view>
+        <view class="skel-line skel-shimmer" style="width: 60%"></view>
+        <view class="skel-line skel-shimmer" style="width: 40%"></view>
+      </view>
+    </view>
+  </block>
+
+  <!-- List skeleton -->
+  <block wx:elif="{{variant === 'list'}}">
+    <view wx:for="{{listItems}}" wx:key="index" class="list-skel">
+      <view class="list-img skel-shimmer"></view>
+      <view class="list-info">
+        <view class="skel-line skel-shimmer" style="width: 70%"></view>
+        <view class="skel-line skel-shimmer" style="width: 50%"></view>
+        <view class="skel-row">
+          <view class="skel-line skel-shimmer" style="width: 30%"></view>
+          <view class="skel-line skel-shimmer" style="width: 25%"></view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <!-- Detail skeleton -->
+  <block wx:elif="{{variant === 'detail'}}">
+    <view class="detail-skel">
+      <view class="skel-line skel-shimmer" style="width: 90%; height: 40rpx"></view>
+      <view class="skel-line skel-shimmer" style="width: 100%; height: 200rpx; margin: 24rpx 0"></view>
+      <view wx:for="{{detailBlocks}}" wx:key="index" class="detail-block">
+        <view class="skel-line skel-shimmer" style="width: 100%"></view>
+        <view class="skel-line skel-shimmer" style="width: 85%"></view>
+        <view class="skel-line skel-shimmer" style="width: 65%"></view>
+      </view>
+    </view>
+  </block>
+</view>

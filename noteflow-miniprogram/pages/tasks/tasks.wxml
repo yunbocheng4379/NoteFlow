@@ -1,0 +1,16 @@
+<scroll-view class="tasks-page" scroll-y enhanced show-scrollbar="{{false}}" refresher-enabled="{{isLoggedIn}}" bindrefresherrefresh="onPullDownRefresh">
+  <view class="tasks-shell">
+    <view class="tasks-header"><view><text class="eyebrow">YOUR LIBRARY</text><text class="page-title">我的笔记</text></view><text class="tasks-count" wx:if="{{isLoggedIn}}">{{tasks.length}} 条记录</text></view>
+
+    <view wx:if="{{!isLoggedIn}}" class="login-card card-accent"><view class="login-mark">↗</view><view class="login-copy"><text class="login-title">登录后查看你的笔记</text><text class="login-desc">生成记录会在这里持续保存。</text></view><view class="login-action" bind:tap="onGoLogin">登录 ›</view></view>
+
+    <block wx:elif="{{!loading && !loadError}}">
+      <scroll-view class="filter-scroll" scroll-x enhanced show-scrollbar="{{false}}"><view class="filter-row"><block wx:for="{{filters}}" wx:key="key"><view class="filter-pill {{filter === item.key ? 'filter-active' : ''}}" data-filter="{{item.key}}" bind:tap="onFilterChange">{{item.label}}</view></block></view></scroll-view>
+      <view wx:if="{{filteredTasks.length === 0}}" class="empty-state"><view class="empty-orbit">·</view><text class="empty-title">{{filter === 'all' ? '还没有笔记' : '这个状态下暂无笔记'}}</text><text class="empty-desc">{{filter === 'all' ? '回到首页，粘贴一个视频链接开始。' : '换一个筛选条件看看。'}}</text><view wx:if="{{filter === 'all'}}" class="empty-action" bind:tap="onGoHome">去生成一份 ›</view></view>
+      <view wx:else class="task-list"><block wx:for="{{filteredTasks}}" wx:key="id"><task-card task="{{item}}" bind:tap="onTaskTap" bind:longpress="onTaskLongPress" /></block></view>
+    </block>
+
+    <view wx:elif="{{loadError}}" class="error-card card-accent"><text class="error-title">暂时加载不了笔记</text><text class="error-desc">{{loadError}}</text><view class="error-action" bind:tap="onRetry">重新加载</view></view>
+    <loading-skeleton wx:if="{{loading && isLoggedIn}}" variant="list" />
+  </view>
+</scroll-view>

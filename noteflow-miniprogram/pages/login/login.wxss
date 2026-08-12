@@ -1,0 +1,20 @@
+.login-page { min-height: 100vh; background: #F7F8F6; }
+.login-shell { padding: 180rpx 48rpx 80rpx; }
+.login-brand { display: flex; align-items: center; flex-direction: column; }
+.brand-mark { display: flex; align-items: center; justify-content: center; width: 96rpx; height: 96rpx; color: #FFFFFF; background: #167A6E; border-radius: 30rpx; box-shadow: 0 14rpx 28rpx rgba(22, 122, 110, .18); font-size: 48rpx; font-weight: 700; }
+.brand-name { margin-top: 24rpx; color: #243447; font-size: 46rpx; font-weight: 700; }
+.brand-copy { margin-top: 8rpx; color: #93A19D; font-size: 24rpx; }
+.wechat-button, .account-button { display: flex; align-items: center; justify-content: center; width: 100%; height: 92rpx; padding: 0; border: none; border-radius: 46rpx; font-size: 28rpx; font-weight: 600; }
+.wechat-button { margin-top: 88rpx; color: #FFFFFF; background: #167A6E; box-shadow: 0 12rpx 24rpx rgba(22, 122, 110, .16); }
+.wechat-symbol { display: flex; align-items: center; justify-content: center; width: 34rpx; height: 34rpx; margin-right: 14rpx; color: #167A6E; background: #FFFFFF; border-radius: 50%; font-size: 22rpx; }
+.divider { display: flex; align-items: center; gap: 20rpx; margin: 42rpx 0 28rpx; color: #B0BCB8; font-size: 21rpx; text-align: center; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1rpx; background: #E0E9E6; }
+.fallback-entry { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 4rpx; color: #52636D; font-size: 25rpx; }
+.fallback-entry text:last-child { color: #167A6E; font-size: 36rpx; }
+.account-form { padding: 8rpx 0; }
+.field { margin-bottom: 20rpx; padding: 20rpx 24rpx; background: #FFFFFF; border: 1rpx solid #E8EFEC; border-radius: 16rpx; }
+.field-label { display: block; margin-bottom: 8rpx; color: #93A19D; font-size: 20rpx; }
+.field input { width: 100%; height: 44rpx; color: #243447; font-size: 27rpx; }
+.form-error { display: block; margin: 4rpx 0 18rpx; color: #C66B5D; font-size: 22rpx; line-height: 1.5; }
+.account-button { color: #FFFFFF; background: #167A6E; }
+.protocol-copy { display: block; margin-top: 48rpx; color: #A0ACA8; font-size: 19rpx; line-height: 1.6; text-align: center; }
