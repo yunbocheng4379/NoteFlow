@@ -168,6 +168,12 @@ class TaskPollingManager {
         }
       }
     } catch (err) {
+      if (err?.code === 500) {
+        this.stop(taskId);
+        if (poller.callback) poller.callback({ status: 'FAILED', message: err.message || '任务生成失败' });
+        return;
+      }
+
       // Network errors don't stop polling, but max attempts still apply
       if (poller.attempts >= ENV.MAX_POLLING_ATTEMPTS) {
         this.stop(taskId);

@@ -11,6 +11,7 @@ const {
   buildChatPayload,
 } = require('../utils/contracts');
 const { parseUrl } = require('../utils/platform-detector');
+const { parse: parseMarkdown } = require('../utils/markdown-parser');
 
 test('normalizes backend auth response', () => {
   assert.deepEqual(normalizeAuthResult({ token: 'jwt', user: { id: 1 } }), {
@@ -114,8 +115,23 @@ test('builds the non-streaming chat request', () => {
   });
 });
 
+test('preserves chat history when building a retryable request', () => {
+  const payload = buildChatPayload({ taskId: 't2', question: '再解释一次', history: [{ role: 'assistant', content: '上一条' }], providerId: 'p2', modelName: 'model-b' });
+  assert.equal(payload.task_id, 't2');
+  assert.equal(payload.history[0].role, 'assistant');
+  assert.equal(payload.model_name, 'model-b');
+});
+
 test('recognizes supported platforms', () => {
   assert.equal(parseUrl('https://www.bilibili.com/video/BV1xx'), 'bilibili');
   assert.equal(parseUrl('https://youtu.be/abc'), 'youtube');
   assert.equal(parseUrl('https://example.com/video'), null);
+});
+
+test('markdown parser emits the node shapes used by the reader', () => {
+  const nodes = parseMarkdown('# 标题\n\n一段文字\n\n- 要点\n\n```js\nconst a = 1;\n```', { proxyImages: false });
+  assert.equal(nodes.find((node) => node.type === 'h1').content[0].content, '标题');
+  assert.equal(nodes.find((node) => node.type === 'p').content[0].content, '一段文字');
+  assert.deepEqual(nodes.find((node) => node.type === 'ul').items[0][0].content, '要点');
+  assert.equal(nodes.find((node) => node.type === 'code').content, 'const a = 1;');
 });
