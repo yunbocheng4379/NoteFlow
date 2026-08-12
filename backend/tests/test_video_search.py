@@ -76,6 +76,7 @@ BILI_SAMPLE = {
 @pytest.mark.asyncio
 async def test_bilibili_search_parses_response():
     mock_response = AsyncMock()
+    mock_response.headers = {"content-type": "application/json"}
     mock_response.json = lambda: BILI_SAMPLE
     mock_response.raise_for_status = lambda: None
 
@@ -108,6 +109,7 @@ async def test_bilibili_search_empty_keyword_returns_empty():
 async def test_bilibili_search_no_result_returns_empty():
     empty_sample = {"code": 0, "data": {"result": []}}
     mock_response = AsyncMock()
+    mock_response.headers = {"content-type": "application/json"}
     mock_response.json = lambda: empty_sample
     mock_response.raise_for_status = lambda: None
 
@@ -123,6 +125,7 @@ async def test_bilibili_search_data_missing_returns_empty():
     """B站返回 code != 0 或 data 缺失时（例如 -412 风控），返回空列表而不抛异常"""
     bad_sample = {"code": -412, "message": "请求被拦截", "data": None}
     mock_response = AsyncMock()
+    mock_response.headers = {"content-type": "application/json"}
     mock_response.json = lambda: bad_sample
     mock_response.raise_for_status = lambda: None
 
@@ -131,6 +134,50 @@ async def test_bilibili_search_data_missing_returns_empty():
         instance.get = AsyncMock(return_value=mock_response)
         results = await bilibili_search("kw", 20)
     assert results == []
+
+
+@pytest.mark.asyncio
+async def test_bilibili_search_html_body_raises_risk_control():
+    """B站 aba 风控页返回 HTTP 200 + text/html body，不能崩溃 (JSONDecodeError)。
+    应抛 BilibiliRiskControlError，让 aggregator 把该平台标为 failed，前端能显示"暂不可用"。"""
+    from app.services.video_search.bilibili_searcher import BilibiliRiskControlError
+
+    mock_response = AsyncMock()
+    mock_response.headers = {"content-type": "text/html; charset=utf-8"}
+    mock_response.raise_for_status = lambda: None
+
+    with patch("app.services.video_search.bilibili_searcher.httpx.AsyncClient") as mock_client:
+        instance = mock_client.return_value.__aenter__.return_value
+        instance.get = AsyncMock(return_value=mock_response)
+        with pytest.raises(BilibiliRiskControlError):
+            await bilibili_search("kw", 20)
+
+
+@pytest.mark.asyncio
+async def test_bilibili_search_uses_cookie_when_pool_has_one():
+    """当 cookie 池里有 bilibili cookie 时，请求应带上 Cookie 头 + buvid3 header（如果 cookie 里含 buvid3）"""
+    from app.services.video_search import bilibili_searcher as bs
+
+    mock_response = AsyncMock()
+    mock_response.headers = {"content-type": "application/json"}
+    mock_response.json = lambda: {"code": 0, "data": {"result": []}}
+    mock_response.raise_for_status = lambda: None
+
+    captured = {}
+
+    async def _fake_get(url, params=None, headers=None):
+        captured["headers"] = headers or {}
+        return mock_response
+
+    with patch("app.services.video_search.bilibili_searcher.httpx.AsyncClient") as mock_client, \
+         patch.object(bs, "_get_bilibili_cookie", return_value="buvid3=FAKE123; b_nut=1700000000; SESSDATA=xx"):
+        instance = mock_client.return_value.__aenter__.return_value
+        instance.get = AsyncMock(side_effect=_fake_get)
+        await bilibili_search("kw", 20)
+
+    assert "Cookie" in captured["headers"]
+    assert "buvid3=FAKE123" in captured["headers"]["Cookie"]
+    assert captured["headers"].get("buvid3") == "FAKE123"
 
 
 from app.services.video_search.youtube_searcher import youtube_search
