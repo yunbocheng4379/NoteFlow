@@ -41,10 +41,10 @@ const ResultCard: FC<ResultCardProps> = ({ item, onSelect, onMoreSettings }) => 
     <button
       type="button"
       onClick={() => onSelect(item)}
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white text-left transition-all hover:-translate-y-0.5 hover:border-[#167a6e]/40 hover:shadow-md"
+      className="group relative flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white text-left transition-all hover:-translate-y-0.5 hover:border-[#167a6e]/40 hover:shadow-md"
     >
       {/* Cover with platform badge + duration */}
-      <div className="relative aspect-video w-full bg-neutral-100">
+      <div className="relative aspect-[16/9] w-full bg-neutral-100">
         {item.cover_url && (
           <img
             src={proxiedCover(item.cover_url)}
@@ -53,15 +53,15 @@ const ResultCard: FC<ResultCardProps> = ({ item, onSelect, onMoreSettings }) => 
             loading="lazy"
           />
         )}
-        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">
-          <span className="inline-block h-3 w-3 [&_svg]:h-full [&_svg]:w-full">
+        <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+          <span className="inline-block h-2.5 w-2.5 [&_svg]:h-full [&_svg]:w-full">
             <PlatformLogo />
           </span>
           {platformLabel[item.platform]}
         </span>
         {duration && (
-          <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">
-            <Clock className="h-3 w-3" />
+          <span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+            <Clock className="h-2.5 w-2.5" />
             {duration}
           </span>
         )}
@@ -80,23 +80,23 @@ const ResultCard: FC<ResultCardProps> = ({ item, onSelect, onMoreSettings }) => 
               onMoreSettings(item)
             }
           }}
-          className="absolute right-2 top-2 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-white/90 text-neutral-700 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100"
+          className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-white/90 text-neutral-700 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100"
           title="更多设置"
         >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
+          <SlidersHorizontal className="h-3 w-3" />
         </span>
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 flex-col gap-1 px-3 py-2.5">
+      <div className="flex flex-1 flex-col gap-0.5 px-2.5 py-2">
         <p
-          className="line-clamp-2 text-sm font-medium text-neutral-800"
+          className="line-clamp-2 text-xs font-medium leading-relaxed text-neutral-800"
           title={item.title}
         >
           {item.title || '未命名视频'}
         </p>
         {item.author && (
-          <p className="truncate text-xs text-neutral-500">{item.author}</p>
+          <p className="truncate text-[11px] text-neutral-500">{item.author}</p>
         )}
       </div>
     </button>

@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { Loader2, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Button } from '@/components/ui/button.tsx'
@@ -140,28 +140,20 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
     !loading && searchedKeyword !== null && items.length === 0 && trimmed.length > 0
 
   return (
-    <div className="w-full">
+    <div className="mx-auto w-full max-w-2xl">
       {/* Search box */}
       <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-lg shadow-[#167a6e]/10">
-        <div className="flex flex-1 items-center gap-2 px-3">
+        <div className="relative flex flex-1 items-center gap-2 overflow-hidden px-3 before:absolute before:inset-y-0 before:left-0 before:w-1/4 before:-skew-x-[20deg] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:content-[''] before:pointer-events-none before:animate-[sweep_1.5s_linear_infinite]">
           <Search className="h-4 w-4 shrink-0 text-neutral-400" />
           <Input
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            placeholder="输入关键词，一键搜索 B站 + YouTube"
+            placeholder="搜索视频主题，例如 AI 入门、效率工具、课程笔记"
             className="h-10 flex-1 border-none bg-transparent shadow-none focus-visible:ring-0"
             maxLength={MAX_KEYWORD_LEN}
             aria-label="视频搜索关键词"
           />
         </div>
-        <Button
-          type="button"
-          disabled
-          aria-hidden="true"
-          className="pointer-events-none min-w-[80px]"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : '搜索'}
-        </Button>
         <Button
           type="button"
           variant="outline"
@@ -175,15 +167,15 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
       {/* Results area */}
       <div className="mt-6">
         {loading && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white"
               >
-                <div className="aspect-video w-full animate-pulse bg-neutral-100" />
-                <div className="space-y-2 px-3 py-2.5">
-                  <div className="h-4 w-3/4 animate-pulse rounded bg-neutral-100" />
+                <div className="aspect-[16/9] w-full animate-pulse bg-neutral-100" />
+                <div className="space-y-2 px-2.5 py-2">
+                  <div className="h-3.5 w-3/4 animate-pulse rounded bg-neutral-100" />
                   <div className="h-3 w-1/3 animate-pulse rounded bg-neutral-100" />
                 </div>
               </div>
@@ -202,7 +194,7 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
             <p className="mb-3 text-sm text-neutral-500">
               找到 {items.length} 个与「{searchedKeyword ?? trimmed}」相关的视频
             </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {items.map(item => (
                 <ResultCard
                   key={`${item.platform}:${item.video_url}`}
@@ -229,7 +221,7 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
               输入主题或关键词，同时搜索 B站与 YouTube，选中合适的视频后可直接生成
               AI 笔记。
             </p>
-            <div className="mt-8 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-3">
               {exploreTips.map(({ title, desc, icon }) => (
                 <div
                   key={title}
