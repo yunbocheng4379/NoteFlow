@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { Compass, FileText, Layers3, Loader2, Search } from 'lucide-react'
+import { Loader2, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 import { Button } from '@/components/ui/button.tsx'
@@ -41,17 +41,17 @@ const exploreTips = [
   {
     title: '跨平台搜索',
     desc: '同时搜索 B站与 YouTube，少来回切平台。',
-    Icon: Layers3,
+    icon: '/home_icon/comparison.png',
   },
   {
     title: '先找素材',
     desc: '先用关键词定位合适视频，再决定是否生成笔记。',
-    Icon: Compass,
+    icon: '/home_icon/video.png',
   },
   {
     title: '一键生成笔记',
     desc: '点选搜索结果后，直接进入 AI 笔记生成流程。',
-    Icon: FileText,
+    icon: '/home_icon/notes.png',
   },
 ]
 
@@ -230,14 +230,12 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
               AI 笔记。
             </p>
             <div className="mt-8 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
-              {exploreTips.map(({ title, desc, Icon }) => (
+              {exploreTips.map(({ title, desc, icon }) => (
                 <div
                   key={title}
                   className="group flex gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left shadow-sm shadow-neutral-200/50 transition-all hover:-translate-y-0.5 hover:border-[#167a6e]/30 hover:shadow-md hover:shadow-[#167a6e]/10"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
+                  <img src={icon} alt={title} className="h-14 w-14 shrink-0 object-contain" />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-neutral-800">{title}</p>
                     <p className="mt-1 text-xs leading-relaxed text-neutral-500">{desc}</p>
