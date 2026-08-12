@@ -53,46 +53,6 @@ const platformLogo: Record<string, FC> = {
   kuaishou: KuaishouLogo,
 }
 
-/* ---------- 能力展示（静态） ---------- */
-interface Capability {
-  icon: string  // public/ 目录下的图片路径
-  title: string
-  desc: string
-}
-
-const capabilities: Capability[] = [
-  {
-    icon: '/home_icon/notes.png',
-    title: '智能笔记结构',
-    desc: 'AI 自动提炼要点，按章节组织内容，附目录与原片时间锚点。',
-  },
-  {
-    icon: '/home_icon/map.png',
-    title: '一键思维导图',
-    desc: '笔记内容自动转成可交互思维导图，节点可点击跳转章节。',
-  },
-  {
-    icon: '/home_icon/ask.png',
-    title: 'AI 问答',
-    desc: '基于视频内容自由提问，回答自动引用原文片段并定位原片。',
-  },
-  {
-    icon: '/home_icon/video.png',
-    title: '原片回溯',
-    desc: '点击笔记中的「原片 @ 时间」，跳回视频对应时间继续观看。',
-  },
-  {
-    icon: '/home_icon/formats.png',
-    title: '多格式导出',
-    desc: '支持 Markdown / PDF / Word / HTML / 图片，沉淀到任意工作流。',
-  },
-  {
-    icon: '/home_icon/comparison.png',
-    title: '多版本对比',
-    desc: '同一视频可生成多种风格的笔记版本，随时切换比对结果。',
-  },
-]
-
 const supportedPlatforms = [
   { key: 'bilibili', label: 'B站', Logo: BiliBiliLogo },
   { key: 'youtube', label: 'YouTube', Logo: YoutubeLogo },
@@ -425,34 +385,6 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
           )}
         </div>
 
-        {/* 能力展示 */}
-        <div className="mt-14 w-full">
-          <div className="mb-6 flex flex-col items-center text-center">
-            <h2 className="text-xl font-semibold text-neutral-800">NoteFlow 能为你做什么</h2>
-            <p className="mt-1.5 text-sm text-neutral-500">
-              不仅是把视频转成文字，更帮你结构化、可检索、可追溯。
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {capabilities.map(cap => (
-              <div
-                key={cap.title}
-                className="group flex gap-3 rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-[#167a6e]/30 hover:shadow-md hover:shadow-[#167a6e]/10"
-              >
-                <img
-                  src={cap.icon}
-                  alt={cap.title}
-                  className="h-[80px] w-[80px] shrink-0 object-contain"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-neutral-800">{cap.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-neutral-500">{cap.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </ScrollArea>
   )

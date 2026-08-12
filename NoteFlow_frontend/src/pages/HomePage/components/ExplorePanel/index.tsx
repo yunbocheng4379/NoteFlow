@@ -38,9 +38,21 @@ const DEBOUNCE_MS = 300
 const MAX_KEYWORD_LEN = 50
 
 const exploreTips = [
-  { label: '跨平台搜索', Icon: Layers3 },
-  { label: '先找素材', Icon: Compass },
-  { label: '一键生成笔记', Icon: FileText },
+  {
+    title: '跨平台搜索',
+    desc: '同时搜索 B站与 YouTube，少来回切平台。',
+    Icon: Layers3,
+  },
+  {
+    title: '先找素材',
+    desc: '先用关键词定位合适视频，再决定是否生成笔记。',
+    Icon: Compass,
+  },
+  {
+    title: '一键生成笔记',
+    desc: '点选搜索结果后，直接进入 AI 笔记生成流程。',
+    Icon: FileText,
+  },
 ]
 
 // 判定一个错误对象是否来自 AbortController.abort()（含拦截器改写后的形态）
@@ -217,15 +229,20 @@ const ExplorePanel: FC<ExplorePanelProps> = ({ onQuickGenerate, onMoreSettings }
               输入主题或关键词，同时搜索 B站与 YouTube，选中合适的视频后可直接生成
               AI 笔记。
             </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              {exploreTips.map(({ label, Icon }) => (
-                <span
-                  key={label}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white/80 px-3 py-1.5 text-xs text-neutral-500 shadow-sm shadow-neutral-200/40"
+            <div className="mt-8 grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+              {exploreTips.map(({ title, desc, Icon }) => (
+                <div
+                  key={title}
+                  className="group flex gap-3 rounded-xl border border-neutral-200 bg-white p-4 text-left shadow-sm shadow-neutral-200/50 transition-all hover:-translate-y-0.5 hover:border-[#167a6e]/30 hover:shadow-md hover:shadow-[#167a6e]/10"
                 >
-                  <Icon className="h-3.5 w-3.5 text-primary" />
-                  {label}
-                </span>
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-neutral-800">{title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-neutral-500">{desc}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
