@@ -1,0 +1,830 @@
+{
+  "common": {
+    "loading": "加载中…",
+    "backHome": "返回首页",
+    "feedback": "问题反馈",
+    "close": "关闭",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "success": "Success",
+    "error": "Error",
+    "user": "用户",
+    "remainingCredits": "剩余电力",
+    "back": "返回",
+    "edit": "修改",
+    "confirmAction": "确认操作",
+    "delete": "删除",
+    "clear": "清空"
+  },
+  "appearance": {
+    "language": "语言",
+    "theme": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统",
+    "languages": {
+      "en": "English",
+      "zh-CN": "简体中文",
+      "zh-TW": "繁體中文",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "nav": {
+    "workspace": "工作台",
+    "explore": "探索",
+    "tasks": "任务列表",
+    "collections": "笔记合集",
+    "knowledgeBase": "知识库",
+    "noteStyle": "笔记风格",
+    "updateLogs": "更新日志",
+    "upgrade": "升级 Pro",
+    "billing": "账单与额度",
+    "referral": "我的推荐码",
+    "about": "关于",
+    "globalSettings": "全局配置",
+    "profile": "个人信息",
+    "logout": "退出登录"
+  },
+  "settings": {
+    "model": "AI 模型设置",
+    "transcriber": "音频转写配置",
+    "monitor": "部署监控",
+    "users": "用户管理",
+    "feedback": "反馈管理",
+    "cookiePool": "Cookie 池",
+    "notifications": "系统通知",
+    "pricing": "电力规则",
+    "updateLogs": "更新日志配置"
+  },
+  "taskList": {
+    "platforms": {
+      "bilibili": "Bilibili",
+      "youtube": "YouTube",
+      "douyin": "抖音",
+      "kuaishou": "快手",
+      "local": "本地文件",
+      "merged": "笔记融合"
+    },
+    "statuses": {
+      "success": "已完成",
+      "failed": "失败",
+      "pending": "排队中",
+      "parsing": "解析中",
+      "downloading": "下载中",
+      "transcribing": "转写中",
+      "summarizing": "总结中",
+      "formatting": "格式化中",
+      "saving": "保存中"
+    },
+    "tabs": {
+      "all": "全部",
+      "running": "进行中",
+      "success": "已完成",
+      "failed": "失败"
+    },
+    "actions": {
+      "addToCollection": "加入合集",
+      "batchAddToCollection": "批量加入合集",
+      "batchDelete": "批量删除",
+      "deleteTask": "删除任务",
+      "refresh": "刷新",
+      "viewNote": "查看笔记"
+    },
+    "empty": {
+      "allTitle": "还没有任务记录",
+      "filteredTitle": "这个分类暂时为空",
+      "allDescription": "从工作台粘贴视频链接或上传本地文件，生成完成后，任务进度、耗电和笔记入口都会沉淀在这里。",
+      "filteredDescription": "当前筛选条件下没有匹配任务。你可以查看全部记录，或先去工作台创建新的笔记任务。",
+      "generateNotes": "生成笔记",
+      "viewAll": "查看全部",
+      "goWorkspace": "前往工作台",
+      "steps": {
+        "submit": "提交视频",
+        "track": "跟踪进度",
+        "open": "打开笔记"
+      }
+    },
+    "header": {
+      "title": "任务记录",
+      "count": "共 {{count}} 条"
+    },
+    "batchGroup": "批量任务 · {{count}} 个视频",
+    "unnamedTask": "未命名",
+    "refreshSuccess": "刷新成功",
+    "deleted": "已删除",
+    "batchDeleted": "已删除 {{count}} 条记录",
+    "deleteDialog": {
+      "title": "确认删除",
+      "descriptionNamed": "将删除「{{name}}」及其相关笔记和数据，此操作不可恢复。",
+      "descriptionFallback": "此操作不可恢复。",
+      "targetFallback": "该任务",
+      "confirm": "确认删除"
+    },
+    "batchDeleteDialog": {
+      "title": "批量删除",
+      "description": "将删除已选中的 {{count}} 条记录及其相关笔记和数据，此操作不可恢复。",
+      "confirm": "确认删除 ({{count}})"
+    },
+    "table": {
+      "video": "视频链接",
+      "platform": "平台",
+      "model": "模型",
+      "status": "状态",
+      "credits": "电力消耗",
+      "created": "创建时间",
+      "completed": "完成时间",
+      "actions": "操作"
+    }
+  },
+  "collection": {
+    "title": "笔记合集",
+    "description": "把同一主题的笔记集中管理，后续可继续融合、分享和导出。",
+    "proOnly": "Pro 专属",
+    "proTitle": "升级 Pro，开启笔记合集",
+    "proDescription": "将同一课程、主题或批量生成的笔记整理到合集内，后续可以融合成综合笔记、统一分享和批量导出。",
+    "upgrade": "升级 Pro",
+    "knowledgeHint": "合集能力可配合知识库问答一起使用",
+    "searchPlaceholder": "搜索合集名 / 描述",
+    "noteCount": "{{count}} 篇笔记",
+    "noteCountShort": "{{count}} 篇笔记",
+    "noMatches": "没有匹配的合集",
+    "empty": {
+      "title": "还没有笔记合集",
+      "description": "把同一课程、主题或批量生成的笔记整理进合集，后续可以融合成综合笔记、统一分享和批量导出。",
+      "createFirst": "新建第一个合集",
+      "steps": {
+        "create": "新建主题合集",
+        "add": "批量加入笔记",
+        "process": "融合 / 分享 / 导出"
+      }
+    },
+    "features": {
+      "archive": {
+        "title": "主题归档",
+        "description": "课程、项目、资料按合集整理"
+      },
+      "merge": {
+        "title": "笔记融合",
+        "description": "多篇内容汇总为一篇综合笔记"
+      },
+      "share": {
+        "title": "分享导出",
+        "description": "统一分享或导出为资料包"
+      },
+      "knowledge": {
+        "title": "知识联动",
+        "description": "配合知识库跨笔记检索问答"
+      }
+    },
+    "create": {
+      "button": "新建合集",
+      "cardDescription": "整理课程、主题或批量生成的笔记",
+      "title": "新建合集",
+      "description": "创建后可以把笔记加入这个合集。",
+      "name": "合集名称",
+      "nameRequired": "请输入合集名称",
+      "namePlaceholder": "例如：Python 入门课程",
+      "descriptionLabel": "描述（可选）",
+      "descriptionPlaceholder": "这个合集是关于…",
+      "submit": "创建",
+      "success": "合集创建成功"
+    }
+  },
+  "explore": {
+    "title": "探索视频",
+    "subtitle": "输入关键词，一键聚合搜索 B站 + YouTube 的视频"
+  },
+  "home": {
+    "notes": "笔记",
+    "collapse": "收起",
+    "expand": "展开",
+    "newNote": "新建笔记",
+    "regenerate": "重新生成",
+    "empty": {
+      "selectVideo": "请先选择视频",
+      "invalidUrl": "视频链接无效",
+      "modelRequired": "请先添加 AI 模型",
+      "transcriberRequired": "请先去音频转写配置页下载转写模型",
+      "submitFailed": "提交任务失败，请稍后重试",
+      "creditBanner": "100 电力已到账",
+      "creditHint": "约 5 篇短视频或 2 篇 30 分钟课程",
+      "heroTitle": "粘贴视频链接，生成 AI 笔记",
+      "heroDescription": "AI 自动整理结构化笔记，可生成思维导图与原片回溯。",
+      "linkTab": "链接",
+      "exploreTab": "探索",
+      "urlPlaceholder": "粘贴视频链接，例如 https://www.bilibili.com/video/...",
+      "moreSettings": "更多设置",
+      "submitting": "提交中…",
+      "freeGenerate": "免费生成",
+      "parsing": "正在解析链接…",
+      "parsingHint": "拉取标题 / 封面 / 时长（通常几秒内完成）",
+      "untitledVideo": "未命名视频",
+      "recognized": "已识别",
+      "capabilitiesTitle": "NoteFlow 能为你做什么",
+      "capabilitiesDescription": "不仅是把视频转成文字，更帮你结构化、可检索、可追溯。"
+    },
+    "capabilities": {
+      "notes": {
+        "title": "智能笔记结构",
+        "description": "AI 自动提炼要点，按章节组织内容，附目录与原片时间锚点。"
+      },
+      "map": {
+        "title": "一键思维导图",
+        "description": "笔记内容自动转成可交互思维导图，节点可点击跳转章节。"
+      },
+      "chat": {
+        "title": "AI 问答",
+        "description": "基于视频内容自由提问，回答自动引用原文片段并定位原片。"
+      },
+      "video": {
+        "title": "原片回溯",
+        "description": "点击笔记中的原片时间，跳回视频对应时间继续观看。"
+      },
+      "formats": {
+        "title": "多格式导出",
+        "description": "支持 Markdown / PDF / Word / HTML / 图片，沉淀到任意工作流。"
+      },
+      "comparison": {
+        "title": "多版本对比",
+        "description": "同一视频可生成多种风格的笔记版本，随时切换比对结果。"
+      }
+    },
+    "chat": {
+      "questions": {
+        "summary": "用一段话总结这个视频的核心内容",
+        "points": "视频的主要观点和关键论据有哪些？",
+        "conclusion": "作者最终得出了什么结论或建议？",
+        "actions": "有哪些可以立刻落地的实践要点？"
+      },
+      "sources": "引用来源（{{count}}）",
+      "noteFallback": "笔记",
+      "modelRequired": "无法获取模型配置，请在设置中添加并启用模型",
+      "askFailed": "问答请求失败",
+      "requestInterrupted": "（请求中断）",
+      "thinking": "思考中…",
+      "indexing": "正在索引笔记内容…",
+      "indexingHint": "首次使用需下载 Embedding 模型（约 80MB），请耐心等待",
+      "indexFailed": "索引失败，请重试",
+      "indexRequestFailed": "索引请求失败",
+      "reindex": "重新索引",
+      "title": "AI 问答",
+      "fullscreen": "全屏",
+      "halfscreen": "半屏",
+      "emptyTitle": "针对笔记内容提问",
+      "emptyDescription": "从下面挑一个，或直接输入你的问题",
+      "inputPlaceholder": "输入你的问题…",
+      "costHint": "每次提问将按所选模型价格消耗一定电力"
+    },
+    "history": {
+      "renameFailed": "重命名失败，请稍后重试",
+      "generating": "正在生成笔记，请稍后再切换查看其他笔记",
+      "searchPlaceholder": "搜索笔记…",
+      "empty": "暂无记录",
+      "status": { "pending": "进行中", "success": "已完成", "failed": "失败" },
+      "untitled": "未命名笔记",
+      "createdAt": "生成于 {{date}}",
+      "rename": "重命名",
+      "share": "分享笔记",
+      "deleteTitle": "确认删除",
+      "deleteDescription": "确定要删除这条笔记记录吗？该操作不可恢复。"
+    },
+    "cookie": {
+      "pasteRequired": "请粘贴 Cookie 内容",
+      "saved": "{{platform}} Cookie 已保存",
+      "saveFailed": "Cookie 保存失败",
+      "title": "需要配置 {{platform}} Cookie",
+      "reason": "{{platform}} 服务返回了登录验证或风控错误，需要在本机配置有效 Cookie 才能继续解析。",
+      "pasteLabel": "粘贴 {{platform}} Cookie",
+      "loading": "正在读取已有 Cookie…",
+      "placeholder": "打开浏览器登录 {{platform}}，在 DevTools → Network 任意请求中复制 Cookie 请求头",
+      "storagePrefix": "Cookie 仅保存在本地数据库，会与",
+      "storageSuffix": "联动。",
+      "fullSettings": "前往完整设置页",
+      "saving": "保存中…",
+      "saveRetry": "保存并重试"
+    },
+    "noteForm": {
+      "platformRequired": "请选择平台",
+      "modelRequired": "请选择模型",
+      "styleRequired": "请选择笔记风格",
+      "fileRequired": "本地视频路径不能为空",
+      "urlRequired": "视频链接不能为空",
+      "invalidUrl": "请输入正确的视频链接",
+      "formatPlaceholder": "请选择笔记格式",
+      "visionRequired": "需开启视频理解",
+      "parsing": "正在解析链接…",
+      "parsingHint": "拉取标题 / 封面 / 时长",
+      "untitledVideo": "未命名视频",
+      "recognized": "已识别",
+      "batchProTitle": "批量模式为 Pro 专属功能",
+      "batchProDescription": "解析频道、合集或多个链接，批量提交任务并自动归档。",
+      "styleUnavailable": "所选风格不可用，已切换为默认风格",
+      "uploadFailed": "文件上传失败",
+      "channelUnsupported": "频道自动解析仅支持 Bilibili 和 YouTube",
+      "noVideos": "未解析到视频，请检查链接",
+      "videosResolved": "解析到 {{count}} 个视频",
+      "resolveFailed": "解析失败，请重试",
+      "selectVideo": "请至少选择一个视频",
+      "batchLimit": "单批最多支持 30 个视频",
+      "batchPartial": "{{success}} 个任务已提交，{{failed}} 个失败",
+      "batchSubmitted": "已提交 {{count}} 个批量任务",
+      "batchSubmitFailed": "批量提交失败",
+      "transcriberDownloading": "转写模型正在下载，请稍候",
+      "transcriberRequired": "请先下载转写模型",
+      "onlineLink": "在线链接",
+      "localFile": "本地文件",
+      "batchMode": "批量模式",
+      "cloudDrive": "网盘",
+      "channelLabel": "UP主 / 频道 / 合集链接",
+      "channelPlaceholder": "粘贴 UP主或频道链接…",
+      "resolve": "解析",
+      "multipleUrlsLabel": "或粘贴多个视频链接",
+      "addPreview": "添加到预览",
+      "previewList": "预览（{{selected}}/{{total}} 已选，最多 30 个）",
+      "uploading": "上传中…",
+      "uploaded": "上传成功",
+      "fileDrop": "拖拽或点击选择视频文件",
+      "urlPlaceholderShort": "粘贴视频链接…",
+      "platformDisabled": "当前服务已暂停，请稍后再试",
+      "parameters": "生成参数",
+      "model": "AI 模型",
+      "addModel": "请先添加模型",
+      "modelPlaceholder": "请选择模型",
+      "style": "笔记风格",
+      "builtInStyles": "内置风格",
+      "myStyles": "我的风格",
+      "publicStyles": "公开风格",
+      "videoUnderstanding": "视频理解",
+      "videoUnderstandingDescription": "将视频截图发给多模态模型分析",
+      "visionUnsupported": "当前模型不支持视觉输入",
+      "sampleInterval": "采样间隔（秒）",
+      "gridSize": "拼图尺寸（列 × 行）",
+      "format": "笔记格式",
+      "extras": "补充说明",
+      "extrasPlaceholder": "笔记需要罗列出的关键点…",
+      "outputSection": "输出与归类",
+      "collectionOptional": "存入合集（可选）",
+      "collectionPlaceholder": "生成后自动归入该合集",
+      "noCollection": "不存入合集",
+      "estimatedCost": "预计消耗",
+      "credits": "电力",
+      "videoMinutes": "（视频 {{minutes}} 分钟）",
+      "balance": "当前余额",
+      "insufficientCredits": "电力不足，无法生成笔记",
+      "recharge": "去充值",
+      "upgradeForBatch": "升级 Pro 使用批量模式",
+      "submitting": "正在提交…",
+      "batchGenerate": "批量生成（{{count}}）",
+      "generating": "正在生成…",
+      "generateWithCost": "消耗 {{count}} 电力生成笔记",
+      "generate": "生成笔记"
+    }
+  },
+  "viewer": {
+    "steps": {
+      "parsing": "解析链接",
+      "downloading": "下载音频",
+      "transcribing": "转写文字",
+      "summarizing": "总结内容",
+      "success": "保存完成"
+    },
+    "stage": {
+      "pending": { "title": "正在排队，马上开始", "hint": "任务已提交，正在准备资源…" },
+      "parsing": { "title": "正在解析视频链接", "hint": "读取视频基本信息，请稍候…" },
+      "downloading": { "title": "正在下载音频", "hint": "正在拉取音频流" },
+      "transcribing": { "title": "正在转写文字", "hint": "正在把语音转换成文字" },
+      "summarizing": { "title": "AI 正在总结内容", "hint": "正在提炼关键要点…" },
+      "success": { "title": "生成完成", "hint": "笔记已准备好" }
+    },
+    "loadingContent": "加载笔记内容中…",
+    "failureHint": "请检查后台或稍后再试",
+    "failed": "笔记生成失败",
+    "retry": "重试",
+    "mindmap": "思维导图",
+    "idleTitle": "输入视频链接并点击“生成笔记”按钮",
+    "idleDescription": "支持哔哩哔哩、YouTube 等视频网站"
+  },
+  "guide": {
+    "titlePrefix": "使用",
+    "titleHighlight": "指南",
+    "description": "从粘贴第一条链接到管理整个笔记库，四篇图文教程带你摸清 NoteFlow 的每一步。",
+    "readMore": "阅读全文",
+    "previous": "上一篇",
+    "next": "下一篇"
+  },
+  "auth": {
+    "featurePlatforms": "多平台解析",
+    "featurePlatformsDesc": "支持哔哩哔哩、YouTube、抖音、快手",
+    "featureNotes": "AI 笔记生成",
+    "featureNotesDesc": "接入主流 LLM 自动生成结构化 Markdown 笔记",
+    "featureMindmap": "思维导图",
+    "featureMindmapDesc": "可视化梳理内容脉络，快速掌握全貌",
+    "featureChat": "AI 问答",
+    "featureChatDesc": "基于笔记内容进行智能对话问答",
+    "login": "登录",
+    "register": "注册",
+    "account": "用户名 / 邮箱 / 手机号",
+    "password": "密码",
+    "submitLogin": "登录",
+    "submitRegister": "创建账号",
+    "forgotPassword": "忘记密码？",
+    "loginSuccess": "登录成功",
+    "registerSuccess": "注册成功",
+    "accountRequired": "请输入账号",
+    "passwordRequired": "请输入密码",
+    "passwordLogin": "密码登录",
+    "codeLogin": "验证码登录",
+    "emailCode": "邮箱验证码",
+    "phoneCode": "手机验证码",
+    "welcomeBack": "欢迎回来",
+    "createAccount": "创建账号",
+    "loginSubtitle": "登录你的 NoteFlow 账号继续使用",
+    "registerSubtitle": "填写信息，开始使用 NoteFlow",
+    "accountPlaceholder": "请输入用户名、邮箱或手机号",
+    "email": "邮箱",
+    "phone": "手机号",
+    "emailPlaceholder": "请输入邮箱",
+    "phonePlaceholder": "请输入手机号",
+    "code": "验证码",
+    "codePlaceholder": "请输入验证码",
+    "getCode": "获取验证码",
+    "username": "用户名",
+    "usernamePlaceholder": "请输入用户名（3~32 字符）",
+    "passwordPlaceholder": "请输入密码",
+    "passwordMin": "至少 6 位",
+    "confirmPassword": "确认密码",
+    "confirmPasswordPlaceholder": "请再次输入密码",
+    "inviteCode": "邀请码",
+    "inviteOptional": "（选填，注册即得 +200 电力）",
+    "invitePlaceholder": "填写好友邀请码",
+    "loggingIn": "登录中…",
+    "registering": "注册中…",
+    "otherMethods": "其他登录方式",
+    "wechatLogin": "微信登录",
+    "noAccount": "还没有账号？",
+    "registerNow": "立即注册",
+    "hasAccount": "已有账号？",
+    "loginNow": "去登录"
+  },
+  "landing": {
+    "nav": {
+      "features": "功能",
+      "getStarted": "开始使用",
+      "guide": "使用指南",
+      "github": "GitHub",
+      "cta": "立即使用"
+    },
+    "hero": {
+      "titleLine1": "一条视频链接，",
+      "titleLine2": "变成一份笔记。",
+      "subtitle": "AI 视频笔记助手，与你的观看和学习一起工作。",
+      "cta": "立即使用",
+      "github": "GitHub",
+      "imgAlt": "NoteFlow 登录页面"
+    },
+    "platforms": {
+      "biliBili": "哔哩哔哩",
+      "youtube": "YouTube",
+      "douyin": "抖音",
+      "kuaishou": "快手",
+      "local": "本地文件"
+    },
+    "featureGrid": {
+      "headingPrefix": "六项能力，",
+      "headingHighlight": "一套工作流。",
+      "sub": "从单条视频到整个频道，从生成笔记到追问细节，NoteFlow 陪你走完整个流程。",
+      "features": [
+        {
+          "title": "视频转笔记",
+          "subtitle": "Video to Notes",
+          "desc": "粘贴视频链接或上传本地文件，AI 自动转写语音并生成结构化 Markdown 笔记与思维导图。"
+        },
+        {
+          "title": "笔记风格",
+          "subtitle": "Note Styles",
+          "desc": "精简、教程、学术、小红书体等多种风格任选，也可以自建专属模板反复使用。"
+        },
+        {
+          "title": "批量与频道解析",
+          "subtitle": "Batch & Channels",
+          "desc": "粘贴一整个 UP 主空间或频道链接，自动拉取视频列表，勾选后一次性批量生成。"
+        },
+        {
+          "title": "AI 问答",
+          "subtitle": "Chat with Notes",
+          "desc": "针对某篇笔记的原文内容直接提问，AI 结合视频信息作答，逐字流式输出。"
+        },
+        {
+          "title": "合集与闪卡",
+          "subtitle": "Collections & Flashcards",
+          "desc": "把笔记归类进合集、融合成一篇综合笔记，或一键生成问答闪卡巩固记忆。"
+        },
+        {
+          "title": "浏览器插件",
+          "subtitle": "Browser Extension",
+          "desc": "在视频网页里点一下插件图标，当前视频立刻开始生成笔记，无需跳转。"
+        }
+      ]
+    },
+    "getStarted": {
+      "headingPrefix": "几分钟就能",
+      "headingHighlight": "跑起来。",
+      "sub": "四种使用方式，挑一个适合你的。",
+      "options": [
+        {
+          "title": "在线使用",
+          "subtitle": "推荐",
+          "body": "无需安装，注册账号后直接在网页里粘贴链接开始生成笔记。",
+          "linkLabel": "前往登录"
+        },
+        {
+          "title": "Docker Compose",
+          "subtitle": "自部署",
+          "body": "一条命令拉起完整 Web 栈，包含 MySQL、FastAPI 后端与前端。",
+          "linkLabel": null
+        },
+        {
+          "title": "桌面客户端",
+          "subtitle": "Windows / macOS",
+          "body": "打包好的桌面应用，双击安装即可使用，无需配置环境。",
+          "linkLabel": "联系获取安装包"
+        },
+        {
+          "title": "浏览器插件",
+          "subtitle": "Chrome / Edge",
+          "body": "在 chrome://extensions/ 加载解压后的扩展目录即可使用。",
+          "linkLabel": "联系获取安装说明"
+        }
+      ]
+    },
+    "cta": {
+      "heading": "省下重看视频的时间。",
+      "sub": "把第一条视频链接粘进去，剩下的交给 NoteFlow。",
+      "button": "立即使用"
+    },
+    "footer": {
+      "product": "产品",
+      "login": "登录 / 注册",
+      "tryOnline": "在线体验",
+      "resources": "资源",
+      "guide": "使用文档",
+      "faq": "常见问题",
+      "contact": "联系",
+      "devHome": "开发者主页",
+      "feedback": "问题反馈",
+      "tagPrefix": "专注",
+      "tagHighlight": "笔记",
+      "tagSuffix": "，服务于每一次观看。",
+      "copyright": "© {{year}} NoteFlow. 保留所有权利。"
+    }
+  },
+  "collectionDetail": {
+    "backToList": "返回合集列表",
+    "noteCountUpdated": "{{count}} 篇笔记 · 更新于 {{date}}",
+    "removed": "已从合集移出",
+    "deleted": "合集已删除",
+    "coverUpdated": "封面已更新",
+    "mergeCompleted": "融合笔记「{{title}}」已完成",
+    "mergeFailed": "融合笔记「{{title}}」失败",
+    "mergeStatus": {
+      "running": "融合中",
+      "success": "已完成",
+      "failed": "失败"
+    },
+    "actions": {
+      "share": "分享",
+      "generateFlashcard": "生成闪记卡",
+      "exportObsidian": "导出 Obsidian",
+      "exportZip": "导出 ZIP",
+      "more": "更多",
+      "setCover": "设置封面",
+      "edit": "编辑信息",
+      "delete": "删除合集",
+      "addNote": "添加笔记",
+      "selectNote": "选择笔记",
+      "remove": "从合集移出"
+    },
+    "notesTitle": "合集内笔记",
+    "notesSummary": "{{count}} 篇内容，按封面浏览合集结构",
+    "selectedCount": "已选 {{count}} 篇",
+    "clearSelection": "清除选择",
+    "empty": {
+      "badge": "空合集",
+      "title": "把第一篇笔记放进来",
+      "description": "你可以从已经生成完成的笔记中导入到「{{name}}」，也可以新建笔记时直接选择这个合集。等内容积累起来后，就能融合、分享和批量导出。",
+      "import": "导入已有笔记",
+      "newNote": "新建笔记",
+      "viewTasks": "查看任务列表",
+      "features": {
+        "import": {
+          "title": "导入已完成笔记",
+          "description": "从历史任务里选择内容，批量放入当前合集。"
+        },
+        "organize": {
+          "title": "沉淀主题资料",
+          "description": "把同一课程、项目或资料集中到一个空间。"
+        },
+        "process": {
+          "title": "后续统一处理",
+          "description": "内容足够后可融合、分享，或导出为资料包。"
+        }
+      }
+    },
+    "edit": {
+      "title": "编辑合集信息",
+      "description": "修改合集的名称和描述。",
+      "nameRequired": "请输入合集名称"
+    },
+    "delete": {
+      "title": "删除合集",
+      "description": "删除后合集内的笔记不会被删除，仍保留在任务列表中。此操作不可恢复。",
+      "confirm": "确认删除"
+    },
+    "remove": {
+      "title": "从合集移出",
+      "description": "确定要将「{{name}}」从本合集移出吗？笔记本身不会被删除，仍保留在任务列表中。",
+      "confirm": "确认移出"
+    },
+    "export": {
+      "empty": "合集内暂无笔记，无法导出",
+      "failed": "导出失败，请稍后重试"
+    },
+    "flashcard": {
+      "selectOne": "请先选择一篇笔记再生成闪记卡"
+    },
+    "merge": {
+      "queue": "融合队列",
+      "queueTitle": "融合任务队列",
+      "fallbackTitle": "融合笔记",
+      "minSelected": "请至少选择 2 篇笔记再进行融合",
+      "tooltip": "融合选中的 {{count}} 篇笔记",
+      "modelRequired": "请选择融合使用的模型",
+      "submitted": "融合任务已提交，生成完成后会自动加入本合集",
+      "title": "融合成笔记",
+      "description": "把选中的 {{count}} 篇笔记通过 AI 融合成一篇新笔记，自动加入本合集，原笔记保持不变。",
+      "model": "融合使用的模型",
+      "modelPlaceholder": "请选择模型",
+      "costHint": "融合笔记会调用 AI 模型，按所选模型价格消耗电力，失败将自动退回。",
+      "start": "开始融合"
+    }
+  },
+  "share": {
+    "loadFailed": "获取分享状态失败",
+    "disabled": "分享已关闭",
+    "enabled": "分享已开启",
+    "operationFailed": "操作失败，请重试",
+    "linkCopied": "链接已复制",
+    "noteTitle": "分享笔记",
+    "noteDescription": "管理笔记的公开分享链接",
+    "collectionTitle": "分享合集",
+    "collectionDescription": "管理合集的公开分享链接",
+    "active": "分享已开启",
+    "enable": "开启分享",
+    "noteActiveDescription": "任何拥有链接的人无需登录即可访问",
+    "noteInactiveDescription": "开启后生成可公开访问的链接",
+    "collectionActiveDescription": "任何拥有链接的人无需登录即可访问合集内全部笔记",
+    "collectionInactiveDescription": "开启后生成可公开访问的合集链接",
+    "disable": "关闭分享",
+    "copy": "复制",
+    "viewCount": "已被浏览 {{count}} 次"
+  },
+  "flashcardGenerate": {
+    "modelRequired": "请选择生成模型",
+    "countRange": "卡片数量需在 {{min}}-{{max}} 之间",
+    "success": "闪记卡生成成功",
+    "title": "生成闪记卡",
+    "description": "围绕这篇笔记生成一组问答卡片，帮助快速记忆核心内容。",
+    "model": "生成模型",
+    "modelPlaceholder": "请选择模型",
+    "count": "卡片数量（{{min}}-{{max}}）",
+    "customPrompt": "自定义出题要求（可选）",
+    "customPromptPlaceholder": "例如：多考察具体数据和结论，少考察概念定义",
+    "costHint": "生成闪记卡会调用 AI 模型，按所选模型价格消耗电力，失败将自动退回。",
+    "generate": "生成"
+  },
+  "collectionAdd": {
+    "added": "已加入 {{count}} 篇笔记",
+    "addedSingle": "已加入合集",
+    "title": "添加笔记到合集",
+    "description": "勾选要加入该合集的笔记，可多选。",
+    "searchPlaceholder": "搜索笔记标题…",
+    "empty": "暂无可添加的笔记",
+    "add": "加入 ({{count}})",
+    "selectTitle": "加入合集",
+    "selectDescription": "选择要加入的合集。",
+    "noCollections": "还没有合集，先去「笔记合集」创建一个"
+  },
+  "flashcardPage": {
+    "exportFailed": "导出失败，请稍后重试",
+    "title": "闪记卡",
+    "exportCsv": "导出 CSV",
+    "progress": "第 {{current}} / {{total}} 张",
+    "answer": "答案",
+    "question": "问题",
+    "hideAnswerHint": "点击卡片 / Esc 隐藏答案",
+    "showAnswerHint": "点击卡片 / 空格 / 回车 查看答案",
+    "previous": "上一张",
+    "restart": "重新开始",
+    "next": "下一张",
+    "keyboardHint": "快捷键：← / → 或 H / L 切换卡片 · 空格 / 回车 显示答案 · Esc 隐藏答案 · Ctrl+R 重新开始"
+  },
+  "knowledgeBase": {
+    "title": "知识库",
+    "description": "跨笔记提问，发现内容之间的联系。",
+    "proTitle": "升级 Pro，解锁知识库问答",
+    "proDescription": "跨笔记搜索、查看引用来源，并使用深度思考获得有依据的回答。",
+    "features": {
+      "search": {
+        "title": "跨笔记搜索",
+        "description": "搜索所有已索引笔记",
+        "allDescription": "搜索所有已索引笔记，将相关观点汇总在一起。"
+      },
+      "sources": { "title": "来源可追溯", "description": "查看回答引用了哪些笔记" },
+      "reasoning": { "title": "深度思考", "description": "让支持的模型分析复杂问题" }
+    },
+    "suggestions": {
+      "summary": "总结我的笔记中的关键内容",
+      "tools": "我的笔记中提到了哪些工具或方法？",
+      "themes": "这些笔记之间有哪些共同主题？",
+      "contradictions": "我的笔记中是否存在矛盾？"
+    },
+    "sources": "来源（{{count}}）",
+    "noteFallback": "未命名笔记",
+    "thinking": "思考中",
+    "thought": "思考过程",
+    "thinkingNow": "正在思考…",
+    "createFailed": "创建对话失败",
+    "askFailed": "获取回答失败",
+    "requestInterrupted": "请求已中断",
+    "titleRequired": "请输入对话标题",
+    "empty": {
+      "title": "知识库还是空的",
+      "description": "先生成笔记，然后就可以在这里跨笔记提问。",
+      "goWorkspace": "前往工作台",
+      "steps": { "paste": "粘贴视频链接", "generate": "生成笔记", "ask": "向笔记提问" }
+    },
+    "newConversation": "新建对话",
+    "noConversations": "暂无对话",
+    "unread": "未读",
+    "heroTitle": "向你的笔记提问",
+    "heroDescription": "笔记已完成索引，可以进行跨笔记问答。",
+    "inputPlaceholder": "询问与笔记相关的问题…",
+    "modelPlaceholder": "选择模型",
+    "reasoningUnsupported": "此模型不支持深度思考",
+    "deepThinking": "深度思考",
+    "indexed": "已索引 {{indexed}}/{{total}} 条笔记",
+    "inputHint": "AI 回答可能不准确，请核对引用来源。",
+    "unpin": "取消置顶",
+    "pin": "置顶",
+    "rename": "重命名",
+    "markRead": "标记为已读",
+    "markUnread": "标记为未读",
+    "delete": "删除",
+    "renameTitle": "重命名对话",
+    "renamePlaceholder": "输入对话标题",
+    "deleteTitle": "删除对话",
+    "deleteDescription": "此对话及其中的消息将被永久删除。"
+  },
+  "profile": {
+    "loadFailed": "获取个人信息失败",
+    "avatarUpdated": "头像已更新",
+    "usernameUpdated": "用户名已更新",
+    "passwordMismatch": "两次密码输入不一致",
+    "passwordMin": "新密码至少 6 位",
+    "passwordUpdated": "密码修改成功",
+    "emailEnabled": "已开启邮件通知",
+    "emailDisabled": "已关闭邮件通知",
+    "announcementEnabled": "已开启系统公告通知",
+    "announcementDisabled": "已关闭系统公告通知",
+    "title": "个人信息",
+    "changeAvatar": "更换头像",
+    "verified": "已认证",
+    "phone": "手机",
+    "email": "邮箱",
+    "registered": "注册",
+    "lastLogin": "登录",
+    "notBound": "暂未绑定",
+    "usage": "使用额度",
+    "used": "已使用 {{count}}",
+    "total": "共 {{count}}",
+    "remaining": "剩余 {{count}} 电力",
+    "basic": "基本资料",
+    "username": "用户名",
+    "saveChanges": "保存修改",
+    "emailNotifications": "邮件通知",
+    "emailAddress": "邮箱地址",
+    "taskNotification": "任务完成通知",
+    "taskNotificationDescription": "笔记生成完成时发送邮件",
+    "systemAnnouncement": "系统公告",
+    "systemAnnouncementDescription": "管理员发布重要更新与公告时发送邮件",
+    "security": "账号安全",
+    "currentPassword": "当前密码",
+    "currentPasswordPlaceholder": "请输入当前密码",
+    "newPassword": "新密码",
+    "confirmNewPassword": "确认新密码",
+    "confirmNewPasswordPlaceholder": "再次输入新密码",
+    "changePassword": "修改密码"
+  }
+}

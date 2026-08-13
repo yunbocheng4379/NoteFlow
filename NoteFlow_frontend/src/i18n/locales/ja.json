@@ -1,0 +1,830 @@
+{
+  "common": {
+    "loading": "読み込み中…",
+    "backHome": "ホームに戻る",
+    "feedback": "フィードバック",
+    "close": "閉じる",
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "save": "保存",
+    "user": "ユーザー",
+    "remainingCredits": "残りクレジット",
+    "success": "成功",
+    "error": "エラー",
+    "back": "戻る",
+    "edit": "編集",
+    "confirmAction": "操作を確認",
+    "delete": "削除",
+    "clear": "クリア"
+  },
+  "appearance": {
+    "language": "言語",
+    "theme": "テーマ",
+    "light": "ライト",
+    "dark": "ダーク",
+    "system": "システムに合わせる",
+    "languages": {
+      "en": "English",
+      "zh-CN": "简体中文",
+      "zh-TW": "繁體中文",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "nav": {
+    "workspace": "ワークスペース",
+    "explore": "探索",
+    "tasks": "タスク一覧",
+    "collections": "ノートコレクション",
+    "knowledgeBase": "ナレッジベース",
+    "noteStyle": "ノートスタイル",
+    "updateLogs": "更新ログ",
+    "upgrade": "Pro にアップグレード",
+    "billing": "請求とクレジット",
+    "referral": "紹介コード",
+    "about": "概要",
+    "globalSettings": "全体設定",
+    "profile": "プロフィール",
+    "logout": "ログアウト"
+  },
+  "settings": {
+    "model": "AI モデル設定",
+    "transcriber": "文字起こし設定",
+    "monitor": "デプロイ監視",
+    "users": "ユーザー管理",
+    "feedback": "フィードバック管理",
+    "cookiePool": "Cookie プール",
+    "notifications": "システム通知",
+    "pricing": "クレジットルール",
+    "updateLogs": "更新ログ設定"
+  },
+  "explore": {
+    "title": "動画を探す",
+    "subtitle": "キーワードでBilibili + YouTubeを横断検索、結果から直接ノート生成"
+  },
+  "home": {
+    "notes": "ノート",
+    "collapse": "折りたたむ",
+    "expand": "展開",
+    "newNote": "新しいノート",
+    "regenerate": "ノートを再生成",
+    "empty": {
+      "selectVideo": "動画を選択してください",
+      "invalidUrl": "動画リンクが無効です",
+      "modelRequired": "先に AI モデルを追加してください",
+      "transcriberRequired": "文字起こし設定でモデルをダウンロードしてください",
+      "submitFailed": "送信に失敗しました。もう一度お試しください",
+      "creditBanner": "クレジット 100 を付与しました",
+      "creditHint": "短い動画約 5 本、または 30 分の講座 2 本分",
+      "heroTitle": "動画リンクを貼って AI ノートを生成",
+      "heroDescription": "AI が構造化ノートを整理し、マインドマップと元動画リンクを作成します。",
+      "linkTab": "リンク",
+      "exploreTab": "探索",
+      "urlPlaceholder": "動画リンクを貼り付け（例: https://www.bilibili.com/video/...）",
+      "moreSettings": "その他の設定",
+      "submitting": "送信中…",
+      "freeGenerate": "無料で生成",
+      "parsing": "リンクを解析中…",
+      "parsingHint": "タイトル / カバー / 長さを取得中（通常数秒）",
+      "untitledVideo": "無題の動画",
+      "recognized": "認識済み",
+      "capabilitiesTitle": "NoteFlow でできること",
+      "capabilitiesDescription": "文字起こしだけでなく、構造化・検索・出典確認まで。"
+    },
+    "capabilities": {
+      "notes": {
+        "title": "スマートなノート構造",
+        "description": "AI が要点を抽出し、章立てと目次、元動画の時間リンクを付けます。"
+      },
+      "map": {
+        "title": "ワンクリックのマインドマップ",
+        "description": "ノートを操作可能なマインドマップに変換します。"
+      },
+      "chat": {
+        "title": "AI Q&A",
+        "description": "動画について質問し、出典の抜粋と時間を確認できます。"
+      },
+      "video": {
+        "title": "元動画を再生",
+        "description": "ノートの時間リンクから該当箇所を再生できます。"
+      },
+      "formats": {
+        "title": "複数形式でエクスポート",
+        "description": "Markdown / PDF / Word / HTML / 画像に出力できます。"
+      },
+      "comparison": {
+        "title": "バージョン比較",
+        "description": "同じ動画を異なるスタイルで生成し、いつでも比較できます。"
+      }
+    },
+    "chat": {
+      "questions": {
+        "summary": "この動画の要点を一段落でまとめて",
+        "points": "主な意見と根拠は何ですか？",
+        "conclusion": "筆者の結論や提案は何ですか？",
+        "actions": "すぐ実践できるポイントは何ですか？"
+      },
+      "sources": "引用元（{{count}}）",
+      "noteFallback": "ノート",
+      "modelRequired": "モデルを取得できません。設定でモデルを追加して有効にしてください",
+      "askFailed": "Q&A リクエストに失敗しました",
+      "requestInterrupted": "（リクエストが中断されました）",
+      "thinking": "思考中…",
+      "indexing": "ノートを索引中…",
+      "indexingHint": "初回は Embedding モデル（約 80 MB）をダウンロードします。お待ちください",
+      "indexFailed": "索引に失敗しました。再試行してください",
+      "indexRequestFailed": "索引リクエストに失敗しました",
+      "reindex": "再索引",
+      "title": "AI Q&A",
+      "fullscreen": "全画面",
+      "halfscreen": "半画面",
+      "emptyTitle": "ノートについて質問",
+      "emptyDescription": "下から選ぶか、質問を入力してください",
+      "inputPlaceholder": "質問を入力…",
+      "costHint": "質問ごとに選択したモデルの料金に応じてクレジットを消費します"
+    },
+    "history": {
+      "renameFailed": "名前の変更に失敗しました。再試行してください",
+      "generating": "ノートを生成中です。切り替える前にお待ちください",
+      "searchPlaceholder": "ノートを検索…",
+      "empty": "記録はありません",
+      "status": { "pending": "処理中", "success": "完了", "failed": "失敗" },
+      "untitled": "無題のノート",
+      "createdAt": "作成 {{date}}",
+      "rename": "名前を変更",
+      "share": "ノートを共有",
+      "deleteTitle": "削除の確認",
+      "deleteDescription": "このノート記録を削除しますか？元に戻せません。"
+    },
+    "cookie": {
+      "pasteRequired": "Cookie の内容を貼り付けてください",
+      "saved": "{{platform}} Cookie を保存しました",
+      "saveFailed": "Cookie の保存に失敗しました",
+      "title": "{{platform}} Cookie を設定",
+      "reason": "{{platform}} がログイン確認またはリスク制御エラーを返しました。有効な Cookie を設定してください。",
+      "pasteLabel": "{{platform}} Cookie を貼り付け",
+      "loading": "既存の Cookie を読み込み中…",
+      "placeholder": "ブラウザで {{platform}} にログインし、DevTools → Network の任意のリクエストから Cookie ヘッダーをコピー",
+      "storagePrefix": "Cookie はローカルデータベースにのみ保存され、",
+      "storageSuffix": "と連携します。",
+      "fullSettings": "詳細設定を開く",
+      "saving": "保存中…",
+      "saveRetry": "保存して再試行"
+    },
+    "noteForm": {
+      "platformRequired": "プラットフォームを選択してください",
+      "modelRequired": "モデルを選択してください",
+      "styleRequired": "ノートスタイルを選択してください",
+      "fileRequired": "ローカル動画のパスを入力してください",
+      "urlRequired": "動画リンクを入力してください",
+      "invalidUrl": "正しい動画リンクを入力してください",
+      "formatPlaceholder": "ノート形式を選択",
+      "visionRequired": "動画理解を有効にしてください",
+      "parsing": "リンクを解析中…",
+      "parsingHint": "タイトル / カバー / 長さを取得中",
+      "untitledVideo": "無題の動画",
+      "recognized": "認識済み",
+      "batchProTitle": "一括モードは Pro 専用です",
+      "batchProDescription": "チャンネル、コレクション、複数リンクを解析して一括送信します。",
+      "styleUnavailable": "選択したスタイルは使えないため標準に戻しました",
+      "uploadFailed": "ファイルのアップロードに失敗しました",
+      "channelUnsupported": "チャンネル解析は Bilibili と YouTube のみ対応しています",
+      "noVideos": "動画が見つかりません。リンクを確認してください",
+      "videosResolved": "{{count}} 件の動画を解析しました",
+      "resolveFailed": "解析に失敗しました。再試行してください",
+      "selectVideo": "動画を 1 件以上選択してください",
+      "batchLimit": "一括処理は最大 30 件です",
+      "batchPartial": "{{success}} 件を送信、{{failed}} 件が失敗",
+      "batchSubmitted": "{{count}} 件の一括タスクを送信しました",
+      "batchSubmitFailed": "一括送信に失敗しました",
+      "transcriberDownloading": "文字起こしモデルをダウンロード中です",
+      "transcriberRequired": "文字起こしモデルを先にダウンロードしてください",
+      "onlineLink": "オンラインリンク",
+      "localFile": "ローカルファイル",
+      "batchMode": "一括モード",
+      "cloudDrive": "クラウドドライブ",
+      "channelLabel": "クリエイター / チャンネル / コレクションリンク",
+      "channelPlaceholder": "クリエイターまたはチャンネルリンクを貼り付け…",
+      "resolve": "解析",
+      "multipleUrlsLabel": "または複数の動画リンクを貼り付け",
+      "addPreview": "プレビューに追加",
+      "previewList": "プレビュー（{{selected}}/{{total}} 件選択、最大 30 件）",
+      "uploading": "アップロード中…",
+      "uploaded": "アップロード完了",
+      "fileDrop": "ドラッグまたはクリックして動画を選択",
+      "urlPlaceholderShort": "動画リンクを貼り付け…",
+      "platformDisabled": "サービスは一時停止中です。後でもう一度お試しください",
+      "parameters": "生成パラメータ",
+      "model": "AI モデル",
+      "addModel": "先にモデルを追加してください",
+      "modelPlaceholder": "モデルを選択",
+      "style": "ノートスタイル",
+      "builtInStyles": "組み込みスタイル",
+      "myStyles": "自分のスタイル",
+      "publicStyles": "公開スタイル",
+      "videoUnderstanding": "動画理解",
+      "videoUnderstandingDescription": "動画のスクリーンショットをマルチモーダルモデルで分析",
+      "visionUnsupported": "このモデルは画像入力に対応していません",
+      "sampleInterval": "サンプリング間隔（秒）",
+      "gridSize": "グリッドサイズ（列 × 行）",
+      "format": "ノート形式",
+      "extras": "追加指示",
+      "extrasPlaceholder": "ノートに含めたい要点を入力…",
+      "outputSection": "出力と整理",
+      "collectionOptional": "コレクションに保存（任意）",
+      "collectionPlaceholder": "生成後にこのコレクションへ追加",
+      "noCollection": "コレクションに保存しない",
+      "estimatedCost": "予想消費",
+      "credits": "クレジット",
+      "videoMinutes": "（動画 {{minutes}} 分）",
+      "balance": "現在の残高",
+      "insufficientCredits": "クレジットが不足しています",
+      "recharge": "チャージ",
+      "upgradeForBatch": "Pro にアップグレードして一括モードを使用",
+      "submitting": "送信中…",
+      "batchGenerate": "一括生成（{{count}}）",
+      "generating": "生成中…",
+      "generateWithCost": "{{count}} クレジットで生成",
+      "generate": "ノートを生成"
+    }
+  },
+  "viewer": {
+    "steps": {
+      "parsing": "リンク解析",
+      "downloading": "音声をダウンロード",
+      "transcribing": "文字起こし",
+      "summarizing": "要約",
+      "success": "保存完了"
+    },
+    "stage": {
+      "pending": { "title": "待機中、まもなく開始", "hint": "タスクを送信しました。準備中です…" },
+      "parsing": { "title": "動画リンクを解析中", "hint": "動画情報を読み込んでいます…" },
+      "downloading": { "title": "音声をダウンロード中", "hint": "音声ストリームを取得しています" },
+      "transcribing": { "title": "文字起こし中", "hint": "音声をテキストに変換しています" },
+      "summarizing": { "title": "AI が要約中", "hint": "要点を抽出しています…" },
+      "success": { "title": "生成完了", "hint": "ノートの準備ができました" }
+    },
+    "loadingContent": "ノートを読み込み中…",
+    "failureHint": "バックエンドを確認するか、後でもう一度お試しください",
+    "failed": "ノート生成に失敗しました",
+    "retry": "再試行",
+    "mindmap": "マインドマップ",
+    "idleTitle": "動画リンクを入力して「ノートを生成」をクリック",
+    "idleDescription": "Bilibili、YouTube などの動画サイトに対応"
+  },
+  "guide": {
+    "titlePrefix": "ユーザー",
+    "titleHighlight": "ガイド",
+    "description": "最初のリンクを貼るところからノートライブラリの管理まで、4つのチュートリアルで NoteFlow の使い方を紹介します。",
+    "readMore": "記事を読む",
+    "previous": "前の記事",
+    "next": "次の記事"
+  },
+  "auth": {
+    "featurePlatforms": "マルチプラットフォーム解析",
+    "featurePlatformsDesc": "Bilibili、YouTube、Douyin、Kuaishou に対応",
+    "featureNotes": "AI ノート生成",
+    "featureNotesDesc": "主要な LLM で構造化 Markdown を自動生成",
+    "featureMindmap": "マインドマップ",
+    "featureMindmapDesc": "内容を可視化して全体像を把握",
+    "featureChat": "AI Q&A",
+    "featureChatDesc": "ノートの内容について質問できます",
+    "login": "ログイン",
+    "register": "登録",
+    "account": "ユーザー名 / メール / 電話番号",
+    "password": "パスワード",
+    "submitLogin": "ログイン",
+    "submitRegister": "アカウントを作成",
+    "forgotPassword": "パスワードを忘れた？",
+    "accountRequired": "アカウントを入力してください",
+    "passwordRequired": "パスワードを入力してください",
+    "passwordLogin": "パスワードログイン",
+    "codeLogin": "コードログイン",
+    "emailCode": "メールコード",
+    "phoneCode": "電話コード",
+    "welcomeBack": "おかえりなさい",
+    "createAccount": "アカウントを作成",
+    "loginSubtitle": "NoteFlow アカウントにログインして続ける",
+    "registerSubtitle": "情報を入力して NoteFlow を始める",
+    "accountPlaceholder": "ユーザー名、メール、電話番号を入力",
+    "email": "メール",
+    "phone": "電話番号",
+    "emailPlaceholder": "メールを入力",
+    "phonePlaceholder": "電話番号を入力",
+    "code": "認証コード",
+    "codePlaceholder": "認証コードを入力",
+    "getCode": "コードを取得",
+    "username": "ユーザー名",
+    "usernamePlaceholder": "ユーザー名を入力（3～32文字）",
+    "passwordPlaceholder": "パスワードを入力",
+    "passwordMin": "6文字以上",
+    "confirmPassword": "パスワードを確認",
+    "confirmPasswordPlaceholder": "パスワードをもう一度入力",
+    "inviteCode": "招待コード",
+    "inviteOptional": "（任意、登録で +200 クレジット）",
+    "invitePlaceholder": "友達の招待コードを入力",
+    "loggingIn": "ログイン中…",
+    "registering": "登録中…",
+    "otherMethods": "その他のログイン方法",
+    "wechatLogin": "WeChat でログイン",
+    "noAccount": "アカウントをお持ちでないですか？",
+    "registerNow": "今すぐ登録",
+    "hasAccount": "アカウントをお持ちですか？",
+    "loginNow": "ログイン",
+    "loginSuccess": "ログインしました",
+    "registerSuccess": "アカウントを作成しました"
+  },
+  "landing": {
+    "nav": {
+      "features": "機能",
+      "getStarted": "始める",
+      "guide": "ガイド",
+      "github": "GitHub",
+      "cta": "今すぐ使う"
+    },
+    "hero": {
+      "titleLine1": "動画リンクひとつで、",
+      "titleLine2": "ノートが完成。",
+      "subtitle": "視聴と学習に寄り添う AI 動画ノートアシスタント。",
+      "cta": "今すぐ使う",
+      "github": "GitHub",
+      "imgAlt": "NoteFlow ログイン画面"
+    },
+    "platforms": {
+      "biliBili": "Bilibili",
+      "youtube": "YouTube",
+      "douyin": "Douyin",
+      "kuaishou": "Kuaishou",
+      "local": "ローカルファイル"
+    },
+    "featureGrid": {
+      "headingPrefix": "6つの機能、",
+      "headingHighlight": "ひとつのワークフロー。",
+      "sub": "1本の動画からチャンネル全体まで、NoteFlow がすべてをサポートします。",
+      "features": [
+        {
+          "title": "動画をノートに",
+          "subtitle": "Video to Notes",
+          "desc": "動画リンクやローカルファイルから音声を文字起こしし、Markdown ノートとマインドマップを生成します。"
+        },
+        {
+          "title": "ノートスタイル",
+          "subtitle": "Note Styles",
+          "desc": "簡潔、チュートリアル、学術などのスタイルを選べます。テンプレートも作成できます。"
+        },
+        {
+          "title": "一括・チャンネル解析",
+          "subtitle": "Batch & Channels",
+          "desc": "チャンネルの動画一覧を取得し、選択した動画のノートを一括生成します。"
+        },
+        {
+          "title": "AI Q&A",
+          "subtitle": "Chat with Notes",
+          "desc": "ノートの内容について質問すると、動画情報を使って回答します。"
+        },
+        {
+          "title": "コレクションとカード",
+          "subtitle": "Collections & Flashcards",
+          "desc": "ノートを整理したり、統合ノートや Q&A カードを作成できます。"
+        },
+        {
+          "title": "ブラウザ拡張",
+          "subtitle": "Browser Extension",
+          "desc": "動画ページで拡張機能をクリックするだけでノート生成を始められます。"
+        }
+      ]
+    },
+    "getStarted": {
+      "headingPrefix": "数分で",
+      "headingHighlight": "スタート。",
+      "sub": "4つの使い方から選べます。",
+      "options": [
+        {
+          "title": "オンラインで使う",
+          "subtitle": "おすすめ",
+          "body": "インストール不要。アカウントを登録してブラウザにリンクを貼るだけです。",
+          "linkLabel": "ログインへ"
+        },
+        {
+          "title": "Docker Compose",
+          "subtitle": "セルフホスト",
+          "body": "1つのコマンドで MySQL、FastAPI、フロントエンドを含む環境を起動します。",
+          "linkLabel": null
+        },
+        {
+          "title": "デスクトップアプリ",
+          "subtitle": "Windows / macOS",
+          "body": "パッケージ済みのアプリをインストールしてすぐに使えます。",
+          "linkLabel": "インストーラーを問い合わせる"
+        },
+        {
+          "title": "ブラウザ拡張",
+          "subtitle": "Chrome / Edge",
+          "body": "chrome://extensions/ で解凍した拡張フォルダを読み込んでください。",
+          "linkLabel": "導入方法を問い合わせる"
+        }
+      ]
+    },
+    "cta": {
+      "heading": "動画を見直す時間を減らそう。",
+      "sub": "最初の動画リンクを貼れば、あとは NoteFlow にお任せ。",
+      "button": "今すぐ使う"
+    },
+    "footer": {
+      "product": "プロダクト",
+      "login": "ログイン / 登録",
+      "tryOnline": "オンラインで試す",
+      "resources": "リソース",
+      "guide": "ドキュメント",
+      "faq": "よくある質問",
+      "contact": "連絡先",
+      "devHome": "開発者",
+      "feedback": "フィードバック",
+      "tagPrefix": "すべての動画を",
+      "tagHighlight": "ノートに",
+      "tagSuffix": "。",
+      "copyright": "© {{year}} NoteFlow. All rights reserved."
+    }
+  },
+  "collection": {
+    "title": "ノートコレクション",
+    "description": "同じテーマのノートをまとめて管理し、統合・共有・エクスポートできます。",
+    "proOnly": "Pro 限定",
+    "proTitle": "Pro にアップグレードしてコレクションを有効にする",
+    "proDescription": "同じ講座・テーマ・一括生成のノートをまとめ、統合・共有・一括エクスポートできます。",
+    "upgrade": "Pro にアップグレード",
+    "knowledgeHint": "コレクションはナレッジベース Q&A と連携できます",
+    "searchPlaceholder": "コレクション名 / 説明を検索",
+    "noteCount": "{{count}} 件のノート",
+    "noteCountShort": "{{count}} 件のノート",
+    "noMatches": "一致するコレクションはありません",
+    "empty": {
+      "title": "ノートコレクションはまだありません",
+      "description": "同じ講座・テーマ・一括生成のノートをコレクションにまとめ、統合・共有・一括エクスポートできます。",
+      "createFirst": "最初のコレクションを作成",
+      "steps": {
+        "create": "テーマコレクションを作成",
+        "add": "ノートを一括追加",
+        "process": "統合 / 共有 / エクスポート"
+      }
+    },
+    "features": {
+      "archive": {
+        "title": "テーマ整理",
+        "description": "講座・プロジェクト・資料を整理"
+      },
+      "merge": {
+        "title": "ノート統合",
+        "description": "複数の内容を1つのノートにまとめる"
+      },
+      "share": {
+        "title": "共有・エクスポート",
+        "description": "まとめて共有または資料として出力"
+      },
+      "knowledge": {
+        "title": "知識連携",
+        "description": "ナレッジベースでノート横断検索と Q&A"
+      }
+    },
+    "create": {
+      "button": "コレクションを作成",
+      "cardDescription": "講座・テーマ・一括生成ノートを整理",
+      "title": "コレクションを作成",
+      "description": "作成後にノートを追加できます。",
+      "name": "コレクション名",
+      "nameRequired": "コレクション名を入力してください",
+      "namePlaceholder": "例：Python 入門講座",
+      "descriptionLabel": "説明（任意）",
+      "descriptionPlaceholder": "このコレクションについて…",
+      "submit": "作成",
+      "success": "コレクションを作成しました"
+    }
+  },
+  "taskList": {
+    "platforms": {
+      "bilibili": "Bilibili",
+      "youtube": "YouTube",
+      "douyin": "Douyin",
+      "kuaishou": "Kuaishou",
+      "local": "ローカルファイル",
+      "merged": "統合ノート"
+    },
+    "statuses": {
+      "success": "完了",
+      "failed": "失敗",
+      "pending": "待機中",
+      "parsing": "解析中",
+      "downloading": "ダウンロード中",
+      "transcribing": "文字起こし中",
+      "summarizing": "要約中",
+      "formatting": "整形中",
+      "saving": "保存中"
+    },
+    "tabs": {
+      "all": "すべて",
+      "running": "進行中",
+      "success": "完了",
+      "failed": "失敗"
+    },
+    "actions": {
+      "addToCollection": "コレクションに追加",
+      "batchAddToCollection": "選択したノートを追加",
+      "batchDelete": "選択項目を削除",
+      "deleteTask": "タスクを削除",
+      "refresh": "更新",
+      "viewNote": "ノートを見る"
+    },
+    "empty": {
+      "allTitle": "タスク記録はまだありません",
+      "filteredTitle": "このカテゴリは空です",
+      "allDescription": "ワークスペースから動画リンクを貼るかローカルファイルをアップロードしてください。完了後、進捗・クレジット・ノートへの入口がここに表示されます。",
+      "filteredDescription": "現在の条件に一致するタスクはありません。すべての記録を確認するか、ワークスペースで新しいタスクを作成してください。",
+      "generateNotes": "ノートを生成",
+      "viewAll": "すべて表示",
+      "goWorkspace": "ワークスペースへ",
+      "steps": {
+        "submit": "動画を送信",
+        "track": "進捗を確認",
+        "open": "ノートを開く"
+      }
+    },
+    "header": {
+      "title": "タスク記録",
+      "count": "{{count}} 件"
+    },
+    "batchGroup": "一括タスク · {{count}} 本",
+    "unnamedTask": "無題",
+    "refreshSuccess": "更新しました",
+    "deleted": "削除しました",
+    "batchDeleted": "{{count}} 件を削除しました",
+    "deleteDialog": {
+      "title": "削除の確認",
+      "descriptionNamed": "「{{name}}」と関連するノート・データを削除します。この操作は元に戻せません。",
+      "descriptionFallback": "この操作は元に戻せません。",
+      "targetFallback": "このタスク",
+      "confirm": "削除"
+    },
+    "batchDeleteDialog": {
+      "title": "選択項目を削除",
+      "description": "選択した {{count}} 件と関連データを削除します。この操作は元に戻せません。",
+      "confirm": "削除（{{count}}）"
+    },
+    "table": {
+      "video": "動画リンク",
+      "platform": "プラットフォーム",
+      "model": "モデル",
+      "status": "ステータス",
+      "credits": "使用クレジット",
+      "created": "作成日時",
+      "completed": "完了日時",
+      "actions": "操作"
+    }
+  },
+  "collectionDetail": {
+    "backToList": "コレクション一覧へ戻る",
+    "noteCountUpdated": "{{count}} 件のノート · 更新 {{date}}",
+    "removed": "コレクションから削除しました",
+    "deleted": "コレクションを削除しました",
+    "coverUpdated": "カバーを更新しました",
+    "mergeCompleted": "統合ノート「{{title}}」が完了しました",
+    "mergeFailed": "統合ノート「{{title}}」に失敗しました",
+    "mergeStatus": {
+      "running": "統合中",
+      "success": "完了",
+      "failed": "失敗"
+    },
+    "actions": {
+      "share": "共有",
+      "generateFlashcard": "フラッシュカードを生成",
+      "exportObsidian": "Obsidian に出力",
+      "exportZip": "ZIP を出力",
+      "more": "その他",
+      "setCover": "カバーを設定",
+      "edit": "情報を編集",
+      "delete": "コレクションを削除",
+      "addNote": "ノートを追加",
+      "selectNote": "ノートを選択",
+      "remove": "コレクションから削除"
+    },
+    "notesTitle": "コレクション内のノート",
+    "notesSummary": "{{count}} 件、カバーで一覧表示",
+    "selectedCount": "{{count}} 件を選択中",
+    "clearSelection": "選択を解除",
+    "empty": {
+      "badge": "空のコレクション",
+      "title": "最初のノートを追加",
+      "description": "完成したノートを「{{name}}」に追加するか、新しいノート作成時にこのコレクションを選択できます。内容がたまれば統合・共有・一括出力ができます。",
+      "import": "既存ノートを追加",
+      "newNote": "新しいノート",
+      "viewTasks": "タスク一覧を見る",
+      "features": {
+        "import": {
+          "title": "完成したノートを追加",
+          "description": "履歴からノートを選び、一括で追加します。"
+        },
+        "organize": {
+          "title": "テーマ資料を整理",
+          "description": "講座・プロジェクト・資料を1か所にまとめます。"
+        },
+        "process": {
+          "title": "まとめて処理",
+          "description": "準備ができたら統合・共有・出力できます。"
+        }
+      }
+    },
+    "edit": {
+      "title": "コレクション情報を編集",
+      "description": "名前と説明を変更します。",
+      "nameRequired": "コレクション名を入力してください"
+    },
+    "delete": {
+      "title": "コレクションを削除",
+      "description": "ノートはタスク一覧に残ります。この操作は元に戻せません。",
+      "confirm": "削除"
+    },
+    "remove": {
+      "title": "コレクションから削除",
+      "description": "「{{name}}」をこのコレクションから削除しますか？ノートはタスク一覧に残ります。",
+      "confirm": "削除"
+    },
+    "export": {
+      "empty": "出力できるノートがありません",
+      "failed": "出力に失敗しました。もう一度お試しください。"
+    },
+    "flashcard": {
+      "selectOne": "フラッシュカードを生成するノートを1件選択してください"
+    },
+    "merge": {
+      "queue": "統合キュー",
+      "queueTitle": "統合タスク",
+      "fallbackTitle": "統合ノート",
+      "minSelected": "統合するノートを2件以上選択してください",
+      "tooltip": "選択した{{count}}件を統合",
+      "modelRequired": "統合に使用するモデルを選択してください",
+      "submitted": "統合タスクを送信しました。完了後にコレクションへ追加されます。",
+      "title": "ノートに統合",
+      "description": "選択した{{count}}件をAIで新しいノートに統合します。元のノートは残ります。",
+      "model": "統合モデル",
+      "modelPlaceholder": "モデルを選択",
+      "costHint": "選択したモデルを使用するためクレジットを消費します。失敗時は返還されます。",
+      "start": "統合を開始"
+    }
+  },
+  "share": {
+    "loadFailed": "共有状態の読み込みに失敗しました",
+    "disabled": "共有を無効にしました",
+    "enabled": "共有を有効にしました",
+    "operationFailed": "操作に失敗しました。再試行してください",
+    "linkCopied": "リンクをコピーしました",
+    "noteTitle": "ノートを共有",
+    "noteDescription": "ノートの公開共有リンクを管理",
+    "collectionTitle": "コレクションを共有",
+    "collectionDescription": "コレクションの公開共有リンクを管理",
+    "active": "共有を有効化済み",
+    "enable": "共有を有効にする",
+    "noteActiveDescription": "リンクを知っている人はログインなしでこのノートを閲覧できます",
+    "noteInactiveDescription": "共有を有効にして公開リンクを生成",
+    "collectionActiveDescription": "リンクを知っている人はログインなしでコレクション内のノートを閲覧できます",
+    "collectionInactiveDescription": "共有を有効にして公開コレクションリンクを生成",
+    "disable": "共有を無効にする",
+    "copy": "コピー",
+    "viewCount": "{{count}} 回閲覧"
+  },
+  "flashcardGenerate": {
+    "modelRequired": "生成モデルを選択してください",
+    "countRange": "カード数は {{min}} ～ {{max}} の間で指定してください",
+    "success": "フラッシュカードを生成しました",
+    "title": "フラッシュカードを生成",
+    "description": "このノートについて Q&A カードを作り、要点をすばやく覚えます。",
+    "model": "生成モデル",
+    "modelPlaceholder": "モデルを選択",
+    "count": "カード数（{{min}}-{{max}}）",
+    "customPrompt": "質問の追加条件（任意）",
+    "customPromptPlaceholder": "例：定義より具体的なデータと結論を重視",
+    "costHint": "フラッシュカードの生成には選択した AI モデルとクレジットを使用します。失敗時は返還されます。",
+    "generate": "生成"
+  },
+  "collectionAdd": {
+    "added": "{{count}} 件のノートを追加しました",
+    "addedSingle": "コレクションに追加しました",
+    "title": "ノートをコレクションに追加",
+    "description": "完了したノートを 1 件以上選択してください。",
+    "searchPlaceholder": "ノートタイトルを検索…",
+    "empty": "追加できるノートはありません",
+    "add": "追加（{{count}}）",
+    "selectTitle": "コレクションに追加",
+    "selectDescription": "追加先のコレクションを選択",
+    "noCollections": "コレクションはまだありません。先に作成してください。"
+  },
+  "flashcardPage": {
+    "exportFailed": "エクスポートに失敗しました。再試行してください",
+    "title": "フラッシュカード",
+    "exportCsv": "CSV をエクスポート",
+    "progress": "カード {{current}} / {{total}}",
+    "answer": "回答",
+    "question": "質問",
+    "hideAnswerHint": "カードをクリック / Esc で回答を隠す",
+    "showAnswerHint": "カードをクリック / Space / Enter で回答を表示",
+    "previous": "前へ",
+    "restart": "最初から",
+    "next": "次へ",
+    "keyboardHint": "ショートカット：← / → または H / L で切替 · Space / Enter で回答表示 · Esc で非表示 · Ctrl+R で再開"
+  },
+  "knowledgeBase": {
+    "title": "ナレッジベース",
+    "description": "ノートを横断して質問し、つながりを見つけます。",
+    "proTitle": "Pro にアップグレードして Q&A を解放",
+    "proDescription": "ノートを横断検索し、出典を確認しながら根拠のある回答を得られます。",
+    "features": {
+      "search": {
+        "title": "ノート横断検索",
+        "description": "索引済みノートを検索",
+        "allDescription": "索引済みノートを横断検索し、関連する内容をまとめます。"
+      },
+      "sources": { "title": "出典を確認", "description": "回答を支えるノートを表示" },
+      "reasoning": { "title": "深い推論", "description": "対応モデルで複雑な質問を考察" }
+    },
+    "suggestions": {
+      "summary": "ノート全体の要点をまとめて",
+      "tools": "ノートに登場するツールや方法は？",
+      "themes": "ノートをつなぐテーマは？",
+      "contradictions": "ノートに矛盾はありますか？"
+    },
+    "sources": "出典（{{count}}）",
+    "noteFallback": "無題のノート",
+    "thinking": "思考中",
+    "thought": "思考プロセス",
+    "thinkingNow": "考えています…",
+    "createFailed": "会話の作成に失敗しました",
+    "askFailed": "回答の取得に失敗しました",
+    "requestInterrupted": "リクエストが中断されました",
+    "titleRequired": "会話タイトルを入力してください",
+    "empty": {
+      "title": "ナレッジベースは空です",
+      "description": "まずノートを生成すると、ここで横断的に質問できます。",
+      "goWorkspace": "ワークスペースへ",
+      "steps": { "paste": "動画リンクを貼る", "generate": "ノートを生成", "ask": "ノートに質問" }
+    },
+    "newConversation": "新しい会話",
+    "noConversations": "会話はまだありません",
+    "unread": "未読",
+    "heroTitle": "ノートについて何でも質問",
+    "heroDescription": "ノートの索引が完了し、横断 Q&A を利用できます。",
+    "inputPlaceholder": "ノートについて質問…",
+    "modelPlaceholder": "モデルを選択",
+    "reasoningUnsupported": "このモデルは深い思考に対応していません",
+    "deepThinking": "深い思考",
+    "indexed": "{{indexed}}/{{total}} 件を索引済み",
+    "inputHint": "AI の回答は不正確な場合があります。出典を確認してください。",
+    "unpin": "ピン留めを解除",
+    "pin": "ピン留め",
+    "rename": "名前を変更",
+    "markRead": "既読にする",
+    "markUnread": "未読にする",
+    "delete": "削除",
+    "renameTitle": "会話名を変更",
+    "renamePlaceholder": "会話タイトルを入力",
+    "deleteTitle": "会話を削除",
+    "deleteDescription": "この会話とメッセージは完全に削除されます。"
+  },
+  "profile": {
+    "loadFailed": "プロフィールの取得に失敗しました",
+    "avatarUpdated": "アバターを更新しました",
+    "usernameUpdated": "ユーザー名を更新しました",
+    "passwordMismatch": "パスワードが一致しません",
+    "passwordMin": "新しいパスワードは6文字以上です",
+    "passwordUpdated": "パスワードを更新しました",
+    "emailEnabled": "メール通知を有効にしました",
+    "emailDisabled": "メール通知を無効にしました",
+    "announcementEnabled": "システム通知を有効にしました",
+    "announcementDisabled": "システム通知を無効にしました",
+    "title": "プロフィール",
+    "changeAvatar": "アバターを変更",
+    "verified": "認証済み",
+    "phone": "電話番号",
+    "email": "メール",
+    "registered": "登録",
+    "lastLogin": "最終ログイン",
+    "notBound": "未登録",
+    "usage": "使用量",
+    "used": "使用済み {{count}}",
+    "total": "合計 {{count}}",
+    "remaining": "残り {{count}} クレジット",
+    "basic": "基本情報",
+    "username": "ユーザー名",
+    "saveChanges": "変更を保存",
+    "emailNotifications": "メール通知",
+    "emailAddress": "メールアドレス",
+    "taskNotification": "タスク完了通知",
+    "taskNotificationDescription": "ノート生成完了時にメールを送信",
+    "systemAnnouncement": "システムのお知らせ",
+    "systemAnnouncementDescription": "管理者の重要なお知らせをメールで受信",
+    "security": "アカウントセキュリティ",
+    "currentPassword": "現在のパスワード",
+    "currentPasswordPlaceholder": "現在のパスワードを入力",
+    "newPassword": "新しいパスワード",
+    "confirmNewPassword": "新しいパスワードを確認",
+    "confirmNewPasswordPlaceholder": "新しいパスワードをもう一度入力",
+    "changePassword": "パスワードを変更"
+  }
+}

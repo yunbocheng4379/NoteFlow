@@ -1,0 +1,836 @@
+{
+  "common": {
+    "loading": "로드 중…",
+    "backHome": "홈으로 돌아가기",
+    "feedback": "피드백",
+    "close": "닫기",
+    "cancel": "취소",
+    "confirm": "확인",
+    "save": "저장",
+    "user": "사용자",
+    "remainingCredits": "남은 크레딧",
+    "success": "성공",
+    "error": "오류",
+    "back": "돌아가기",
+    "edit": "수정",
+    "confirmAction": "작업 확인",
+    "delete": "삭제",
+    "clear": "비우기"
+  },
+  "appearance": {
+    "language": "언어",
+    "theme": "테마",
+    "light": "라이트",
+    "dark": "다크",
+    "system": "시스템 설정 따르기",
+    "languages": {
+      "en": "English",
+      "zh-CN": "简体中文",
+      "zh-TW": "繁體中文",
+      "ja": "日本語",
+      "ko": "한국어"
+    }
+  },
+  "nav": {
+    "workspace": "워크스페이스",
+    "explore": "탐색",
+    "tasks": "작업 목록",
+    "collections": "노트 모음",
+    "knowledgeBase": "지식 베이스",
+    "noteStyle": "노트 스타일",
+    "updateLogs": "업데이트 로그",
+    "upgrade": "Pro 업그레이드",
+    "billing": "결제 및 크레딧",
+    "referral": "내 추천 코드",
+    "about": "정보",
+    "globalSettings": "전체 설정",
+    "profile": "프로필",
+    "logout": "로그아웃"
+  },
+  "settings": {
+    "model": "AI 모델 설정",
+    "transcriber": "음성 변환 설정",
+    "monitor": "배포 모니터링",
+    "users": "사용자 관리",
+    "feedback": "피드백 관리",
+    "cookiePool": "Cookie 풀",
+    "notifications": "시스템 알림",
+    "pricing": "크레딧 규칙",
+    "updateLogs": "업데이트 로그 설정"
+  },
+  "explore": {
+    "title": "동영상 탐색",
+    "subtitle": "키워드 하나로 Bilibili + YouTube를 통합 검색하고 바로 노트를 생성하세요"
+  },
+  "home": {
+    "notes": "노트",
+    "collapse": "접기",
+    "expand": "펼치기",
+    "newNote": "새 노트",
+    "regenerate": "노트 다시 생성",
+    "empty": {
+      "selectVideo": "먼저 동영상을 선택하세요",
+      "invalidUrl": "동영상 링크가 올바르지 않습니다",
+      "modelRequired": "먼저 AI 모델을 추가하세요",
+      "transcriberRequired": "음성 변환 설정에서 변환 모델을 먼저 다운로드하세요",
+      "submitFailed": "제출하지 못했습니다. 다시 시도하세요",
+      "creditBanner": "크레딧 100이 지급되었습니다",
+      "creditHint": "짧은 동영상 약 5개 또는 30분 강의 2개",
+      "heroTitle": "동영상 링크를 붙여 AI 노트 생성",
+      "heroDescription": "AI가 구조화된 노트를 정리하고 마인드맵과 원본 동영상 링크를 만듭니다.",
+      "linkTab": "링크",
+      "exploreTab": "탐색",
+      "urlPlaceholder": "동영상 링크 붙여넣기 (예: https://www.bilibili.com/video/...)",
+      "moreSettings": "추가 설정",
+      "submitting": "제출 중…",
+      "freeGenerate": "무료 생성",
+      "parsing": "링크 분석 중…",
+      "parsingHint": "제목 / 표지 / 재생 시간을 가져오는 중 (보통 몇 초)",
+      "untitledVideo": "제목 없는 동영상",
+      "recognized": "인식됨",
+      "capabilitiesTitle": "NoteFlow로 할 수 있는 일",
+      "capabilitiesDescription": "단순한 자막 변환을 넘어 구조화·검색·출처 확인을 지원합니다."
+    },
+    "capabilities": {
+      "notes": {
+        "title": "스마트 노트 구조",
+        "description": "AI가 핵심을 추출하고 장별로 정리하며 목차와 원본 시간 링크를 추가합니다."
+      },
+      "map": {
+        "title": "원클릭 마인드맵",
+        "description": "노트를 클릭 가능한 대화형 마인드맵으로 변환합니다."
+      },
+      "chat": {
+        "title": "AI Q&A",
+        "description": "동영상에 질문하고 원문 발췌와 시간 정보를 확인하세요."
+      },
+      "video": {
+        "title": "원본 다시 보기",
+        "description": "노트의 시간 링크를 클릭해 해당 시점부터 시청하세요."
+      },
+      "formats": {
+        "title": "다양한 형식 내보내기",
+        "description": "Markdown / PDF / Word / HTML / 이미지로 내보낼 수 있습니다."
+      },
+      "comparison": {
+        "title": "버전 비교",
+        "description": "같은 동영상을 여러 스타일로 생성하고 언제든 비교하세요."
+      }
+    },
+    "chat": {
+      "questions": {
+        "summary": "이 동영상의 핵심 내용을 한 문단으로 요약해줘",
+        "points": "주요 관점과 핵심 근거는 무엇인가요?",
+        "conclusion": "작성자가 내린 결론이나 제안은 무엇인가요?",
+        "actions": "바로 적용할 수 있는 실천 항목은 무엇인가요?"
+      },
+      "sources": "인용 출처 ({{count}})",
+      "noteFallback": "노트",
+      "modelRequired": "모델 설정을 가져올 수 없습니다. 설정에서 모델을 추가하고 활성화하세요",
+      "askFailed": "Q&A 요청에 실패했습니다",
+      "requestInterrupted": "(요청이 중단되었습니다)",
+      "thinking": "생각 중…",
+      "indexing": "노트 내용을 색인하는 중…",
+      "indexingHint": "처음 사용하면 Embedding 모델(약 80MB)을 다운로드합니다. 잠시 기다려 주세요",
+      "indexFailed": "색인에 실패했습니다. 다시 시도하세요",
+      "indexRequestFailed": "색인 요청에 실패했습니다",
+      "reindex": "다시 색인",
+      "title": "AI Q&A",
+      "fullscreen": "전체 화면",
+      "halfscreen": "분할 화면",
+      "emptyTitle": "노트 내용에 질문하기",
+      "emptyDescription": "아래 질문을 선택하거나 직접 입력하세요",
+      "inputPlaceholder": "질문을 입력하세요…",
+      "costHint": "질문할 때 선택한 모델 요금에 따라 크레딧이 차감됩니다"
+    },
+    "history": {
+      "renameFailed": "이름을 변경하지 못했습니다. 다시 시도하세요",
+      "generating": "노트를 생성 중입니다. 전환하기 전에 잠시 기다려 주세요",
+      "searchPlaceholder": "노트 검색…",
+      "empty": "아직 기록이 없습니다",
+      "status": { "pending": "진행 중", "success": "완료", "failed": "실패" },
+      "untitled": "제목 없는 노트",
+      "createdAt": "생성 {{date}}",
+      "rename": "이름 변경",
+      "share": "노트 공유",
+      "deleteTitle": "삭제 확인",
+      "deleteDescription": "이 노트 기록을 삭제할까요? 되돌릴 수 없습니다."
+    },
+    "cookie": {
+      "pasteRequired": "Cookie 내용을 붙여 넣으세요",
+      "saved": "{{platform}} Cookie가 저장되었습니다",
+      "saveFailed": "Cookie를 저장하지 못했습니다",
+      "title": "{{platform}} Cookie 설정",
+      "reason": "{{platform}}에서 로그인 확인 또는 위험 제어 오류를 반환했습니다. 계속하려면 유효한 Cookie를 설정하세요.",
+      "pasteLabel": "{{platform}} Cookie 붙여넣기",
+      "loading": "기존 Cookie를 읽는 중…",
+      "placeholder": "브라우저에서 {{platform}}에 로그인한 후 DevTools → Network 요청에서 Cookie 헤더를 복사하세요",
+      "storagePrefix": "Cookie는 로컬 데이터베이스에만 저장되며",
+      "storageSuffix": "와 연동됩니다.",
+      "fullSettings": "전체 설정으로 이동",
+      "saving": "저장 중…",
+      "saveRetry": "저장 후 다시 시도"
+    },
+    "noteForm": {
+      "platformRequired": "플랫폼을 선택하세요",
+      "modelRequired": "모델을 선택하세요",
+      "styleRequired": "노트 스타일을 선택하세요",
+      "fileRequired": "로컬 동영상 경로를 입력하세요",
+      "urlRequired": "동영상 링크를 입력하세요",
+      "invalidUrl": "올바른 동영상 링크를 입력하세요",
+      "formatPlaceholder": "노트 형식을 선택하세요",
+      "visionRequired": "동영상 이해를 먼저 활성화하세요",
+      "parsing": "링크 분석 중…",
+      "parsingHint": "제목 / 표지 / 재생 시간을 가져오는 중",
+      "untitledVideo": "제목 없는 동영상",
+      "recognized": "인식됨",
+      "batchProTitle": "일괄 모드는 Pro 전용 기능입니다",
+      "batchProDescription": "채널, 컬렉션 또는 여러 링크를 분석하고 작업을 일괄 제출합니다.",
+      "styleUnavailable": "선택한 스타일을 사용할 수 없어 기본 스타일로 변경했습니다",
+      "uploadFailed": "파일을 업로드하지 못했습니다",
+      "channelUnsupported": "채널 분석은 Bilibili와 YouTube만 지원합니다",
+      "noVideos": "동영상을 찾지 못했습니다. 링크를 확인하세요",
+      "videosResolved": "동영상 {{count}}개를 분석했습니다",
+      "resolveFailed": "분석하지 못했습니다. 다시 시도하세요",
+      "selectVideo": "동영상을 하나 이상 선택하세요",
+      "batchLimit": "한 번에 최대 30개까지 지원합니다",
+      "batchPartial": "{{success}}개 작업 제출, {{failed}}개 실패",
+      "batchSubmitted": "일괄 작업 {{count}}개를 제출했습니다",
+      "batchSubmitFailed": "일괄 제출에 실패했습니다",
+      "transcriberDownloading": "음성 변환 모델을 다운로드 중입니다",
+      "transcriberRequired": "음성 변환 모델을 먼저 다운로드하세요",
+      "onlineLink": "온라인 링크",
+      "localFile": "로컬 파일",
+      "batchMode": "일괄 모드",
+      "cloudDrive": "클라우드 드라이브",
+      "channelLabel": "크리에이터 / 채널 / 컬렉션 링크",
+      "channelPlaceholder": "크리에이터 또는 채널 링크 붙여넣기…",
+      "resolve": "분석",
+      "multipleUrlsLabel": "또는 여러 동영상 링크 붙여넣기",
+      "addPreview": "미리보기에 추가",
+      "previewList": "미리보기 ({{selected}}/{{total}} 선택, 최대 30개)",
+      "uploading": "업로드 중…",
+      "uploaded": "업로드 성공",
+      "fileDrop": "드래그하거나 클릭하여 동영상 선택",
+      "urlPlaceholderShort": "동영상 링크 붙여넣기…",
+      "platformDisabled": "서비스가 일시 중지되었습니다. 나중에 다시 시도하세요",
+      "parameters": "생성 매개변수",
+      "model": "AI 모델",
+      "addModel": "먼저 모델을 추가하세요",
+      "modelPlaceholder": "모델 선택",
+      "style": "노트 스타일",
+      "builtInStyles": "기본 제공 스타일",
+      "myStyles": "내 스타일",
+      "publicStyles": "공개 스타일",
+      "videoUnderstanding": "동영상 이해",
+      "videoUnderstandingDescription": "멀티모달 모델에 동영상 스크린샷을 보내 분석",
+      "visionUnsupported": "이 모델은 이미지 입력을 지원하지 않습니다",
+      "sampleInterval": "샘플 간격(초)",
+      "gridSize": "그리드 크기(열 × 행)",
+      "format": "노트 형식",
+      "extras": "추가 설명",
+      "extrasPlaceholder": "노트에 포함할 핵심 내용을 입력하세요…",
+      "outputSection": "출력 및 분류",
+      "collectionOptional": "컬렉션에 저장 (선택 사항)",
+      "collectionPlaceholder": "생성 후 이 컬렉션에 추가",
+      "noCollection": "컬렉션에 저장하지 않음",
+      "estimatedCost": "예상 소비",
+      "credits": "크레딧",
+      "videoMinutes": "(동영상 {{minutes}}분)",
+      "balance": "현재 잔액",
+      "insufficientCredits": "크레딧이 부족합니다",
+      "recharge": "충전하기",
+      "upgradeForBatch": "Pro로 업그레이드하여 일괄 모드 사용",
+      "submitting": "제출 중…",
+      "batchGenerate": "일괄 생성 ({{count}})",
+      "generating": "생성 중…",
+      "generateWithCost": "크레딧 {{count}}으로 생성",
+      "generate": "노트 생성"
+    }
+  },
+  "viewer": {
+    "steps": {
+      "parsing": "링크 분석",
+      "downloading": "오디오 다운로드",
+      "transcribing": "음성 변환",
+      "summarizing": "요약",
+      "success": "저장 완료"
+    },
+    "stage": {
+      "pending": {
+        "title": "대기 중, 곧 시작합니다",
+        "hint": "작업이 제출되었습니다. 리소스를 준비하는 중입니다…"
+      },
+      "parsing": { "title": "동영상 링크 분석 중", "hint": "동영상 정보를 읽는 중입니다…" },
+      "downloading": { "title": "오디오 다운로드 중", "hint": "오디오 스트림을 가져오는 중입니다" },
+      "transcribing": { "title": "음성을 변환하는 중", "hint": "음성을 텍스트로 바꾸는 중입니다" },
+      "summarizing": {
+        "title": "AI가 내용을 요약하는 중",
+        "hint": "핵심 내용을 추출하는 중입니다…"
+      },
+      "success": { "title": "생성 완료", "hint": "노트가 준비되었습니다" }
+    },
+    "loadingContent": "노트 내용을 불러오는 중…",
+    "failureHint": "백엔드를 확인하거나 나중에 다시 시도하세요",
+    "failed": "노트 생성에 실패했습니다",
+    "retry": "다시 시도",
+    "mindmap": "마인드맵",
+    "idleTitle": "동영상 링크를 입력하고 ‘노트 생성’을 클릭하세요",
+    "idleDescription": "Bilibili, YouTube 등 동영상 사이트 지원"
+  },
+  "guide": {
+    "titlePrefix": "사용자",
+    "titleHighlight": "가이드",
+    "description": "첫 링크를 붙여 넣는 순간부터 노트 라이브러리 관리까지, 네 편의 튜토리얼로 NoteFlow를 알아보세요.",
+    "readMore": "전체 보기",
+    "previous": "이전 글",
+    "next": "다음 글"
+  },
+  "auth": {
+    "featurePlatforms": "멀티 플랫폼 분석",
+    "featurePlatformsDesc": "Bilibili, YouTube, Douyin, Kuaishou 지원",
+    "featureNotes": "AI 노트 생성",
+    "featureNotesDesc": "주요 LLM으로 구조화된 Markdown 자동 생성",
+    "featureMindmap": "마인드맵",
+    "featureMindmapDesc": "콘텐츠 흐름을 시각화하고 전체를 파악",
+    "featureChat": "AI Q&A",
+    "featureChatDesc": "노트 내용에 대해 지능적으로 질문",
+    "login": "로그인",
+    "register": "회원가입",
+    "account": "사용자 이름 / 이메일 / 전화번호",
+    "password": "비밀번호",
+    "submitLogin": "로그인",
+    "submitRegister": "계정 만들기",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "accountRequired": "계정을 입력하세요",
+    "passwordRequired": "비밀번호를 입력하세요",
+    "passwordLogin": "비밀번호 로그인",
+    "codeLogin": "인증 코드 로그인",
+    "emailCode": "이메일 인증 코드",
+    "phoneCode": "휴대폰 인증 코드",
+    "welcomeBack": "다시 오신 것을 환영합니다",
+    "createAccount": "계정 만들기",
+    "loginSubtitle": "NoteFlow 계정에 로그인하여 계속하세요",
+    "registerSubtitle": "정보를 입력하고 NoteFlow를 시작하세요",
+    "accountPlaceholder": "사용자 이름, 이메일 또는 전화번호 입력",
+    "email": "이메일",
+    "phone": "휴대폰 번호",
+    "emailPlaceholder": "이메일 입력",
+    "phonePlaceholder": "휴대폰 번호 입력",
+    "code": "인증 코드",
+    "codePlaceholder": "인증 코드 입력",
+    "getCode": "코드 받기",
+    "username": "사용자 이름",
+    "usernamePlaceholder": "사용자 이름 입력（3~32자）",
+    "passwordPlaceholder": "비밀번호 입력",
+    "passwordMin": "6자 이상",
+    "confirmPassword": "비밀번호 확인",
+    "confirmPasswordPlaceholder": "비밀번호를 다시 입력",
+    "inviteCode": "초대 코드",
+    "inviteOptional": "（선택 사항, 가입 시 +200 크레딧）",
+    "invitePlaceholder": "친구의 초대 코드 입력",
+    "loggingIn": "로그인 중…",
+    "registering": "가입 중…",
+    "otherMethods": "다른 로그인 방법",
+    "wechatLogin": "WeChat 로그인",
+    "noAccount": "계정이 없으신가요?",
+    "registerNow": "지금 가입",
+    "hasAccount": "이미 계정이 있으신가요?",
+    "loginNow": "로그인",
+    "loginSuccess": "로그인 성공",
+    "registerSuccess": "계정이 생성되었습니다"
+  },
+  "landing": {
+    "nav": {
+      "features": "기능",
+      "getStarted": "시작하기",
+      "guide": "가이드",
+      "github": "GitHub",
+      "cta": "지금 사용하기"
+    },
+    "hero": {
+      "titleLine1": "동영상 링크 하나로,",
+      "titleLine2": "노트가 완성됩니다.",
+      "subtitle": "시청과 학습을 함께하는 AI 동영상 노트 도우미입니다.",
+      "cta": "지금 사용하기",
+      "github": "GitHub",
+      "imgAlt": "NoteFlow 로그인 화면"
+    },
+    "platforms": {
+      "biliBili": "Bilibili",
+      "youtube": "YouTube",
+      "douyin": "Douyin",
+      "kuaishou": "Kuaishou",
+      "local": "로컬 파일"
+    },
+    "featureGrid": {
+      "headingPrefix": "여섯 가지 기능, ",
+      "headingHighlight": "하나의 워크플로.",
+      "sub": "하나의 동영상부터 전체 채널까지 NoteFlow가 모든 과정을 함께합니다.",
+      "features": [
+        {
+          "title": "동영상에서 노트로",
+          "subtitle": "Video to Notes",
+          "desc": "동영상 링크나 로컬 파일의 음성을 변환하고 구조화된 Markdown 노트와 마인드맵을 생성합니다."
+        },
+        {
+          "title": "노트 스타일",
+          "subtitle": "Note Styles",
+          "desc": "간결, 튜토리얼, 학술 등 다양한 스타일을 선택하고 나만의 템플릿을 만들 수 있습니다."
+        },
+        {
+          "title": "일괄 및 채널 분석",
+          "subtitle": "Batch & Channels",
+          "desc": "채널의 동영상 목록을 가져와 선택한 동영상의 노트를 한 번에 생성합니다."
+        },
+        {
+          "title": "AI Q&A",
+          "subtitle": "Chat with Notes",
+          "desc": "노트의 원문에 질문하면 동영상 정보를 바탕으로 답변합니다."
+        },
+        {
+          "title": "모음과 플래시카드",
+          "subtitle": "Collections & Flashcards",
+          "desc": "노트를 모음으로 정리하고 통합 노트나 Q&A 플래시카드를 만들 수 있습니다."
+        },
+        {
+          "title": "브라우저 확장",
+          "subtitle": "Browser Extension",
+          "desc": "동영상 페이지에서 확장 아이콘을 클릭하면 바로 노트 생성을 시작합니다."
+        }
+      ]
+    },
+    "getStarted": {
+      "headingPrefix": "몇 분이면",
+      "headingHighlight": "시작할 수 있어요.",
+      "sub": "네 가지 사용 방법 중 하나를 선택하세요.",
+      "options": [
+        {
+          "title": "온라인 사용",
+          "subtitle": "추천",
+          "body": "설치 없이 계정을 만들고 브라우저에 링크를 붙여 넣으세요.",
+          "linkLabel": "로그인하기"
+        },
+        {
+          "title": "Docker Compose",
+          "subtitle": "셀프 호스팅",
+          "body": "한 번의 명령으로 MySQL, FastAPI 백엔드와 프론트엔드를 시작합니다.",
+          "linkLabel": null
+        },
+        {
+          "title": "데스크톱 앱",
+          "subtitle": "Windows / macOS",
+          "body": "패키지된 데스크톱 앱을 설치해 바로 사용할 수 있습니다.",
+          "linkLabel": "설치 파일 문의"
+        },
+        {
+          "title": "브라우저 확장",
+          "subtitle": "Chrome / Edge",
+          "body": "chrome://extensions/에서 압축 해제된 확장 폴더를 불러오세요.",
+          "linkLabel": "설치 방법 문의"
+        }
+      ]
+    },
+    "cta": {
+      "heading": "동영상 다시 보기는 그만.",
+      "sub": "첫 동영상 링크를 붙여 넣으면 나머지는 NoteFlow가 처리합니다.",
+      "button": "지금 사용하기"
+    },
+    "footer": {
+      "product": "제품",
+      "login": "로그인 / 회원가입",
+      "tryOnline": "온라인으로 사용",
+      "resources": "리소스",
+      "guide": "문서",
+      "faq": "자주 묻는 질문",
+      "contact": "연락처",
+      "devHome": "개발자",
+      "feedback": "피드백",
+      "tagPrefix": "모든 동영상을",
+      "tagHighlight": "노트로",
+      "tagSuffix": " 만들어 보세요.",
+      "copyright": "© {{year}} NoteFlow. All rights reserved."
+    }
+  },
+  "collection": {
+    "title": "노트 모음",
+    "description": "같은 주제의 노트를 한곳에서 관리하고 통합·공유·내보내기할 수 있습니다.",
+    "proOnly": "Pro 전용",
+    "proTitle": "Pro로 업그레이드하여 노트 모음 사용",
+    "proDescription": "같은 강의·주제·일괄 생성 노트를 모아 통합·공유·일괄 내보내기할 수 있습니다.",
+    "upgrade": "Pro 업그레이드",
+    "knowledgeHint": "노트 모음은 지식 베이스 Q&A와 함께 사용할 수 있습니다",
+    "searchPlaceholder": "모음 이름 / 설명 검색",
+    "noteCount": "노트 {{count}}개",
+    "noteCountShort": "노트 {{count}}개",
+    "noMatches": "일치하는 모음이 없습니다",
+    "empty": {
+      "title": "아직 노트 모음이 없습니다",
+      "description": "같은 강의·주제·일괄 생성 노트를 모음에 정리하고 통합·공유·일괄 내보내기할 수 있습니다.",
+      "createFirst": "첫 모음 만들기",
+      "steps": {
+        "create": "주제 모음 만들기",
+        "add": "노트 일괄 추가",
+        "process": "통합 / 공유 / 내보내기"
+      }
+    },
+    "features": {
+      "archive": {
+        "title": "주제 정리",
+        "description": "강의·프로젝트·자료를 모음별로 정리"
+      },
+      "merge": {
+        "title": "노트 통합",
+        "description": "여러 내용을 하나의 노트로 합치기"
+      },
+      "share": {
+        "title": "공유 및 내보내기",
+        "description": "한 번에 공유하거나 자료로 내보내기"
+      },
+      "knowledge": {
+        "title": "지식 연결",
+        "description": "지식 베이스로 노트 전체 검색 및 Q&A"
+      }
+    },
+    "create": {
+      "button": "모음 만들기",
+      "cardDescription": "강의·주제·일괄 생성 노트 정리",
+      "title": "모음 만들기",
+      "description": "만든 후 노트를 이 모음에 추가할 수 있습니다.",
+      "name": "모음 이름",
+      "nameRequired": "모음 이름을 입력하세요",
+      "namePlaceholder": "예: Python 입문 강의",
+      "descriptionLabel": "설명 (선택)",
+      "descriptionPlaceholder": "이 모음은…",
+      "submit": "만들기",
+      "success": "모음이 생성되었습니다"
+    }
+  },
+  "taskList": {
+    "platforms": {
+      "bilibili": "Bilibili",
+      "youtube": "YouTube",
+      "douyin": "Douyin",
+      "kuaishou": "Kuaishou",
+      "local": "로컬 파일",
+      "merged": "통합 노트"
+    },
+    "statuses": {
+      "success": "완료",
+      "failed": "실패",
+      "pending": "대기 중",
+      "parsing": "분석 중",
+      "downloading": "다운로드 중",
+      "transcribing": "변환 중",
+      "summarizing": "요약 중",
+      "formatting": "서식 지정 중",
+      "saving": "저장 중"
+    },
+    "tabs": {
+      "all": "전체",
+      "running": "진행 중",
+      "success": "완료",
+      "failed": "실패"
+    },
+    "actions": {
+      "addToCollection": "모음에 추가",
+      "batchAddToCollection": "선택 항목을 모음에 추가",
+      "batchDelete": "선택 항목 삭제",
+      "deleteTask": "작업 삭제",
+      "refresh": "새로 고침",
+      "viewNote": "노트 보기"
+    },
+    "empty": {
+      "allTitle": "아직 작업 기록이 없습니다",
+      "filteredTitle": "이 분류는 비어 있습니다",
+      "allDescription": "워크스페이스에서 동영상 링크를 붙여 넣거나 로컬 파일을 업로드하세요. 완료 후 진행 상황·크레딧·노트가 여기에 표시됩니다.",
+      "filteredDescription": "현재 필터에 맞는 작업이 없습니다. 전체 기록을 보거나 워크스페이스에서 새 작업을 만들어 보세요.",
+      "generateNotes": "노트 생성",
+      "viewAll": "전체 보기",
+      "goWorkspace": "워크스페이스로 이동",
+      "steps": {
+        "submit": "동영상 제출",
+        "track": "진행 상황 확인",
+        "open": "노트 열기"
+      }
+    },
+    "header": {
+      "title": "작업 기록",
+      "count": "총 {{count}}개"
+    },
+    "batchGroup": "일괄 작업 · 동영상 {{count}}개",
+    "unnamedTask": "제목 없음",
+    "refreshSuccess": "새로 고침 완료",
+    "deleted": "삭제됨",
+    "batchDeleted": "{{count}}개 기록 삭제됨",
+    "deleteDialog": {
+      "title": "삭제 확인",
+      "descriptionNamed": "“{{name}}” 및 관련 노트와 데이터를 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+      "descriptionFallback": "이 작업은 되돌릴 수 없습니다.",
+      "targetFallback": "이 작업",
+      "confirm": "삭제"
+    },
+    "batchDeleteDialog": {
+      "title": "선택 항목 삭제",
+      "description": "선택한 {{count}}개 기록과 관련 데이터를 삭제합니다. 이 작업은 되돌릴 수 없습니다.",
+      "confirm": "삭제 ({{count}})"
+    },
+    "table": {
+      "video": "동영상 링크",
+      "platform": "플랫폼",
+      "model": "모델",
+      "status": "상태",
+      "credits": "사용 크레딧",
+      "created": "생성 시간",
+      "completed": "완료 시간",
+      "actions": "작업"
+    }
+  },
+  "collectionDetail": {
+    "backToList": "모음 목록으로 돌아가기",
+    "noteCountUpdated": "노트 {{count}}개 · 업데이트 {{date}}",
+    "removed": "모음에서 제거했습니다",
+    "deleted": "모음이 삭제되었습니다",
+    "coverUpdated": "표지가 업데이트되었습니다",
+    "mergeCompleted": "통합 노트 “{{title}}” 완료",
+    "mergeFailed": "통합 노트 “{{title}}” 실패",
+    "mergeStatus": {
+      "running": "통합 중",
+      "success": "완료",
+      "failed": "실패"
+    },
+    "actions": {
+      "share": "공유",
+      "generateFlashcard": "플래시카드 생성",
+      "exportObsidian": "Obsidian 내보내기",
+      "exportZip": "ZIP 내보내기",
+      "more": "더 보기",
+      "setCover": "표지 설정",
+      "edit": "정보 수정",
+      "delete": "모음 삭제",
+      "addNote": "노트 추가",
+      "selectNote": "노트 선택",
+      "remove": "모음에서 제거"
+    },
+    "notesTitle": "모음의 노트",
+    "notesSummary": "노트 {{count}}개, 표지로 모음 구조 보기",
+    "selectedCount": "{{count}}개 선택됨",
+    "clearSelection": "선택 해제",
+    "empty": {
+      "badge": "빈 모음",
+      "title": "첫 노트 추가",
+      "description": "완료된 노트를 “{{name}}”에 가져오거나 새 노트 생성 시 이 모음을 선택하세요. 내용이 쌓이면 통합·공유·내보내기를 할 수 있습니다.",
+      "import": "기존 노트 가져오기",
+      "newNote": "새 노트",
+      "viewTasks": "작업 목록 보기",
+      "features": {
+        "import": {
+          "title": "완료된 노트 가져오기",
+          "description": "작업 기록에서 노트를 선택해 한 번에 추가합니다."
+        },
+        "organize": {
+          "title": "주제 자료 정리",
+          "description": "강의·프로젝트·자료를 한곳에 모읍니다."
+        },
+        "process": {
+          "title": "한 번에 처리",
+          "description": "준비가 되면 통합·공유·내보내기를 할 수 있습니다."
+        }
+      }
+    },
+    "edit": {
+      "title": "모음 정보 수정",
+      "description": "이름과 설명을 수정합니다.",
+      "nameRequired": "모음 이름을 입력하세요"
+    },
+    "delete": {
+      "title": "모음 삭제",
+      "description": "노트는 작업 목록에 남습니다. 이 작업은 되돌릴 수 없습니다.",
+      "confirm": "삭제"
+    },
+    "remove": {
+      "title": "모음에서 제거",
+      "description": "“{{name}}”을(를) 이 모음에서 제거할까요? 노트는 작업 목록에 남습니다.",
+      "confirm": "제거"
+    },
+    "export": {
+      "empty": "내보낼 노트가 없습니다",
+      "failed": "내보내기에 실패했습니다. 다시 시도하세요."
+    },
+    "flashcard": {
+      "selectOne": "플래시카드를 만들 노트 하나를 선택하세요"
+    },
+    "merge": {
+      "queue": "통합 대기열",
+      "queueTitle": "통합 작업",
+      "fallbackTitle": "통합 노트",
+      "minSelected": "통합할 노트를 2개 이상 선택하세요",
+      "tooltip": "선택한 {{count}}개 노트 통합",
+      "modelRequired": "통합에 사용할 모델을 선택하세요",
+      "submitted": "통합 작업이 제출되었습니다. 완료되면 이 모음에 추가됩니다.",
+      "title": "노트로 통합",
+      "description": "선택한 {{count}}개 노트를 AI로 새 노트에 통합합니다. 원본은 유지됩니다.",
+      "model": "통합 모델",
+      "modelPlaceholder": "모델을 선택하세요",
+      "costHint": "선택한 모델을 사용하며 크레딧이 소모됩니다. 실패 시 환불됩니다.",
+      "start": "통합 시작"
+    }
+  },
+  "share": {
+    "loadFailed": "공유 상태를 불러오지 못했습니다",
+    "disabled": "공유가 비활성화되었습니다",
+    "enabled": "공유가 활성화되었습니다",
+    "operationFailed": "작업에 실패했습니다. 다시 시도하세요.",
+    "linkCopied": "링크가 복사되었습니다",
+    "noteTitle": "노트 공유",
+    "noteDescription": "노트 공개 공유 링크 관리",
+    "collectionTitle": "모음 공유",
+    "collectionDescription": "모음 공개 공유 링크 관리",
+    "active": "공유 활성화됨",
+    "enable": "공유 활성화",
+    "noteActiveDescription": "링크가 있으면 로그인 없이 이 노트를 볼 수 있습니다",
+    "noteInactiveDescription": "공유를 활성화하여 공개 링크를 생성하세요",
+    "collectionActiveDescription": "링크가 있으면 로그인 없이 모음의 모든 노트를 볼 수 있습니다",
+    "collectionInactiveDescription": "공유를 활성화하여 공개 모음 링크를 생성하세요",
+    "disable": "공유 비활성화",
+    "copy": "복사",
+    "viewCount": "{{count}}회 조회"
+  },
+  "flashcardGenerate": {
+    "modelRequired": "생성 모델을 선택하세요",
+    "countRange": "카드 수는 {{min}}~{{max}} 사이여야 합니다",
+    "success": "플래시카드를 생성했습니다",
+    "title": "플래시카드 생성",
+    "description": "이 노트를 바탕으로 Q&A 카드를 만들어 핵심 내용을 빠르게 기억하세요.",
+    "model": "생성 모델",
+    "modelPlaceholder": "모델 선택",
+    "count": "카드 수 ({{min}}~{{max}})",
+    "customPrompt": "사용자 지정 질문 조건 (선택 사항)",
+    "customPromptPlaceholder": "예: 정의보다 구체적인 데이터와 결론에 집중",
+    "costHint": "플래시카드 생성에는 선택한 AI 모델과 크레딧이 사용되며 실패한 작업은 환불됩니다.",
+    "generate": "생성"
+  },
+  "collectionAdd": {
+    "added": "노트 {{count}}개를 추가했습니다",
+    "addedSingle": "모음에 추가했습니다",
+    "title": "노트를 모음에 추가",
+    "description": "완료된 노트를 하나 이상 선택하세요.",
+    "searchPlaceholder": "노트 제목 검색…",
+    "empty": "추가할 수 있는 노트가 없습니다",
+    "add": "추가 ({{count}})",
+    "selectTitle": "모음에 추가",
+    "selectDescription": "추가할 모음을 선택하세요.",
+    "noCollections": "아직 모음이 없습니다. 먼저 모음을 만들어 보세요."
+  },
+  "flashcardPage": {
+    "exportFailed": "내보내기에 실패했습니다. 다시 시도하세요.",
+    "title": "플래시카드",
+    "exportCsv": "CSV 내보내기",
+    "progress": "카드 {{current}} / {{total}}",
+    "answer": "답변",
+    "question": "질문",
+    "hideAnswerHint": "카드를 클릭하거나 Esc를 눌러 답변 숨기기",
+    "showAnswerHint": "카드를 클릭하거나 Space / Enter를 눌러 답변 보기",
+    "previous": "이전",
+    "restart": "다시 시작",
+    "next": "다음",
+    "keyboardHint": "단축키: ← / → 또는 H / L로 카드 전환 · Space / Enter로 답변 보기 · Esc로 숨기기 · Ctrl+R로 다시 시작"
+  },
+  "knowledgeBase": {
+    "title": "지식 베이스",
+    "description": "노트를 넘나들며 질문하고 연결을 찾아보세요.",
+    "proTitle": "Pro로 업그레이드하여 지식 베이스 Q&A 잠금 해제",
+    "proDescription": "노트를 검색하고 출처를 확인하며 근거 있는 답변을 받아보세요.",
+    "features": {
+      "search": {
+        "title": "노트 간 검색",
+        "description": "색인된 모든 노트 검색",
+        "allDescription": "색인된 노트를 검색하고 관련 내용을 함께 정리합니다."
+      },
+      "sources": { "title": "출처 확인", "description": "답변을 뒷받침하는 노트 보기" },
+      "reasoning": { "title": "심층 추론", "description": "지원 모델로 복잡한 질문을 분석" }
+    },
+    "suggestions": {
+      "summary": "내 노트 전체의 핵심 내용을 요약해줘",
+      "tools": "내 노트에 언급된 도구나 방법은 무엇인가요?",
+      "themes": "이 노트들을 연결하는 주제는 무엇인가요?",
+      "contradictions": "내 노트에 모순되는 내용이 있나요?"
+    },
+    "sources": "출처 ({{count}})",
+    "noteFallback": "제목 없는 노트",
+    "thinking": "생각 중",
+    "thought": "사고 과정",
+    "thinkingNow": "생각하고 있습니다…",
+    "createFailed": "대화를 만들지 못했습니다",
+    "askFailed": "답변을 가져오지 못했습니다",
+    "requestInterrupted": "요청이 중단되었습니다",
+    "titleRequired": "대화 제목을 입력하세요",
+    "empty": {
+      "title": "지식 베이스가 비어 있습니다",
+      "description": "먼저 노트를 생성하면 여기서 여러 노트에 질문할 수 있습니다.",
+      "goWorkspace": "작업 공간으로 이동",
+      "steps": { "paste": "동영상 링크 붙여넣기", "generate": "노트 생성", "ask": "노트에 질문" }
+    },
+    "newConversation": "새 대화",
+    "noConversations": "아직 대화가 없습니다",
+    "unread": "읽지 않음",
+    "heroTitle": "노트에 무엇이든 질문하세요",
+    "heroDescription": "노트 색인이 완료되어 노트 간 Q&A를 사용할 수 있습니다.",
+    "inputPlaceholder": "노트에 대해 질문하세요…",
+    "modelPlaceholder": "모델 선택",
+    "reasoningUnsupported": "이 모델은 심층 사고를 지원하지 않습니다",
+    "deepThinking": "심층 사고",
+    "indexed": "{{indexed}}/{{total}}개 노트 색인됨",
+    "inputHint": "AI 답변은 부정확할 수 있습니다. 인용된 출처를 확인하세요.",
+    "unpin": "고정 해제",
+    "pin": "고정",
+    "rename": "이름 변경",
+    "markRead": "읽음으로 표시",
+    "markUnread": "읽지 않음으로 표시",
+    "delete": "삭제",
+    "renameTitle": "대화 이름 변경",
+    "renamePlaceholder": "대화 제목 입력",
+    "deleteTitle": "대화 삭제",
+    "deleteDescription": "이 대화와 메시지가 영구적으로 삭제됩니다."
+  },
+  "profile": {
+    "loadFailed": "프로필을 불러오지 못했습니다",
+    "avatarUpdated": "프로필 사진이 업데이트되었습니다",
+    "usernameUpdated": "사용자 이름이 업데이트되었습니다",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다",
+    "passwordMin": "새 비밀번호는 6자 이상이어야 합니다",
+    "passwordUpdated": "비밀번호가 변경되었습니다",
+    "emailEnabled": "이메일 알림을 켰습니다",
+    "emailDisabled": "이메일 알림을 껐습니다",
+    "announcementEnabled": "시스템 공지 알림을 켰습니다",
+    "announcementDisabled": "시스템 공지 알림을 껐습니다",
+    "title": "프로필",
+    "changeAvatar": "프로필 사진 변경",
+    "verified": "인증됨",
+    "phone": "전화번호",
+    "email": "이메일",
+    "registered": "가입",
+    "lastLogin": "최근 로그인",
+    "notBound": "연결되지 않음",
+    "usage": "사용량",
+    "used": "사용 {{count}}",
+    "total": "총 {{count}}",
+    "remaining": "{{count}} 크레딧 남음",
+    "basic": "기본 정보",
+    "username": "사용자 이름",
+    "saveChanges": "변경 사항 저장",
+    "emailNotifications": "이메일 알림",
+    "emailAddress": "이메일 주소",
+    "taskNotification": "작업 완료 알림",
+    "taskNotificationDescription": "노트 생성이 완료되면 이메일 보내기",
+    "systemAnnouncement": "시스템 공지",
+    "systemAnnouncementDescription": "관리자가 중요한 업데이트를 게시하면 이메일 보내기",
+    "security": "계정 보안",
+    "currentPassword": "현재 비밀번호",
+    "currentPasswordPlaceholder": "현재 비밀번호 입력",
+    "newPassword": "새 비밀번호",
+    "confirmNewPassword": "새 비밀번호 확인",
+    "confirmNewPasswordPlaceholder": "새 비밀번호를 다시 입력",
+    "changePassword": "비밀번호 변경"
+  }
+}

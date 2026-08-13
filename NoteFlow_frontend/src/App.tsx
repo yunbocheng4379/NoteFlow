@@ -63,6 +63,7 @@ const NoteStylePage = lazy(() => import('@/pages/SettingPage/NoteStylePage.tsx')
 const UserManagementPage = lazy(() => import('@/pages/SettingPage/UserManagement.tsx'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const TaskListPage = lazy(() => import('@/pages/TaskListPage'))
+const ExplorePage = lazy(() => import('@/pages/ExplorePage'))
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
 const ShareViewPage = lazy(() => import('@/pages/ShareViewPage/index.tsx'))
 const CollectionShareViewPage = lazy(() => import('@/pages/ShareViewPage/CollectionView.tsx'))
@@ -171,6 +172,7 @@ function App() {
               }
             >
               <Route index element={<HomePage />} />
+              <Route path="explore" element={<ExplorePage />} />
               <Route path="tasks" element={<TaskListPage />} />
               <Route path="collections" element={<CollectionPage />} />
               <Route path="collections/:id" element={<CollectionDetailPage />} />
