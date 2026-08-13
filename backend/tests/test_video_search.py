@@ -99,7 +99,7 @@ async def test_bilibili_search_parses_response():
     assert results[0].platform == "bilibili"
     assert results[0].video_url == "https://www.bilibili.com/video/BV1AB"
     assert results[0].title == "瑞克和莫蒂"  # em tags stripped
-    assert results[0].cover_url == "//i2.hdslb.com/xxx.jpg"
+    assert results[0].cover_url == "https://i2.hdslb.com/xxx.jpg"  # // upgraded to https:// by _normalize_pic
     assert results[0].duration == 645
     assert results[0].publish_time == "2024-03-12"
     assert results[0].play_count == 123456
@@ -357,14 +357,19 @@ async def test_search_all_both_ok():
     async def fake_yt(kw, lim):
         return [_mk("youtube", 0), _mk("youtube", 1)]
 
+    async def fake_ks(kw, lim):
+        return []
+
     with patch("app.services.video_search.aggregator.bilibili_search",
                side_effect=fake_bili), \
          patch("app.services.video_search.aggregator.youtube_search",
-               side_effect=fake_yt):
+               side_effect=fake_yt), \
+         patch("app.services.video_search.aggregator.kuaishou_search",
+               side_effect=fake_ks):
         items, status = await search_all("kw", 20)
 
     assert len(items) == 4
-    assert status == {"bilibili": "ok", "youtube": "ok"}
+    assert status == {"bilibili": "ok", "youtube": "ok", "kuaishou": "ok"}
 
 
 @pytest.mark.asyncio
@@ -375,14 +380,19 @@ async def test_search_all_bilibili_fails():
     async def fake_yt(kw, lim):
         return [_mk("youtube", 0)]
 
+    async def fake_ks(kw, lim):
+        return []
+
     with patch("app.services.video_search.aggregator.bilibili_search",
                side_effect=fake_bili), \
          patch("app.services.video_search.aggregator.youtube_search",
-               side_effect=fake_yt):
+               side_effect=fake_yt), \
+         patch("app.services.video_search.aggregator.kuaishou_search",
+               side_effect=fake_ks):
         items, status = await search_all("kw", 20)
 
     assert [r.platform for r in items] == ["youtube"]
-    assert status == {"bilibili": "failed", "youtube": "ok"}
+    assert status == {"bilibili": "failed", "youtube": "ok", "kuaishou": "ok"}
 
 
 @pytest.mark.asyncio
@@ -393,11 +403,13 @@ async def test_search_all_both_fail():
     with patch("app.services.video_search.aggregator.bilibili_search",
                side_effect=boom), \
          patch("app.services.video_search.aggregator.youtube_search",
+               side_effect=boom), \
+         patch("app.services.video_search.aggregator.kuaishou_search",
                side_effect=boom):
         items, status = await search_all("kw", 20)
 
     assert items == []
-    assert status == {"bilibili": "failed", "youtube": "failed"}
+    assert status == {"bilibili": "failed", "youtube": "failed", "kuaishou": "failed"}
 
 
 # ---------------------------------------------------------------------------
