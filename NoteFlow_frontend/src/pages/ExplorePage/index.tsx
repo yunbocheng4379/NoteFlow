@@ -1,7 +1,6 @@
 import { FC, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Compass } from 'lucide-react'
 
 import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import ExplorePanel from '@/pages/HomePage/components/ExplorePanel'
@@ -84,22 +83,27 @@ const ExplorePage: FC = () => {
 
   return (
     <ScrollArea className="h-full w-full bg-gradient-to-b from-[#e6f7f5]/40 via-white to-white">
-      <div className="mx-auto flex w-full max-w-5xl flex-col px-6 pt-10 pb-16">
-        <header className="mb-6 flex items-center gap-3">
-          <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Compass className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
-              {t('explore.title')}
-            </h1>
-            <p className="mt-0.5 text-sm text-neutral-500">{t('explore.subtitle')}</p>
-          </div>
-        </header>
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pb-16 pt-20">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-1.5 text-sm text-amber-800 shadow-sm">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-[10px] font-bold text-white shadow">
+            ¥
+          </span>
+          <span className="font-medium">100 电力已到账</span>
+          <span className="text-amber-400">·</span>
+          <span className="text-amber-700/80">约 5 篇短视频 或 2 篇 30 分钟课程</span>
+        </div>
+
+        <h1 className="mb-3 text-center text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">
+          粘贴视频链接，生成 AI 笔记
+        </h1>
+        <p className="mb-8 max-w-xl text-center text-sm text-neutral-500">
+          AI 自动整理结构化笔记，可生成思维导图与原片回溯。
+        </p>
 
         <ExplorePanel
           onQuickGenerate={submitAndGoHome}
           onMoreSettings={submitAndGoHome}
+          showTabs
         />
       </div>
     </ScrollArea>
