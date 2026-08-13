@@ -18,6 +18,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  BiliBiliLogo,
+  DouyinLogo,
+  KuaishouLogo,
+  LocalLogo,
+  YoutubeLogo,
+} from '@/components/Icons/platform.tsx'
 
 interface NoteHistoryProps {
   onSelect: (taskId: string) => void
@@ -27,6 +34,39 @@ interface NoteHistoryProps {
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   SUCCESS: { label: '已完成', cls: 'bg-emerald-50 text-emerald-600' },
   FAILED:  { label: '失败',   cls: 'bg-red-50 text-red-500' },
+}
+
+const PLATFORM_BADGE = {
+  bilibili: {
+    label: 'B站',
+    Logo: BiliBiliLogo,
+    cls: 'border-pink-100 bg-pink-50/80 text-pink-600',
+  },
+  youtube: {
+    label: 'YouTube',
+    Logo: YoutubeLogo,
+    cls: 'border-red-100 bg-red-50/80 text-red-600',
+  },
+  douyin: {
+    label: '抖音',
+    Logo: DouyinLogo,
+    cls: 'border-neutral-200 bg-neutral-900 text-white',
+  },
+  kuaishou: {
+    label: '快手',
+    Logo: KuaishouLogo,
+    cls: 'border-orange-100 bg-orange-50/80 text-orange-600',
+  },
+  local: {
+    label: '本地',
+    Logo: LocalLogo,
+    cls: 'border-amber-100 bg-amber-50/80 text-amber-600',
+  },
+} satisfies Record<string, { label: string; Logo: FC; cls: string }>
+
+function getPlatformBadge(platform?: string) {
+  if (!platform) return null
+  return PLATFORM_BADGE[platform as keyof typeof PLATFORM_BADGE] ?? null
 }
 
 function formatShortDate(dateStr?: string) {
@@ -168,9 +208,11 @@ const NoteHistory: FC<NoteHistoryProps> = ({ onSelect, selectedId }) => {
           const statusInfo = isPending
             ? { label: '进行中', cls: 'bg-amber-50 text-amber-600' }
             : STATUS_LABEL[task.status] ?? { label: task.status, cls: 'bg-neutral-100 text-neutral-500' }
+          const platform = task.audioMeta?.platform || task.formData?.platform || ''
+          const platformBadge = getPlatformBadge(platform)
 
           const coverSrc =
-            task.platform === 'local'
+            platform === 'local'
               ? task.audioMeta?.cover_url || '/placeholder.png'
               : task.audioMeta?.cover_url
                 ? `${baseURL}/image_proxy?url=${encodeURIComponent(task.audioMeta.cover_url)}`
@@ -194,7 +236,7 @@ const NoteHistory: FC<NoteHistoryProps> = ({ onSelect, selectedId }) => {
             >
               {/* 封面图 */}
               <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md bg-neutral-100">
-                {task.platform === 'local' ? (
+                {platform === 'local' ? (
                   <img src={coverSrc} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <LazyImage src={coverSrc} alt="" className="h-full w-full object-cover" />
@@ -244,13 +286,30 @@ const NoteHistory: FC<NoteHistoryProps> = ({ onSelect, selectedId }) => {
                     </TooltipContent>
                   </Tooltip>
                 )}
-                <div className="mt-1 flex items-center gap-1.5">
-                  <span className={cn('rounded px-1 py-0.5 text-[10px] font-medium', statusInfo.cls)}>
-                    {statusInfo.label}
-                  </span>
-                  {task.createdAt && (
-                    <span className="text-[10px] text-neutral-400">
-                      生成于 {formatShortDate(task.createdAt)}
+                <div className="mt-1 flex items-end justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className={cn('rounded px-1 py-0.5 text-[10px] font-medium', statusInfo.cls)}>
+                      {statusInfo.label}
+                    </span>
+                    {task.createdAt && (
+                      <span className="truncate text-[10px] text-neutral-400">
+                        生成于 {formatShortDate(task.createdAt)}
+                      </span>
+                    )}
+                  </div>
+
+                  {platformBadge && (
+                    <span
+                      className={cn(
+                        'inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium leading-none shadow-sm',
+                        platformBadge.cls,
+                      )}
+                      title={`来源：${platformBadge.label}`}
+                    >
+                      <span className="h-3 w-3 shrink-0 [&_svg]:h-full [&_svg]:w-full">
+                        <platformBadge.Logo />
+                      </span>
+                      <span>{platformBadge.label}</span>
                     </span>
                   )}
                 </div>
