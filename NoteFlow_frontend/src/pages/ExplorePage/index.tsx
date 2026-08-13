@@ -1,6 +1,7 @@
 import { FC, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { Compass } from 'lucide-react'
 
 import { ScrollArea } from '@/components/ui/scroll-area.tsx'
 import ExplorePanel from '@/pages/HomePage/components/ExplorePanel'
@@ -84,9 +85,9 @@ const ExplorePage: FC = () => {
   return (
     <ScrollArea className="h-full w-full bg-gradient-to-b from-[#e6f7f5]/40 via-white to-white">
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pb-16 pt-20">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-1.5 text-sm text-emerald-800 shadow-sm">
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-[10px] font-bold text-white shadow">
-            ✦
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-1.5 text-sm text-amber-800 shadow-sm">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow">
+            <Compass className="h-3 w-3" />
           </span>
           <span className="font-medium">热爱奔赴未知，探索即是天性</span>
         </div>
