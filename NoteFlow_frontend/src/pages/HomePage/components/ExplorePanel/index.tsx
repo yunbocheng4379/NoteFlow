@@ -27,7 +27,6 @@ import ResultCard from './ResultCard'
 interface ExplorePanelProps {
   onQuickGenerate: (prefill: { video_url: string; platform: string }) => void
   onMoreSettings: (prefill: { video_url: string; platform: string }) => void
-  showTabs?: boolean
 }
 
 const platformDisplay: Record<string, string> = {
@@ -70,7 +69,6 @@ const isAbortError = (e: unknown): boolean => {
 const ExplorePanel: FC<ExplorePanelProps> = ({
   onQuickGenerate,
   onMoreSettings,
-  showTabs = false,
 }) => {
   const [keyword, setKeyword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -146,15 +144,6 @@ const ExplorePanel: FC<ExplorePanelProps> = ({
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      {showTabs && (
-        <div className="mb-4 flex justify-center gap-1 border-b border-neutral-200">
-          <span className="px-4 pb-2 text-sm font-medium text-neutral-500">链接</span>
-          <span className="border-primary text-primary -mb-px border-b-2 px-4 pb-2 text-sm font-medium">
-            探索
-          </span>
-        </div>
-      )}
-
       {/* Search box */}
       <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-1.5 shadow-lg shadow-[#167a6e]/10">
         <div className="relative flex flex-1 items-center gap-2 overflow-hidden px-3 before:absolute before:inset-y-0 before:left-0 before:w-1/4 before:-skew-x-[20deg] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent before:content-[''] before:pointer-events-none before:animate-[sweep_1.5s_linear_infinite]">

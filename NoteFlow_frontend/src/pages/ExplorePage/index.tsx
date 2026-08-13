@@ -94,16 +94,15 @@ const ExplorePage: FC = () => {
         </div>
 
         <h1 className="mb-3 text-center text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl">
-          粘贴视频链接，生成 AI 笔记
+          搜索视频主题，发现可生成的 AI 笔记
         </h1>
         <p className="mb-8 max-w-xl text-center text-sm text-neutral-500">
-          AI 自动整理结构化笔记，可生成思维导图与原片回溯。
+          输入关键词同时查找多平台视频，先筛选合适素材，再一键沉淀为结构化笔记。
         </p>
 
         <ExplorePanel
           onQuickGenerate={submitAndGoHome}
           onMoreSettings={submitAndGoHome}
-          showTabs
         />
       </div>
     </ScrollArea>
