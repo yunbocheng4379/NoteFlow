@@ -50,7 +50,29 @@ os.environ.setdefault("COOKIE_POOL_FAILURE_THRESHOLD", "3")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 如果本测试在其它数据库测试之后运行，app.db.engine / model 可能已经按真实
+# DATABASE_URL 导入过。这里必须强制丢弃相关模块，让下面所有 DAO / model 都
+# 重新绑定到临时 SQLite；否则 setUp 里的清表会误删真实 platform_cookies。
+for _module_name in (
+    "app.db.platform_cookie_dao",
+    "app.db.models.platform_cookies",
+    "app.db.init_db",
+    "app.db.engine",
+    "app.services.cookie_pool_manager",
+):
+    sys.modules.pop(_module_name, None)
+
 os.chdir(_tmpdir)
+
+
+def _assert_using_test_sqlite(engine) -> None:
+    """危险操作前的硬保护: 只能操作本测试创建的临时 SQLite 文件。"""
+    url = str(engine.url)
+    if not url.startswith("sqlite:///"):
+        raise AssertionError(f"cookie cohort test must not use non-sqlite database: {url}")
+    db_path = os.path.abspath(url.replace("sqlite:///", "", 1))
+    if not db_path.startswith(os.path.abspath(_tmpdir) + os.sep):
+        raise AssertionError(f"cookie cohort test database is outside temp dir: {db_path}")
 
 
 def tearDownModule():
@@ -115,6 +137,7 @@ class TestListAvailableTierFilter(unittest.TestCase):
         from app.db.engine import Base
         from app.db.models.platform_cookies import PlatformCookie
 
+        _assert_using_test_sqlite(engine)
         Base.metadata.create_all(engine)
         # 清表 — 避免 setUp 之间数据污染 (in-memory 跨 test 也共享, 因同一进程)
         with engine.begin() as conn:
@@ -133,6 +156,7 @@ class TestListAvailableTierFilter(unittest.TestCase):
         import json as _json
         from app.utils.encryption import CookieEncryption
 
+        _assert_using_test_sqlite(engine)
         with engine.begin() as conn:
             conn.execute(PlatformCookie.__table__.insert().values(
                 platform=kw.get("platform", "bilibili"),
