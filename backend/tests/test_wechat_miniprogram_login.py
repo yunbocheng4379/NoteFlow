@@ -5,20 +5,34 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 import app.db.init_db  # noqa: F401
-from app.db.engine import SessionLocal
+from app.db.engine import Base
 from app.db.models.users import User
 from main import app as fastapi_app
 
 
 client = TestClient(fastapi_app)
+test_engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestSession = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def create_test_tables():
+    Base.metadata.create_all(bind=test_engine)
+    yield
 
 
 @pytest.fixture
 def db():
-    app.db.init_db.init_db()
-    session = SessionLocal()
+    session = TestSession()
     created_ids = []
     try:
         yield session, created_ids
