@@ -83,6 +83,19 @@ def _install_stubs():
 
 
 def _load_universal_gpt_class():
+    stubbed_names = [
+        "app",
+        "app.gpt",
+        "app.models",
+        "app.gpt.base",
+        "app.gpt.prompt_builder",
+        "app.gpt.prompt",
+        "app.gpt.utils",
+        "app.gpt.request_chunker",
+        "app.models.gpt_model",
+        "app.models.transcriber_model",
+    ]
+    previous_modules = {name: sys.modules.get(name) for name in stubbed_names}
     _install_stubs()
     root = pathlib.Path(__file__).resolve().parents[1]
     module_path = root / "app" / "gpt" / "universal_gpt.py"
@@ -90,8 +103,15 @@ def _load_universal_gpt_class():
     if spec is None or spec.loader is None:
         raise ImportError("universal_gpt module spec not found")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.UniversalGPT
+    try:
+        spec.loader.exec_module(module)
+        return module.UniversalGPT
+    finally:
+        for name, previous in previous_modules.items():
+            if previous is None:
+                sys.modules.pop(name, None)
+            else:
+                sys.modules[name] = previous
 
 
 UniversalGPT = _load_universal_gpt_class()
@@ -119,6 +139,38 @@ class _DummyClient:
         self.models = _DummyModels()
 
 
+class _Message:
+    def __init__(self, content):
+        self.content = content
+
+
+class _Choice:
+    def __init__(self, content):
+        self.message = _Message(content)
+
+
+class _Response:
+    def __init__(self, content):
+        self.choices = [_Choice(content)]
+
+
+class _SequenceCompletions:
+    def __init__(self, contents):
+        self.contents = list(contents)
+        self.calls = 0
+
+    def create(self, **_kwargs):
+        self.calls += 1
+        return _Response(self.contents.pop(0))
+
+
+class _SequenceClient:
+    def __init__(self, contents):
+        self.completions = _SequenceCompletions(contents)
+        self.chat = types.SimpleNamespace(completions=self.completions)
+        self.models = _DummyModels()
+
+
 class TestUniversalGPTCheckpoint(unittest.TestCase):
     def test_merge_524_error_persists_checkpoint(self):
         original_attempts = os.environ.get("OPENAI_RETRY_ATTEMPTS")
@@ -141,6 +193,28 @@ class TestUniversalGPTCheckpoint(unittest.TestCase):
                 os.environ.pop("OPENAI_RETRY_ATTEMPTS", None)
             else:
                 os.environ["OPENAI_RETRY_ATTEMPTS"] = original_attempts
+
+    def test_empty_completion_content_retries_before_returning(self):
+        original_attempts = os.environ.get("OPENAI_RETRY_ATTEMPTS")
+        original_backoff = os.environ.get("OPENAI_RETRY_BACKOFF_SECONDS")
+        os.environ["OPENAI_RETRY_ATTEMPTS"] = "2"
+        os.environ["OPENAI_RETRY_BACKOFF_SECONDS"] = "0"
+        client = _SequenceClient(["   ", "# note"])
+        gpt = UniversalGPT(client, model="mock-model")
+        try:
+            content = gpt._chat_completion_content([{"role": "user", "content": "prompt"}])
+        finally:
+            if original_attempts is None:
+                os.environ.pop("OPENAI_RETRY_ATTEMPTS", None)
+            else:
+                os.environ["OPENAI_RETRY_ATTEMPTS"] = original_attempts
+            if original_backoff is None:
+                os.environ.pop("OPENAI_RETRY_BACKOFF_SECONDS", None)
+            else:
+                os.environ["OPENAI_RETRY_BACKOFF_SECONDS"] = original_backoff
+
+        self.assertEqual(content, "# note")
+        self.assertEqual(client.completions.calls, 2)
 
 
 if __name__ == "__main__":

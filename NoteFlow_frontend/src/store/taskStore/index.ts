@@ -50,6 +50,8 @@ export interface Task {
   errorMessage?: string
   /** 批量生成任务的分组 ID；单个任务为 undefined */
   batchId?: string | null
+  /** 前端已插入任务但后端提交请求尚未返回，期间暂停轮询避免误判 404 */
+  submissionPending?: boolean
   formData: {
     video_url: string
     link?: boolean
@@ -71,7 +73,14 @@ interface TaskStore {
   tasks: Task[]
   currentTaskId: string | null
   historyLoaded: boolean
-  addPendingTask: (taskId: string, platform: string, formData: any, meta?: Partial<AudioMeta>, batchId?: string | null) => void
+  addPendingTask: (
+    taskId: string,
+    platform: string,
+    formData: any,
+    meta?: Partial<AudioMeta>,
+    batchId?: string | null,
+    submissionPending?: boolean,
+  ) => void
   updateTaskContent: (id: string, data: Partial<Omit<Task, 'id' | 'createdAt'>>) => void
   // Overwrites the content of the given version in place (no new version created).
   // Pass verId=null when the task's markdown is a plain string (no version history yet).
@@ -218,7 +227,14 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      addPendingTask: (taskId: string, _platform: string, formData: any, meta?: Partial<AudioMeta>, batchId?: string | null) =>
+      addPendingTask: (
+        taskId: string,
+        _platform: string,
+        formData: any,
+        meta?: Partial<AudioMeta>,
+        batchId?: string | null,
+        submissionPending = false,
+      ) =>
         set(state => ({
           tasks: [
             {
@@ -227,6 +243,7 @@ export const useTaskStore = create<TaskStore>()(
               status: 'PENDING',
               markdown: '',
               batchId: batchId ?? null,
+              submissionPending,
               transcript: { full_text: '', language: '', raw: null, segments: [] },
               createdAt: new Date().toISOString(),
               audioMeta: {

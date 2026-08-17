@@ -357,19 +357,14 @@ async def test_search_all_both_ok():
     async def fake_yt(kw, lim):
         return [_mk("youtube", 0), _mk("youtube", 1)]
 
-    async def fake_ks(kw, lim):
-        return []
-
     with patch("app.services.video_search.aggregator.bilibili_search",
                side_effect=fake_bili), \
          patch("app.services.video_search.aggregator.youtube_search",
-               side_effect=fake_yt), \
-         patch("app.services.video_search.aggregator.kuaishou_search",
-               side_effect=fake_ks):
+               side_effect=fake_yt):
         items, status = await search_all("kw", 20)
 
     assert len(items) == 4
-    assert status == {"bilibili": "ok", "youtube": "ok", "kuaishou": "ok"}
+    assert status == {"bilibili": "ok", "youtube": "ok"}
 
 
 @pytest.mark.asyncio
@@ -380,19 +375,14 @@ async def test_search_all_bilibili_fails():
     async def fake_yt(kw, lim):
         return [_mk("youtube", 0)]
 
-    async def fake_ks(kw, lim):
-        return []
-
     with patch("app.services.video_search.aggregator.bilibili_search",
                side_effect=fake_bili), \
          patch("app.services.video_search.aggregator.youtube_search",
-               side_effect=fake_yt), \
-         patch("app.services.video_search.aggregator.kuaishou_search",
-               side_effect=fake_ks):
+               side_effect=fake_yt):
         items, status = await search_all("kw", 20)
 
     assert [r.platform for r in items] == ["youtube"]
-    assert status == {"bilibili": "failed", "youtube": "ok", "kuaishou": "ok"}
+    assert status == {"bilibili": "failed", "youtube": "ok"}
 
 
 @pytest.mark.asyncio
@@ -403,13 +393,11 @@ async def test_search_all_both_fail():
     with patch("app.services.video_search.aggregator.bilibili_search",
                side_effect=boom), \
          patch("app.services.video_search.aggregator.youtube_search",
-               side_effect=boom), \
-         patch("app.services.video_search.aggregator.kuaishou_search",
                side_effect=boom):
         items, status = await search_all("kw", 20)
 
     assert items == []
-    assert status == {"bilibili": "failed", "youtube": "failed", "kuaishou": "failed"}
+    assert status == {"bilibili": "failed", "youtube": "failed"}
 
 
 # ---------------------------------------------------------------------------

@@ -22,7 +22,7 @@ export const useTaskPolling = (interval = 3000) => {
 
     // Tasks still in progress — need status updates
     const activeTasks = current.filter(
-      t => t.status !== 'SUCCESS' && t.status !== 'FAILED',
+      t => t.status !== 'SUCCESS' && t.status !== 'FAILED' && !t.submissionPending,
     )
 
     // SUCCESS tasks whose content was not persisted (page refresh) — need content restore
@@ -98,7 +98,7 @@ export const useTaskPolling = (interval = 3000) => {
 
   // 一旦出现新的进行中任务，立即拉取一次，避免等待整个间隔才看到首个阶段
   const activeKey = tasks
-    .filter(t => t.status !== 'SUCCESS' && t.status !== 'FAILED')
+    .filter(t => t.status !== 'SUCCESS' && t.status !== 'FAILED' && !t.submissionPending)
     .map(t => t.id)
     .join(',')
   useEffect(() => {

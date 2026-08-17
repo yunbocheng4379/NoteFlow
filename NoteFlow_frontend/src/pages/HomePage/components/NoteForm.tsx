@@ -54,6 +54,7 @@ import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
 import { ModelOptionLabel, ModelProviderLogo } from '@/components/ModelProviderLogo'
 import CloudDrivePanel from './CloudDrivePanel'
+import { v4 as uuidv4 } from 'uuid'
 
 /* ---------- Schema ---------- */
 const formSchema = z
@@ -423,6 +424,8 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null)
   const [parsing, setParsing] = useState(false)
   const parseSeqRef = useRef(0)
+  // 提交任务后弹窗会立即卸载；用 ref 防止关闭动画期间的重复点击再次提交。
+  const submitStartedRef = useRef(false)
 
   // 平台禁用提示（从后端 /platforms 获取）
   const [platformDisabled, setPlatformDisabled] = useState<string | null>(null)
@@ -438,7 +441,13 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   const [batchSubmitting, setBatchSubmitting] = useState(false)
   const [cloudMode, setCloudMode] = useState(false)
 
-  const { addPendingTask, currentTaskId, getCurrentTask, retryTask } = useTaskStore()
+  const {
+    addPendingTask,
+    updateTaskContent,
+    currentTaskId,
+    getCurrentTask,
+    retryTask,
+  } = useTaskStore()
   const { loadEnabledModels, modelList } = useModelStore()
   const providers = useProviderStore(s => s.provider)
   const fetchProviderList = useProviderStore(s => s.fetchProviderList)
@@ -902,11 +911,15 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       await handleBatchSubmit(values)
       return
     }
+    if (submitStartedRef.current) return
+    submitStartedRef.current = true
+
     const isRegenerate = mode === 'regenerate' && !!currentTaskId
+    const taskId = isRegenerate ? currentTaskId : uuidv4()
     const payload = {
       ...values,
       provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
-      task_id: isRegenerate ? currentTaskId : '',
+      task_id: taskId,
       collection_id: values.collection_id ? Number(values.collection_id) : undefined,
     }
     if (isRegenerate) {
@@ -915,7 +928,6 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       return
     }
     try {
-      const data = await generateNote(payload)
       const meta =
         videoInfo && !isLocal
           ? {
@@ -926,9 +938,22 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
               video_id: videoInfo.video_id,
             }
           : undefined
-      addPendingTask(data.task_id, values.platform, payload, meta)
+
+      // 先用与后端相同的 task_id 插入本地 pending 任务，让主页面立即进入进度页。
+      // submissionPending 期间暂停轮询，避免后端尚未完成建任务时被 404 误判失败。
+      addPendingTask(taskId, values.platform, payload, meta, null, true)
+
+      // 任务提交请求在后台继续执行，表单弹窗无需等待接口返回才关闭。
+      const request = generateNote(payload)
       onSubmitSuccess?.()
+      await request
+      updateTaskContent(taskId, { submissionPending: false })
     } catch (e: any) {
+      updateTaskContent(taskId, {
+        status: 'FAILED',
+        submissionPending: false,
+        errorMessage: e?.data?.msg || e?.message || '提交任务失败，请稍后重试',
+      })
       if (e?.data?.reason === 'transcriber_model_not_ready') {
         const downloading = e?.data?.downloading
         toast.error(

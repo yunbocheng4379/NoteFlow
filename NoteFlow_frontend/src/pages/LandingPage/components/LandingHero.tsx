@@ -5,16 +5,12 @@ import { Button } from '@/components/ui/button'
 import BrandLogo from '@/components/BrandLogo'
 import loginShot from '@/assets/screenshots/01-login.png'
 import { GITHUB_URL } from '../constants'
-import { LANDING_COPY } from '../copy'
-import { useLandingPrefsStore } from '@/store/landingPrefsStore'
 
 export default function LandingHero() {
   const reduce = useReducedMotion()
-  const lang = useLandingPrefsStore(s => s.lang)
-  const t = LANDING_COPY[lang]
 
   return (
-    <section className="relative overflow-hidden bg-[#fbfaf7] pt-20 pb-24 md:pt-24 dark:bg-neutral-950">
+    <section className="relative overflow-hidden bg-[#fbfaf7] pt-20 pb-24 md:pt-24">
       <div className="mx-auto max-w-5xl px-6 text-center">
         <motion.div
           initial={reduce ? false : { opacity: 0, y: 12 }}
@@ -23,7 +19,7 @@ export default function LandingHero() {
           className="mb-6 flex items-center justify-center gap-2.5"
         >
           <BrandLogo className="h-8 w-auto" />
-          <span className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
+          <span className="text-2xl font-semibold tracking-tight text-neutral-900">
             NoteFlow
           </span>
         </motion.div>
@@ -32,20 +28,20 @@ export default function LandingHero() {
           initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-          className="text-4xl leading-tight font-semibold tracking-tight text-neutral-900 md:text-6xl dark:text-neutral-50"
+          className="text-4xl leading-tight font-semibold tracking-tight text-neutral-900 md:text-6xl"
         >
-          {t.hero.titleLine1}
+          一条视频链接，
           <br />
-          <span className="text-primary">{t.hero.titleLine2}</span>
+          <span className="text-primary">变成一份笔记。</span>
         </motion.h1>
 
         <motion.p
           initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mt-5 max-w-lg text-base text-neutral-500 dark:text-neutral-400"
+          className="mx-auto mt-5 max-w-lg text-base text-neutral-500"
         >
-          {t.hero.subtitle}
+          AI 视频笔记助手，与你的观看和学习一起工作。
         </motion.p>
 
         <motion.div
@@ -57,19 +53,19 @@ export default function LandingHero() {
           <Button
             asChild
             size="lg"
-            className="rounded-full bg-neutral-900 px-7 text-white hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
+            className="rounded-full bg-neutral-900 px-7 text-white hover:bg-neutral-800"
           >
-            <Link to="/login">{t.hero.cta}</Link>
+            <Link to="/login">立即使用</Link>
           </Button>
           <Button
             asChild
             variant="outline"
             size="lg"
-            className="rounded-full border-neutral-300 bg-white px-7 text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded-full border-neutral-300 bg-white px-7 text-neutral-700 hover:bg-neutral-50"
           >
             <a href={GITHUB_URL} target="_blank" rel="noreferrer">
               <Github className="h-4 w-4" />
-              {t.hero.github}
+              GitHub
             </a>
           </Button>
         </motion.div>
@@ -81,13 +77,13 @@ export default function LandingHero() {
         transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="mx-auto mt-16 max-w-5xl px-6"
       >
-        <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)] dark:border-neutral-800 dark:bg-neutral-900 dark:shadow-[0_24px_60px_-30px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center gap-1.5 border-b border-neutral-100 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-800/60">
-            <span className="h-3 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-            <span className="h-3 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-            <span className="h-3 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+        <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white shadow-[0_24px_60px_-30px_rgba(0,0,0,0.18)]">
+          <div className="flex items-center gap-1.5 border-b border-neutral-100 bg-neutral-50 px-4 py-3">
+            <span className="h-3 w-3 rounded-full bg-neutral-300" />
+            <span className="h-3 w-3 rounded-full bg-neutral-300" />
+            <span className="h-3 w-3 rounded-full bg-neutral-300" />
           </div>
-          <img src={loginShot} alt={t.hero.imgAlt} className="w-full" loading="eager" />
+          <img src={loginShot} alt="NoteFlow 登录页面" className="w-full" loading="eager" />
         </div>
       </motion.div>
     </section>

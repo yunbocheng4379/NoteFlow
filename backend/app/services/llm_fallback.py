@@ -35,6 +35,10 @@ _FALLBACK_KEYWORDS = (
     "service unavailable",
     "bad gateway",
     "internal server error",
+    "ai 生成的笔记内容为空",
+    "生成的笔记内容为空",
+    "empty response",
+    "empty content",
 )
 
 

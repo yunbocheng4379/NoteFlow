@@ -1,9 +1,12 @@
 import os
 import logging
+import tempfile
 from abc import ABC
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Tuple
 
+import requests
 import yt_dlp
+from yt_dlp.utils import DownloadError, ExtractorError
 
 from app.downloaders.base import Downloader, DownloadQuality
 from app.downloaders.youtube_subtitle import YouTubeSubtitleFetcher
@@ -16,6 +19,23 @@ from app.utils.url_parser import extract_video_id
 
 logger = logging.getLogger(__name__)
 
+# Fallback matrix for YouTube extraction. When the primary attempt fails with
+# "Requested format is not available" (usually caused by SSAP experiment or
+# nsig extraction issues), retry with alternate player clients and a looser
+# format selector before giving up.
+_YT_AUDIO_ATTEMPTS: Tuple[Tuple[str, List[str]], ...] = (
+    ('bestaudio[ext=m4a]/bestaudio/best', ['ios', 'tv', 'mweb']),
+    ('bestaudio[ext=m4a]/bestaudio/best', ['android_vr', 'web']),
+    ('bestaudio/best', ['web_safari', 'android', 'ios']),
+    ('best', ['mweb', 'tv_embedded']),
+)
+
+_YT_VIDEO_ATTEMPTS: Tuple[Tuple[str, List[str]], ...] = (
+    ('bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]', ['ios', 'tv', 'mweb']),
+    ('bestvideo+bestaudio/best', ['web_safari', 'android', 'ios']),
+    ('best', ['mweb', 'tv_embedded']),
+)
+
 
 def _apply_proxy(ydl_opts: dict, platform: str = "youtube") -> dict:
     """根据平台获取对应代理（平台专属 > 全局 > 环境变量），注入 yt-dlp opts。"""
@@ -26,15 +46,116 @@ def _apply_proxy(ydl_opts: dict, platform: str = "youtube") -> dict:
     return ydl_opts
 
 
+def _extract_with_fallback(
+    video_url: str,
+    base_opts: dict,
+    attempts: Tuple[Tuple[str, List[str]], ...],
+    download: bool,
+) -> dict:
+    """按 attempts 顺序尝试 (format, player_client) 组合，直到成功或全部失败。"""
+    last_exc: Optional[Exception] = None
+    for idx, (fmt, clients) in enumerate(attempts, start=1):
+        opts = dict(base_opts)
+        opts['format'] = fmt
+        opts['extractor_args'] = {'youtube': {'player_client': clients}}
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                logger.info(
+                    "yt-dlp attempt %d/%d format=%r clients=%s",
+                    idx, len(attempts), fmt, clients,
+                )
+                return ydl.extract_info(video_url, download=download)
+        except (DownloadError, ExtractorError) as exc:
+            last_exc = exc
+            logger.warning(
+                "yt-dlp attempt %d/%d failed (format=%r clients=%s): %s",
+                idx, len(attempts), fmt, clients, exc,
+            )
+    assert last_exc is not None
+    raise last_exc
+
+
+def _fetch_oembed_metadata(video_url: str, video_id: str) -> AudioDownloadResult:
+    """获取不依赖媒体流的 YouTube 基础元信息。"""
+    response = requests.get(
+        "https://www.youtube.com/oembed",
+        params={"url": video_url, "format": "json"},
+        timeout=10,
+    )
+    response.raise_for_status()
+    info = response.json()
+    return AudioDownloadResult(
+        file_path=None,
+        title=info.get("title") or video_id,
+        duration=0,
+        cover_url=info.get("thumbnail_url"),
+        platform="youtube",
+        video_id=video_id,
+        raw_info={"author_name": info.get("author_name")},
+        video_path=None,
+    )
+
+
+def _resolve_downloaded_path(info: dict, output_dir: str) -> str:
+    """Resolve the actual media path yt-dlp wrote to disk."""
+    candidate_paths = []
+    for item in info.get("requested_downloads") or []:
+        if item.get("filepath"):
+            candidate_paths.append(item["filepath"])
+        if item.get("_filename"):
+            candidate_paths.append(item["_filename"])
+
+    if info.get("filepath"):
+        candidate_paths.append(info["filepath"])
+    if info.get("_filename"):
+        candidate_paths.append(info["_filename"])
+
+    video_id = info.get("id")
+    ext = info.get("ext", "m4a")
+    if video_id:
+        candidate_paths.append(os.path.join(output_dir, f"{video_id}.{ext}"))
+
+    for path in candidate_paths:
+        if path and os.path.exists(path):
+            return path
+
+    return candidate_paths[0] if candidate_paths else ""
+
+
 class YoutubeDownloader(Downloader, ABC):
     def __init__(self):
 
         super().__init__()
-        # YouTube 走 subtitle API 较少依赖 cookie, 但仍然让基类知道 active cookie id,
-        # 以便未来要代理时也能跨 cookie 重试.
-        meta = CookieConfigManager().get_with_meta('youtube')
+        self._cookie_mgr = CookieConfigManager()
+        self._cookie: Optional[str] = None
+        self._cookiefile: Optional[str] = None
+        self._load_cookie()
+
+    def _load_cookie(self) -> None:
+        meta = self._cookie_mgr.get_with_meta('youtube')
         self._active_cookie_id = meta.cookie_id
         self._active_cookie_source = meta.source
+        self._cookie = meta.cookie
+        self._cookiefile = self._write_netscape_cookie_file()
+
+    def set_cookie_meta(self, meta) -> None:
+        super().set_cookie_meta(meta)
+        self._cookie = getattr(meta, "cookie", None)
+        self._cookiefile = self._write_netscape_cookie_file()
+
+    def _write_netscape_cookie_file(self) -> Optional[str]:
+        if not self._cookie:
+            return None
+        lines = ["# Netscape HTTP Cookie File\n"]
+        for pair in self._cookie.split("; "):
+            if "=" in pair:
+                key, value = pair.split("=", 1)
+                lines.append(f".youtube.com\tTRUE\t/\tFALSE\t0\t{key}\t{value}\n")
+        tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8')
+        tmp.writelines(lines)
+        tmp.close()
+        logger.info("已生成 YouTube Netscape Cookie 文件: %s (条目: %d)", tmp.name, len(lines) - 1)
+        return tmp.name
 
     def download(
         self,
@@ -53,7 +174,6 @@ class YoutubeDownloader(Downloader, ABC):
         output_path = os.path.join(output_dir, "%(id)s.%(ext)s")
 
         ydl_opts = {
-            'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'outtmpl': output_path,
             'noplaylist': True,
             'quiet': False,
@@ -62,15 +182,37 @@ class YoutubeDownloader(Downloader, ABC):
         if skip_download:
             ydl_opts['skip_download'] = True
 
+        if self._cookiefile:
+            ydl_opts['cookiefile'] = self._cookiefile
+
         _apply_proxy(ydl_opts, "youtube")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=not skip_download)
-            video_id = info.get("id")
-            title = info.get("title")
-            duration = info.get("duration", 0)
-            cover_url = info.get("thumbnail")
-            ext = info.get("ext", "m4a")
-            audio_path = os.path.join(output_dir, f"{video_id}.{ext}")
+        try:
+            info = _extract_with_fallback(
+                video_url, ydl_opts, _YT_AUDIO_ATTEMPTS, download=not skip_download,
+            )
+        except (DownloadError, ExtractorError) as exc:
+            if skip_download:
+                video_id = extract_video_id(video_url, "youtube")
+                if video_id:
+                    try:
+                        logger.warning(
+                            "YouTube yt-dlp 元信息解析失败，尝试 oEmbed（video_id=%s）: %s",
+                            video_id,
+                            exc,
+                        )
+                        return _fetch_oembed_metadata(video_url, video_id)
+                    except Exception as metadata_exc:
+                        logger.warning("YouTube oEmbed 元信息获取失败: %s", metadata_exc)
+            raise
+        video_id = info.get("id")
+        title = info.get("title")
+        duration = info.get("duration", 0)
+        cover_url = info.get("thumbnail")
+        ext = info.get("ext", "m4a")
+        audio_path = None if skip_download else _resolve_downloaded_path(info, output_dir)
+
+        if not skip_download and (not audio_path or not os.path.exists(audio_path)):
+            raise FileNotFoundError(f"音频文件未找到: {audio_path or os.path.join(output_dir, f'{video_id}.{ext}')}")
 
         return AudioDownloadResult(
             file_path=audio_path,
@@ -101,18 +243,19 @@ class YoutubeDownloader(Downloader, ABC):
         output_path = os.path.join(output_dir, "%(id)s.%(ext)s")
 
         ydl_opts = {
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
             'outtmpl': output_path,
             'noplaylist': True,
             'quiet': False,
-            'merge_output_format': 'mp4',  # 确保合并成 mp4
+            'merge_output_format': 'mp4',
         }
 
+        if self._cookiefile:
+            ydl_opts['cookiefile'] = self._cookiefile
+
         _apply_proxy(ydl_opts, "youtube")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(video_url, download=True)
-            video_id = info.get("id")
-            video_path = os.path.join(output_dir, f"{video_id}.mp4")
+        info = _extract_with_fallback(video_url, ydl_opts, _YT_VIDEO_ATTEMPTS, download=True)
+        video_id = info.get("id")
+        video_path = os.path.join(output_dir, f"{video_id}.mp4")
 
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"视频文件未找到: {video_path}")

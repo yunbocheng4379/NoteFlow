@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from typing import Optional
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from dotenv import load_dotenv
@@ -34,6 +35,19 @@ headers = {
 logger = get_logger(__name__)
 
 cfm=CookieConfigManager()
+
+
+def kuaishou_duration_to_seconds(duration_ms: object) -> int:
+    """将快手详情接口返回的毫秒时长转换为秒。"""
+    try:
+        milliseconds = float(duration_ms)
+        if milliseconds <= 0:
+            return 0
+        return int(round(milliseconds / 1000))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
 class KuaiShou:
     def __init__(self):
         self.header = headers.copy()
@@ -48,16 +62,54 @@ class KuaiShou:
     @staticmethod
     def _extract_kuaishou_link(text):
 
-        url = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)
-        return url[0]
+        url = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', text)
+        return url[0] if url else None
+
+    @staticmethod
+    def _extract_photo_id_from_url(url: str) -> Optional[str]:
+        """从快手详情 URL 或分享页 URL 中提取作品 photoId。"""
+        parsed = urlparse(url)
+        query = parse_qs(parsed.query)
+        for key in ("photoId", "photo_id"):
+            if query.get(key) and query[key][0]:
+                return query[key][0]
+
+        path = parsed.path.rstrip("/")
+        patterns = (
+            r"/short-video/([^/?#]+)",
+            r"/@[^/]+/video/([^/?#]+)",
+            r"/(?:fw/)?photo/([^/?#]+)",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, path)
+            if match:
+                return match.group(1)
+        return None
 
     def get_photo_id(self, url):
+        direct_photo_id = self._extract_photo_id_from_url(url)
+        if direct_photo_id:
+            return direct_photo_id
+
         response = requests.get(url, allow_redirects=True, headers=self.header)
         real_url = response.url
-        # 提取short—video/后面的id
-        pattern = re.compile(r'short-video/(\w+)')
-        match = pattern.search(real_url)
-        return match.group().split('/')[1]
+        photo_id = self._extract_photo_id_from_url(real_url)
+        if photo_id:
+            return photo_id
+
+        # 某些风控/分享页不会把 photoId 放在最终地址，而会写在 HTML 中。
+        page = getattr(response, "text", "") or ""
+        html_patterns = (
+            r"[?&]photoId=([^&#\"']+)",
+            r"[\"']photoId[\"']\s*[:=]\s*[\"']([^\"']+)",
+            r"/short-video/([^/?#\"']+)",
+        )
+        for pattern in html_patterns:
+            match = re.search(pattern, page)
+            if match:
+                return match.group(1)
+
+        raise ValueError(f"无法从快手链接解析视频 ID: {url} (redirected to {real_url})")
 
     def set_cookie_meta(self, meta) -> None:
         """KuaiShou 不是 Downloader 子类, 显式写一遍"""
@@ -96,7 +148,7 @@ class KuaiShou:
     def run(self, url):
         real_url = self._extract_kuaishou_link(url)
         if not real_url:
-            logger.error(f"快手视频 URL 解析失败 {url}")
+            raise ValueError(f"无法从输入中识别快手视频链接: {url}")
 
         cookies = self.get_temp_cookies()
         if not cookies:
@@ -104,12 +156,9 @@ class KuaiShou:
 
         self.header['Cookie'] = cookies.strip()
         photo_id = self.get_photo_id(real_url)
-        if photo_id is None:
-            logger.error(f"快手视频 ID 解析失败 {url}")
         video_details = self.get_video_details(real_url, photo_id)
-        print(video_details)
-        if video_details is None:
-            logger.error(f"快手视频详情解析失败 {url}")
+        if not video_details or not video_details.get('data'):
+            raise ValueError(f"快手视频详情解析失败，可能是链接失效或触发风控: {url}")
         return video_details['data']
 
 

@@ -240,10 +240,10 @@ class NoteGenerator:
             self._update_status(task_id, TaskStatus.SAVING)
             self._save_metadata(video_id=audio_meta.video_id, platform=platform, task_id=task_id, user_id=user_id)
 
-            # 6. 完成
-            self._update_status(task_id, TaskStatus.SUCCESS)
-            logger.info(f"笔记生成成功 (task_id={task_id})")
-            self._notify_task_completed(task_id=task_id, user_id=user_id, title=audio_meta.title)
+            # SUCCESS is published by run_note_task only after the complete result
+            # has been persisted. Publishing it here creates a race where clients
+            # observe SUCCESS before {task_id}.json exists.
+            logger.info(f"笔记内容生成成功，等待结果持久化 (task_id={task_id})")
             return NoteResult(markdown=markdown, transcript=transcript, audio_meta=audio_meta)
 
         except Exception as exc:
@@ -935,6 +935,8 @@ class NoteGenerator:
 
         try:
             markdown = gpt.summarize(source)
+            if not markdown or not markdown.strip():
+                raise RuntimeError("AI 生成的笔记内容为空，请检查模型供应商配置或稍后重试")
             markdown_cache_file.write_text(markdown, encoding="utf-8")
             logger.info(f"GPT 总结并缓存成功 ({markdown_cache_file})")
             return markdown

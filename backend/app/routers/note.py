@@ -142,8 +142,12 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
     if not model_name or not provider_id:
         raise HTTPException(status_code=400, detail="请选择模型和提供者")
 
+    generator_holder = {}
+
     def _execute_note_task():
-        return NoteGenerator(user_id=user_id).generate(
+        generator = NoteGenerator(user_id=user_id)
+        generator_holder["generator"] = generator
+        return generator.generate(
             video_url=video_url,
             platform=platform,
             quality=quality,
@@ -168,6 +172,14 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
         logger.warning(f"任务 {task_id} 执行失败，跳过保存")
         return
     save_note_to_file(task_id, note)
+
+    # The result file must exist before SUCCESS is visible to polling clients.
+    generator = generator_holder.get("generator")
+    if generator is None:
+        generator = NoteGenerator(user_id=user_id)
+    generator._update_status(task_id, TaskStatus.SUCCESS)
+    logger.info(f"笔记生成成功 (task_id={task_id})")
+    generator._notify_task_completed(task_id=task_id, user_id=user_id, title=note.audio_meta.title)
 
     if collection_id and user_id:
         from app.db import note_collection_dao
@@ -557,6 +569,11 @@ def list_tasks(current_user: User = Depends(get_current_user)):
 
 @router.get("/image_proxy")
 async def image_proxy(request: Request, url: str):
+    if url.startswith("//"):
+        url = "https:" + url
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="仅支持 http/https 图片地址")
+
     headers = {
         "Referer": "https://www.bilibili.com/",
         "User-Agent": request.headers.get("User-Agent", ""),

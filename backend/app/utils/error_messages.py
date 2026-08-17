@@ -65,6 +65,15 @@ def translate_download_error(exc: BaseException, platform: str = "") -> str:
     # 结构化标记，前端用正则提取后弹出 Cookie 配置弹窗
     cookie_marker = f"[NEED_COOKIE:{platform}]" if platform else "[NEED_COOKIE]"
 
+    # YouTube's current GVS/DRM path cannot be solved by changing formats.
+    # Keep the provider terminology in the message so an operator knows what
+    # to configure instead of retrying the same extraction indefinitely.
+    if platform == "youtube" and _contains(raw, "drm protected", "po token", "gvs po token"):
+        return (
+            f"{cookie_marker} YouTube 视频受 DRM 保护，当前下载器无法直接读取媒体流；"
+            "请配置有效的 YouTube Cookie/PO Token 后重试，或改用可下载的视频来源"
+        )
+
     # B站 412 / 登录验证
     if _contains(raw, "412", "precondition failed") and _contains(raw, "bilibili", "b站", "b站"):
         return f"{cookie_marker} 下载失败：B 站要求登录验证，请配置哔哩哔哩 Cookie 后重试"

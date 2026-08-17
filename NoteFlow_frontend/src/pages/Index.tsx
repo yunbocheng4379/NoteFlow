@@ -25,10 +25,21 @@ import { clearDismissedUpdateLogs } from '@/services/updateLog'
 import FeedbackDialog from '@/components/FeedbackDialog'
 import WorkspaceAssistant from '@/components/WorkspaceAssistant'
 import { useAssistantStore } from '@/store/assistantStore'
-import AppearanceLanguageSwitcher from '@/components/AppearanceLanguageSwitcher'
-import { useTranslation } from '@/i18n'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '')
+
+const NAV_ITEMS = [
+  { icon: LayoutDashboard, label: '工作台', to: '/' },
+  { icon: Compass, label: '探索', to: '/explore' },
+  { icon: ListTodo, label: '任务列表', to: '/tasks' },
+  { icon: Folder, label: '笔记合集', to: '/collections', pro: true },
+  { icon: BookOpen, label: '知识库', to: '/knowledge-base', pro: true },
+  { icon: Palette, label: '笔记风格', to: '/note-style' },
+  { icon: Megaphone, label: '更新日志', to: '/update-logs' },
+  { icon: Zap, label: '升级 Pro', to: '/upgrade' },
+  { icon: ReceiptText, label: '账单与额度', to: '/billing' },
+  { icon: Gift, label: '我的推荐码', to: '/referral' },
+] // 全体用户可见的「更新日志」入口
 
 const Index = () => {
   const location = useLocation()
@@ -39,19 +50,6 @@ const Index = () => {
   const [collapsed, setCollapsed] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const userCardRef = useRef<HTMLDivElement>(null)
-  const { t } = useTranslation()
-  const navItems = [
-    { icon: LayoutDashboard, label: t('nav.workspace'), to: '/' },
-    { icon: Compass, label: t('nav.explore'), to: '/explore' },
-    { icon: ListTodo, label: t('nav.tasks'), to: '/tasks' },
-    { icon: Folder, label: t('nav.collections'), to: '/collections', pro: true },
-    { icon: BookOpen, label: t('nav.knowledgeBase'), to: '/knowledge-base', pro: true },
-    { icon: Palette, label: t('nav.noteStyle'), to: '/note-style' },
-    { icon: Megaphone, label: t('nav.updateLogs'), to: '/update-logs' },
-    { icon: Zap, label: t('nav.upgrade'), to: '/upgrade' },
-    { icon: ReceiptText, label: t('nav.billing'), to: '/billing' },
-    { icon: Gift, label: t('nav.referral'), to: '/referral' },
-  ]
 
   const handleLogout = () => {
     clearTaskStoreForLogout()
@@ -107,7 +105,7 @@ const Index = () => {
 
         {/* 主导航区 */}
         <div className="flex flex-1 flex-col gap-0.5 overflow-hidden px-1 py-2">
-          {navItems.map(({ icon: Icon, label, to, pro }) => {
+          {NAV_ITEMS.map(({ icon: Icon, label, to, pro }) => {
             const isActive = location.pathname === to
             const isUpgrade = to === '/upgrade'
             let cls = isActive
@@ -144,10 +142,6 @@ const Index = () => {
           })}
         </div>
 
-        <div className="flex justify-center px-1 py-2">
-          <AppearanceLanguageSwitcher compact />
-        </div>
-
         {/* 底部操作区 */}
         <div className="flex flex-col gap-0.5 px-1 py-2">
           {/* 关于: 所有用户可见（位于主导航底部，「问题反馈」上方） */}
@@ -167,7 +161,7 @@ const Index = () => {
                 collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
               }`}
             >
-              {t('nav.about')}
+              关于
             </span>
           </Link>
 
@@ -183,7 +177,7 @@ const Index = () => {
                 collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
               }`}
             >
-              {t('common.feedback')}
+              问题反馈
             </span>
           </button>
 
@@ -201,7 +195,7 @@ const Index = () => {
                   collapsed ? 'max-w-0 opacity-0' : 'max-w-[120px] opacity-100'
                 }`}
               >
-                {t('nav.globalSettings')}
+                全局配置
               </span>
             </Link>
           )}
@@ -212,7 +206,7 @@ const Index = () => {
             className={`mt-1 flex items-center rounded-xl bg-slate-950 text-white shadow-sm transition-colors hover:bg-slate-900 ${
               collapsed ? 'h-10 justify-center px-0' : 'h-14 gap-3 px-3'
             }`}
-            title={`${t('common.remainingCredits')} ${credits}`}
+            title={`剩余电力 ${credits}`}
           >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400 text-white">
               <Zap className="h-4 w-4 fill-current" />
@@ -224,7 +218,7 @@ const Index = () => {
             >
               <span className="truncate text-lg leading-5 font-bold tabular-nums">{credits}</span>
               <span className="truncate text-[10px] leading-3 font-medium tracking-[0.16em] text-white/55 uppercase">
-                {t('common.remainingCredits')}
+                剩余电力
               </span>
               {activeSubscription && (
                 <span className="mt-0.5 truncate text-[10px] leading-3 text-emerald-200">
@@ -245,7 +239,7 @@ const Index = () => {
                   className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-700 transition-colors hover:bg-neutral-50"
                 >
                   <User className="h-4 w-4 text-neutral-500" />
-                  {t('nav.profile')}
+                  个人信息
                 </Link>
                 <div className="mx-2 h-px bg-neutral-100" />
                 <button
@@ -253,7 +247,7 @@ const Index = () => {
                   className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-red-500 transition-colors hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4" />
-                  {t('nav.logout')}
+                  退出登录
                 </button>
               </div>
             )}

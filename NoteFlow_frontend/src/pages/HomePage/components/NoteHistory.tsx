@@ -40,29 +40,24 @@ const PLATFORM_BADGE = {
   bilibili: {
     label: 'B站',
     Logo: BiliBiliLogo,
-    cls: 'border-pink-100 bg-pink-50/80 text-pink-600',
   },
   youtube: {
     label: 'YouTube',
     Logo: YoutubeLogo,
-    cls: 'border-red-100 bg-red-50/80 text-red-600',
   },
   douyin: {
     label: '抖音',
     Logo: DouyinLogo,
-    cls: 'border-neutral-200 bg-neutral-900 text-white',
   },
   kuaishou: {
     label: '快手',
     Logo: KuaishouLogo,
-    cls: 'border-orange-100 bg-orange-50/80 text-orange-600',
   },
   local: {
     label: '本地',
     Logo: LocalLogo,
-    cls: 'border-amber-100 bg-amber-50/80 text-amber-600',
   },
-} satisfies Record<string, { label: string; Logo: FC; cls: string }>
+} satisfies Record<string, { label: string; Logo: FC }>
 
 function getPlatformBadge(platform?: string) {
   if (!platform) return null
@@ -300,10 +295,7 @@ const NoteHistory: FC<NoteHistoryProps> = ({ onSelect, selectedId }) => {
 
                   {platformBadge && (
                     <span
-                      className={cn(
-                        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border shadow-sm',
-                        platformBadge.cls,
-                      )}
+                      className="inline-flex h-5 w-5 shrink-0 items-center justify-center"
                       title={`来源：${platformBadge.label}`}
                       aria-label={`来源：${platformBadge.label}`}
                     >

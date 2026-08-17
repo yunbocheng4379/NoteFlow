@@ -230,6 +230,29 @@ class UniversalGPT(GPT):
             raise last_exc
         raise RuntimeError("chat completion failed without exception")
 
+    @staticmethod
+    def _extract_response_content(response) -> str:
+        content = response.choices[0].message.content
+        if content and content.strip():
+            return content.strip()
+        raise RuntimeError("empty response content from chat completion")
+
+    def _chat_completion_content(self, messages: list) -> str:
+        last_exc = None
+        for attempt in range(self._max_retry_attempts):
+            response = self._chat_completion_create(messages)
+            try:
+                return self._extract_response_content(response)
+            except RuntimeError as exc:
+                last_exc = exc
+                if attempt == self._max_retry_attempts - 1:
+                    raise
+                time.sleep(self._retry_base_backoff * (2 ** attempt))
+
+        if last_exc is not None:
+            raise last_exc
+        raise RuntimeError("chat completion returned empty content")
+
     def _merge_partials(self, partials: list, checkpoint_key: str | None, source_signature: str | None) -> str:
         def build_messages(texts, *_args, **_kwargs):
             return self._build_merge_messages(texts)
@@ -247,13 +270,13 @@ class UniversalGPT(GPT):
             for group_idx, group in enumerate(groups):
                 messages = build_messages(group)
                 try:
-                    response = self._chat_completion_create(messages)
+                    content = self._chat_completion_content(messages)
                 except Exception as exc:
                     if checkpoint_key and source_signature:
                         self._save_checkpoint(checkpoint_key, source_signature, current_partials, "merge")
                     raise
 
-                new_partials.append(response.choices[0].message.content.strip())
+                new_partials.append(content)
 
                 if checkpoint_key and source_signature:
                     remaining_partials = []
@@ -319,13 +342,13 @@ class UniversalGPT(GPT):
                 extras=source.extras
             )
             try:
-                response = self._chat_completion_create(messages)
+                content = self._chat_completion_content(messages)
             except Exception as exc:
                 if checkpoint_key and source_signature:
                     self._save_checkpoint(checkpoint_key, source_signature, partials, "summarize")
                 raise
 
-            partials.append(response.choices[0].message.content.strip())
+            partials.append(content)
             if checkpoint_key and source_signature:
                 self._save_checkpoint(checkpoint_key, source_signature, partials, "summarize")
 

@@ -106,9 +106,10 @@ const ExplorePanel: FC<ExplorePanelProps> = ({
           const failed = Object.entries(resp.platform_status || {})
             .filter(([, s]) => s === 'failed')
             .map(([p]) => platformDisplay[p] || p)
-          if (failed.length > 0 && failed.length < 2) {
+          const totalPlatforms = Object.keys(resp.platform_status || {}).length
+          if (failed.length > 0 && failed.length < totalPlatforms) {
             toast.error(`${failed.join('、')} 搜索暂不可用，已显示其他结果`)
-          } else if (failed.length >= 2) {
+          } else if (failed.length > 0 && failed.length === totalPlatforms) {
             toast.error('搜索服务暂不可用，请稍后再试')
           }
         })

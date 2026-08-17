@@ -6,7 +6,7 @@ from typing import Union, Optional
 import requests
 
 from app.downloaders.base import Downloader
-from app.downloaders.kuaishou_helper.kuaishou import KuaiShou
+from app.downloaders.kuaishou_helper.kuaishou import KuaiShou, kuaishou_duration_to_seconds
 from app.enmus.note_enums import DownloadQuality
 from app.models.audio_model import AudioDownloadResult
 from app.utils.path_helper import get_data_dir
@@ -35,6 +35,7 @@ class KuaiShouDownloader(Downloader, ABC):
         print(video_raw_info)
         photo_info = video_raw_info['visionVideoDetail']['photo']
         video_id = photo_info['id']
+        duration = kuaishou_duration_to_seconds(photo_info.get('duration'))
         title = photo_info['caption'].strip().replace('\n', '').replace(' ', '_')[:50]
         mp4_path = os.path.join(output_dir, f"{video_id}.mp4")
         mp3_path = os.path.join(output_dir, f"{video_id}.mp3")
@@ -44,7 +45,7 @@ class KuaiShouDownloader(Downloader, ABC):
             return AudioDownloadResult(
                 file_path=None,
                 title=title,
-                duration=photo_info['duration'],
+                duration=duration,
                 cover_url=photo_info['coverUrl'],
                 platform="kuaishou",
                 video_id=video_id,
@@ -59,7 +60,7 @@ class KuaiShouDownloader(Downloader, ABC):
             return AudioDownloadResult(
                 file_path=mp3_path,
                 title=title,
-                duration=photo_info['duration'],
+                duration=duration,
                 cover_url=photo_info['coverUrl'],
                 platform="kuaishou",
                 video_id=video_id,
@@ -89,7 +90,7 @@ class KuaiShouDownloader(Downloader, ABC):
         return AudioDownloadResult(
             file_path=mp3_path,
             title=photo_info['caption'],
-            duration=photo_info['duration'],
+            duration=duration,
             cover_url=photo_info['coverUrl'],
             platform="kuaishou",
             video_id=video_id,

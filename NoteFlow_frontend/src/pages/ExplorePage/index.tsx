@@ -8,7 +8,6 @@ import ExplorePanel from '@/pages/HomePage/components/ExplorePanel'
 import { useTaskStore } from '@/store/taskStore'
 import { useModelStore } from '@/store/modelStore'
 import { generateNote } from '@/services/note.ts'
-import { useTranslation } from '@/i18n'
 
 /**
  * ExplorePage
@@ -24,7 +23,6 @@ import { useTranslation } from '@/i18n'
  *   考虑把 NoteForm 抽到全局)。
  */
 const ExplorePage: FC = () => {
-  const { t } = useTranslation()
   const navigate = useNavigate()
   const addPendingTask = useTaskStore(s => s.addPendingTask)
   const { modelList, loadEnabledModels } = useModelStore()
@@ -36,17 +34,17 @@ const ExplorePage: FC = () => {
   const submitAndGoHome = async (prefill: { video_url: string; platform: string }) => {
     const url = prefill.video_url.trim()
     if (!url) {
-      toast.error(t('home.empty.selectVideo'))
+      toast.error('请选择一个视频')
       return
     }
     try {
       new URL(url)
     } catch {
-      toast.error(t('home.empty.invalidUrl'))
+      toast.error('视频链接格式不正确')
       return
     }
     if (modelList.length === 0) {
-      toast.error(t('home.empty.modelRequired'))
+      toast.error('请先配置 AI 模型')
       navigate('/settings/model')
       return
     }
@@ -74,10 +72,10 @@ const ExplorePage: FC = () => {
       navigate('/')
     } catch (e: any) {
       if (e?.data?.reason === 'transcriber_model_not_ready') {
-        toast.error(t('home.empty.transcriberRequired'))
+        toast.error('请先配置转写模型')
         navigate('/settings/transcriber')
       } else {
-        toast.error(t('home.empty.submitFailed'))
+        toast.error('提交失败，请稍后重试')
       }
     }
   }

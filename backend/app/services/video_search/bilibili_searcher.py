@@ -154,6 +154,14 @@ def _pubdate_to_iso(ts: Any) -> str | None:
         return None
 
 
+def _normalize_pic(pic: str | None) -> str | None:
+    if not pic:
+        return None
+    if pic.startswith("//"):
+        return "https:" + pic
+    return pic
+
+
 def _map_entry(entry: dict) -> SearchResult | None:
     if entry.get("type") != "video":
         return None
@@ -167,7 +175,7 @@ def _map_entry(entry: dict) -> SearchResult | None:
         platform="bilibili",
         video_url=arcurl,
         title=_strip_em(entry.get("title", "")),
-        cover_url=entry.get("pic") or None,
+        cover_url=_normalize_pic(entry.get("pic")),
         author=entry.get("author") or None,
         duration=bilibili_duration_to_seconds(entry.get("duration", "")),
         publish_time=_pubdate_to_iso(entry.get("pubdate")),
