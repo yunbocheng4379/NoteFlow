@@ -27,6 +27,18 @@ export interface AuthResult {
   user: UserInfo
 }
 
+export interface WechatMiniQrResult {
+  qr_image: string
+  state: string
+  expires_in: number
+}
+
+export type WechatMiniLoginStatus = 'pending' | 'ready' | 'expired' | 'failed'
+
+export interface WechatMiniStatusResult {
+  status: WechatMiniLoginStatus
+}
+
 export type TargetType = 'email' | 'phone'
 export type CodePurpose = 'login' | 'bind' | 'bind_email' | 'verify_phone' | 'verify_email' | 'reset_password'
 
@@ -116,6 +128,23 @@ export const authApi = {
   wechatExchange: (state: string) =>
     request.post<any, WechatExchangeResult>(
       '/auth/wechat/exchange',
+      { state },
+      { suppressToast: true },
+    ),
+
+  // —— 微信小程序扫码桥接登录 (PC 端) ——
+  wechatMiniQr: () =>
+    request.get<any, WechatMiniQrResult>('/auth/wechat/mini/qr', { suppressToast: true }),
+
+  wechatMiniStatus: (state: string) =>
+    request.get<any, WechatMiniStatusResult>('/auth/wechat/mini/status', {
+      params: { state },
+      suppressToast: true,
+    }),
+
+  wechatMiniExchange: (state: string) =>
+    request.post<any, WechatExchangeResult>(
+      '/auth/wechat/mini/exchange',
       { state },
       { suppressToast: true },
     ),

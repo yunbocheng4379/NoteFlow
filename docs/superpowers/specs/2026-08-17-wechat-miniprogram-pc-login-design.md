@@ -116,7 +116,7 @@ AppSecret 只从后端环境读取。现有代码中的默认 AppID 应逐步改
 
 ### Redis 安全
 
-- state 使用至少 32 字节随机值，不能使用可预测用户信息。
+- state 使用 24 字节随机值并编码为 32 个 URL-safe 字符，满足微信 `scene` 长度限制且不能被预测。
 - pending state、ticket 均设置 TTL。
 - complete 只能消费一次 pending state。
 - exchange 使用 Redis 原子删除/取值逻辑，避免重复换票。

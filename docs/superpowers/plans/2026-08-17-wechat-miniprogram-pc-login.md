@@ -67,7 +67,7 @@
 
 - [ ] **Step 1: Write failing state-machine tests.** 使用 fake Redis 和 fake 微信 HTTP，覆盖：QR 生成高熵随机 state 并写 pending；status 初始 pending；complete 成功后 status ready；exchange 返回 JWT；重复 exchange 失败；过期/重复 complete 失败；停用用户无 ticket。二维码响应使用固定 PNG bytes，不调用真实微信。
 - [ ] **Step 2: Verify failure.** Run `cd backend && pytest tests/test_wechat_miniprogram_login.py -q`；预期新路由不存在而失败。
-- [ ] **Step 3: Add models and Redis keys.** 增加 `WechatMiniQrCompleteRequest`、`WechatMiniExchangeRequest`；state 使用 `secrets.token_urlsafe(32)`；key 使用 `wechat:mini:pc:state:{state}` 和 `wechat:mini:pc:ticket:{state}`；state TTL 读取 `WECHAT_MP_QR_TTL` 默认 180 秒，ticket TTL 60 秒；Redis value 使用 JSON，不保存原始 wx code。
+- [ ] **Step 3: Add models and Redis keys.** 增加 `WechatMiniQrCompleteRequest`、`WechatMiniExchangeRequest`；state 使用 `secrets.token_urlsafe(24)` 生成 32 个 URL-safe 字符以满足微信 scene 限制；key 使用 `wechat:mini:pc:state:{state}` 和 `wechat:mini:pc:ticket:{state}`；state TTL 读取 `WECHAT_MP_QR_TTL` 默认 180 秒，ticket TTL 60 秒；Redis value 使用 JSON，不保存原始 wx code。
 - [ ] **Step 4: Implement access_token and QR generation.** 缓存 `wechat:mini:access_token`，按微信 `expires_in - 60` 写入；调用 `cgi-bin/token` 和 `wxa/getwxacodeunlimit`，body 为 `{"scene": state, "page": os.getenv("WECHAT_MP_PAGE", "pages/pc-login/pc-login")}`；返回 `data:image/png;base64,...`，不返回微信 access_token。
 - [ ] **Step 5: Implement transitions.** QR 写 pending；complete 先一次性删除 pending，再调用 Task 1 服务，成功写 ticket、失败写短 TTL failed；status 只返回状态不返回 JWT；exchange 使用 Redis Lua 或当前客户端可用的 GETDEL 原子取删 ticket，重复换票必须失败。
 - [ ] **Step 6: Run tests.** `cd backend && pytest tests/test_wechat_miniprogram_login.py tests/test_auth_code_login.py -q`；预期 PASS。

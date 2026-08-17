@@ -1,0 +1,28 @@
+<view class="pc-login-page">
+  <view class="pc-login-card">
+    <view class="brand-mark">N</view>
+    <text class="brand-name">NoteFlow</text>
+    <text class="page-title">确认登录 PC 端</text>
+
+    <view wx:if="{{status === 'invalid'}}" class="state-panel">
+      <text class="state-icon">!</text>
+      <text class="state-message">{{error}}</text>
+      <button class="secondary-button" bind:tap="onBack">返回</button>
+    </view>
+
+    <view wx:elif="{{status === 'success'}}" class="state-panel">
+      <text class="state-icon success">✓</text>
+      <text class="state-message">PC 端登录确认成功</text>
+      <text class="state-hint">请回到电脑继续使用 NoteFlow</text>
+    </view>
+
+    <view wx:else class="confirm-panel">
+      <text class="confirm-copy">你正在使用微信登录 NoteFlow PC 端</text>
+      <text wx:if="{{error}}" class="error-message">{{error}}</text>
+      <button class="confirm-button" loading="{{loading}}" disabled="{{loading}}" bind:tap="onConfirm">
+        {{loading ? '确认中...' : '确认登录'}}
+      </button>
+      <button class="cancel-button" disabled="{{loading}}" bind:tap="onBack">取消</button>
+    </view>
+  </view>
+</view>

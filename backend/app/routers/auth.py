@@ -1,3 +1,4 @@
+import base64
 import uuid
 import os
 import re
@@ -27,6 +28,10 @@ from app.services.verification_code import (
     CodeInvalidError,
 )
 from app.services.sms_service import send_verification_sms
+from app.services.wechat_miniprogram import (
+    WechatMiniProgramError,
+    login_with_wechat_code,
+)
 from app.utils.mailer import send_verification_code_email
 from app.utils.response import ResponseWrapper as R
 from app.utils.status_code import StatusCode
@@ -561,102 +566,204 @@ class WechatLoginRequest(BaseModel):
 @router.post("/wechat-login")
 async def wechat_login(body: WechatLoginRequest, db: Session = Depends(get_db)):
     """微信小程序一键登录：code → openid → 查/建用户 → 签发 JWT"""
-    from app.services.billing import credit_ledger, referral_service
-    from app.utils.logger import get_logger
-    logger = get_logger(__name__)
+    try:
+        user, is_new, token = await login_with_wechat_code(db, body.code)
+    except WechatMiniProgramError as exc:
+        return R.error(code=StatusCode.CODE_INVALID, msg=str(exc))
+    except Exception:
+        db.rollback()
+        return R.error(code=StatusCode.FAIL, msg="微信登录失败，请稍后重试")
 
-    appid = os.getenv("WECHAT_MP_APPID", "wxc7bd21a33355b95f")
-    secret = os.getenv("WECHAT_MP_SECRET", "")
-    if not secret:
-        raise HTTPException(status_code=500, detail="微信小程序登录未配置 (缺少 WECHAT_MP_SECRET)")
+    return R.success({"token": token, "user": _user_payload(user), "is_new": is_new})
 
-    # Step 1: 用 code 换取 openid
-    code2session_url = (
-        "https://api.weixin.qq.com/sns/jscode2session"
-        f"?appid={appid}&secret={secret}&js_code={body.code}&grant_type=authorization_code"
-    )
+
+# ─────────────────────────────────────────────────────────────
+# 微信小程序扫码桥接登录 (PC 端)
+# ─────────────────────────────────────────────────────────────
+
+class WechatMiniQrCompleteRequest(BaseModel):
+    state: str
+    code: str
+
+
+class WechatMiniExchangeRequest(BaseModel):
+    state: str
+
+
+_WECHAT_MINI_PC_STATE_TTL = max(60, int(os.getenv("WECHAT_MP_QR_TTL", "180")))
+_WECHAT_MINI_PC_TICKET_TTL = 60
+_WECHAT_MINI_ACCESS_TOKEN_TTL = 7200
+_WECHAT_MINI_TOKEN_KEY = "wechat:mini:access_token"
+_WECHAT_MINI_TOKEN_URL = "https://api.weixin.qq.com/cgi-bin/token"
+_WECHAT_MINI_QR_URL = "https://api.weixin.qq.com/wxa/getwxacodeunlimit"
+_WECHAT_MINI_STATE_RE = re.compile(r"^[A-Za-z0-9_-]{32,128}$")
+
+
+def _wechat_mini_pc_state_key(state: str) -> str:
+    return f"wechat:mini:pc:state:{state}"
+
+
+def _wechat_mini_pc_ticket_key(state: str) -> str:
+    return f"wechat:mini:pc:ticket:{state}"
+
+
+def _valid_wechat_mini_state(state: str) -> bool:
+    return bool(_WECHAT_MINI_STATE_RE.fullmatch(state or ""))
+
+
+async def _wechat_mini_access_token() -> str:
+    r = get_redis()
+    cached = r.get(_WECHAT_MINI_TOKEN_KEY)
+    if cached:
+        return cached
+
+    appid = os.getenv("WECHAT_MP_APPID", "").strip()
+    secret = os.getenv("WECHAT_MP_SECRET", "").strip()
+    if not appid or not secret:
+        raise WechatMiniProgramError("微信小程序登录未配置")
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(code2session_url)
-            resp.raise_for_status()
-            session_data = resp.json()
-    except Exception as e:
-        logger.error(f"[wechat-login] code2session 请求失败: {e}")
-        return R.error(code=StatusCode.SEND_CODE_FAILED, msg="微信登录服务异常，请稍后重试")
+            response = await client.get(
+                _WECHAT_MINI_TOKEN_URL,
+                params={
+                    "grant_type": "client_credential",
+                    "appid": appid,
+                    "secret": secret,
+                },
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.HTTPError as exc:
+        raise WechatMiniProgramError("微信二维码服务异常，请稍后重试") from exc
+    except Exception as exc:
+        raise WechatMiniProgramError("微信二维码服务异常，请稍后重试") from exc
 
-    if session_data.get("errcode"):
-        errcode = session_data.get("errcode")
-        errmsg = session_data.get("errmsg", "未知错误")
-        logger.error(f"[wechat-login] code2session 返回错误: errcode={errcode}, errmsg={errmsg}")
-        return R.error(code=StatusCode.CODE_INVALID, msg=f"微信登录失败: {errmsg}")
+    if payload.get("errcode") or not payload.get("access_token"):
+        raise WechatMiniProgramError("微信二维码服务异常，请稍后重试")
 
-    openid = session_data.get("openid")
-    unionid = session_data.get("unionid")
+    expires_in = int(payload.get("expires_in") or _WECHAT_MINI_ACCESS_TOKEN_TTL)
+    r.set(_WECHAT_MINI_TOKEN_KEY, payload["access_token"], ex=max(60, expires_in - 60))
+    return payload["access_token"]
 
-    if not openid:
-        return R.error(code=StatusCode.CODE_INVALID, msg="获取微信用户标识失败")
 
-    # Step 2: 根据 openid 查找用户
-    user = db.query(User).filter(User.wechat_openid == openid).first()
+async def _wechat_mini_qr_bytes(state: str) -> bytes:
+    access_token = await _wechat_mini_access_token()
+    page = os.getenv("WECHAT_MP_PAGE", "pages/pc-login/pc-login").strip()
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                _WECHAT_MINI_QR_URL,
+                params={"access_token": access_token},
+                json={"scene": state, "page": page},
+            )
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "")
+            if "application/json" in content_type:
+                payload = response.json()
+                raise WechatMiniProgramError(
+                    payload.get("errmsg") or "微信二维码生成失败"
+                )
+            if not response.content:
+                raise WechatMiniProgramError("微信二维码生成失败")
+            return response.content
+    except WechatMiniProgramError:
+        raise
+    except httpx.HTTPError as exc:
+        raise WechatMiniProgramError("微信二维码服务异常，请稍后重试") from exc
+    except Exception as exc:
+        raise WechatMiniProgramError("微信二维码服务异常，请稍后重试") from exc
 
-    if user:
-        # 已有用户 — 更新 unionid 和登录时间
-        if unionid and not user.wechat_unionid:
-            user.wechat_unionid = unionid
-        user.last_login_at = datetime.now()
-        db.commit()
-        db.refresh(user)
 
-        token = create_access_token(user.id, user.username)
-        return R.success({
-            "token": token,
-            "user": _user_payload(user),
-            "is_new": False,
-        })
+@router.get("/wechat/mini/qr")
+async def wechat_mini_pc_qr():
+    # getwxacodeunlimit 的 scene 最长 32 个字符；24 字节随机值编码后正好 32 字符。
+    state = secrets.token_urlsafe(24)
+    try:
+        qr_bytes = await _wechat_mini_qr_bytes(state)
+        get_redis().set(
+            _wechat_mini_pc_state_key(state),
+            "pending",
+            ex=_WECHAT_MINI_PC_STATE_TTL,
+        )
+    except WechatMiniProgramError as exc:
+        return R.error(code=StatusCode.SEND_CODE_FAILED, msg=str(exc))
+    except Exception:
+        return R.error(code=StatusCode.SEND_CODE_FAILED, msg="微信二维码生成失败，请稍后重试")
 
-    # Step 3: 新用户 — 自动注册
-    username = f"wx_{openid[:10]}_{secrets.token_hex(2)}"
+    qr_image = "data:image/png;base64," + base64.b64encode(qr_bytes).decode("ascii")
+    return R.success({
+        "qr_image": qr_image,
+        "state": state,
+        "expires_in": _WECHAT_MINI_PC_STATE_TTL,
+    })
+
+
+@router.post("/wechat/mini/complete")
+async def wechat_mini_pc_complete(
+    body: WechatMiniQrCompleteRequest,
+    db: Session = Depends(get_db),
+):
+    if not _valid_wechat_mini_state(body.state):
+        return R.error(code=StatusCode.CODE_INVALID, msg="登录二维码无效")
+
+    r = get_redis()
+    state_key = _wechat_mini_pc_state_key(body.state)
+    if r.delete(state_key) != 1:
+        return R.error(code=StatusCode.CODE_INVALID, msg="登录二维码已失效，请重新扫码")
 
     try:
-        user = User(
-            username=username,
-            email=None,
-            hashed_password=None,
-            wechat_openid=openid,
-            wechat_unionid=unionid,
-            credits=0,
-            total_points=0,
-            used_points=0,
+        user, is_new, token = await login_with_wechat_code(db, body.code)
+        payload = json.dumps({
+            "token": token,
+            "user": _user_payload(user),
+            "is_new": is_new,
+        }, ensure_ascii=False)
+        r.set(
+            _wechat_mini_pc_ticket_key(body.state),
+            payload,
+            ex=_WECHAT_MINI_PC_TICKET_TTL,
         )
-        db.add(user)
-        db.flush()
-
-        # 生成邀请码
-        referral_service.generate_referral_code(db, user.id)
-
-        # 新用户注册赠送 100 电力
-        credit_ledger.grant(
-            db,
-            user_id=user.id,
-            amount=referral_service.REGISTER_GRANT_CREDITS,
-            type_="REGISTER_GRANT",
-            note="微信小程序新用户注册赠送",
-        )
-
-        db.commit()
-        db.refresh(user)
+    except WechatMiniProgramError as exc:
+        r.set(state_key, "failed", ex=10)
+        return R.error(code=StatusCode.CODE_INVALID, msg=str(exc))
     except Exception:
         db.rollback()
-        logger.exception("[wechat-login] 创建用户失败")
-        return R.error(code=StatusCode.FAIL, msg="创建用户失败，请稍后重试")
+        r.set(state_key, "failed", ex=10)
+        return R.error(code=StatusCode.FAIL, msg="微信登录失败，请稍后重试")
 
-    token = create_access_token(user.id, user.username)
-    return R.success({
-        "token": token,
-        "user": _user_payload(user),
-        "is_new": True,
-    })
+    return R.success({"completed": True})
+
+
+@router.get("/wechat/mini/status")
+def wechat_mini_pc_status(state: str = ""):
+    if not _valid_wechat_mini_state(state):
+        return R.success({"status": "expired"})
+
+    r = get_redis()
+    if r.get(_wechat_mini_pc_ticket_key(state)) is not None:
+        return R.success({"status": "ready"})
+    current = r.get(_wechat_mini_pc_state_key(state))
+    if current == "pending":
+        return R.success({"status": "pending"})
+    if current == "failed":
+        return R.success({"status": "failed"})
+    return R.success({"status": "expired"})
+
+
+@router.post("/wechat/mini/exchange")
+def wechat_mini_pc_exchange(body: WechatMiniExchangeRequest):
+    if not _valid_wechat_mini_state(body.state):
+        return R.error(code=StatusCode.CODE_INVALID, msg="登录二维码已失效，请重新扫码")
+
+    raw = get_redis().getdel(_wechat_mini_pc_ticket_key(body.state))
+    if raw is None:
+        return R.error(code=StatusCode.CODE_INVALID, msg="登录链接已失效，请重新扫码")
+    try:
+        data = json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return R.error(code=StatusCode.FAIL, msg="登录数据异常，请重新扫码")
+    return R.success(data)
 
 
 # ─────────────────────────────────────────────────────────────

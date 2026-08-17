@@ -48,6 +48,15 @@ module.exports = {
     noAuth: true,
   }),
 
+  /** Complete a PC login bridge after the user confirms in the Mini Program */
+  completePcLogin: (state, code) => request({
+    url: '/api/auth/wechat/mini/complete',
+    method: 'POST',
+    data: { state, code },
+    noAuth: true,
+    suppressToast: true,
+  }),
+
   /** Refresh access token */
   refreshToken: (refreshToken) => request({
     url: '/api/auth/refresh',

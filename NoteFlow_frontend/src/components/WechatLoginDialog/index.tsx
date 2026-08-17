@@ -7,61 +7,80 @@ import { rehydrateTaskStore, useTaskStore } from '@/store/taskStore'
 import toast from 'react-hot-toast'
 
 const QR_TIMEOUT_MS = 3 * 60 * 1000
+const POLL_INTERVAL_MS = 2000
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'object' && error !== null && 'msg' in error) {
+    const message = (error as { msg?: unknown }).msg
+    if (typeof message === 'string' && message) return message
+  }
+  return fallback
+}
+
 /**
- * 微信扫码登录弹窗:
- * 1. 打开时向后端拿 qr_url + state, 放进 iframe.src 显示官方二维码
- * 2. 挂 window message 监听, iframe 里的 /wechat/callback 页 postMessage 过来
- * 3. 收到 message 后调 /auth/wechat/exchange 换 token+user, 存 store 后跳转
- * 4. PhoneGuard 会兜底把没绑手机的用户送到 /bind-phone (这里也显式跳一次更快)
+ * 微信小程序扫码登录弹窗:
+ * 1. 打开时向后端申请一次性小程序码和 state
+ * 2. PC 端轮询 state 状态, 小程序确认后换取一次性 ticket
+ * 3. 用 ticket 换取现有系统 JWT, 写入 userStore 后继续当前权限流程
  */
 export default function WechatLoginDialog({ open, onClose }: Props) {
   const navigate = useNavigate()
   const setAuth = useUserStore((s) => s.setAuth)
   const loadHistory = useTaskStore((s) => s.loadHistory)
-  const [qrUrl, setQrUrl] = useState<string>('')
-  const [state, setState] = useState<string>('')
+  const [qrImage, setQrImage] = useState('')
+  const [state, setState] = useState('')
   const [expired, setExpired] = useState(false)
   const [loading, setLoading] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const stateRef = useRef<string>('')
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const expiryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const exchangeStartedRef = useRef(false)
 
   const cleanup = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+    if (expiryRef.current) {
+      clearTimeout(expiryRef.current)
+      expiryRef.current = null
     }
   }, [])
 
   const loadQr = useCallback(async () => {
+    cleanup()
+    exchangeStartedRef.current = false
     setExpired(false)
-    setQrUrl('')
+    setLoading(false)
+    setQrImage('')
     setState('')
-    stateRef.current = ''
+
     try {
-      const res = await authApi.wechatQrUrl()
-      setQrUrl(res.qr_url)
-      setState(res.state)
-      stateRef.current = res.state
-      // 3 分钟本地过期兜底, 微信原生二维码 5 分钟, 提前一点避免用户扫到无效码
-      timerRef.current = setTimeout(() => setExpired(true), QR_TIMEOUT_MS)
-    } catch (err: any) {
-      toast.error(err?.msg || '微信登录暂不可用')
+      const result = await authApi.wechatMiniQr()
+      setQrImage(result.qr_image)
+      setState(result.state)
+      expiryRef.current = setTimeout(() => {
+        cleanup()
+        setExpired(true)
+      }, Math.min(result.expires_in * 1000, QR_TIMEOUT_MS))
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, '微信登录暂不可用'))
       onClose()
     }
-  }, [onClose])
+  }, [cleanup, onClose])
 
   const handleExchange = useCallback(
-    async (evtState: string) => {
-      if (loading) return
+    async (currentState: string) => {
+      if (exchangeStartedRef.current) return
+      exchangeStartedRef.current = true
+      cleanup()
       setLoading(true)
       try {
-        const result = await authApi.wechatExchange(evtState)
+        const result = await authApi.wechatMiniExchange(currentState)
         setAuth(result.token, result.user)
         rehydrateTaskStore()
         loadHistory()
@@ -71,14 +90,15 @@ export default function WechatLoginDialog({ open, onClose }: Props) {
         } else {
           navigate('/', { replace: true })
         }
-      } catch (err: any) {
-        toast.error(err?.msg || '登录已失效, 请重新扫码')
+      } catch (err: unknown) {
+        exchangeStartedRef.current = false
+        toast.error(getErrorMessage(err, '登录已失效，请重新扫码'))
         setExpired(true)
       } finally {
         setLoading(false)
       }
     },
-    [loading, setAuth, loadHistory, navigate, onClose],
+    [cleanup, loadHistory, navigate, onClose, setAuth],
   )
 
   useEffect(() => {
@@ -86,32 +106,42 @@ export default function WechatLoginDialog({ open, onClose }: Props) {
       cleanup()
       return
     }
-
     loadQr()
+    return cleanup
+  }, [cleanup, loadQr, open])
 
-    const handler = (evt: MessageEvent) => {
-      if (evt.origin !== window.location.origin) return
-      const data = evt.data as { type?: string; state?: string; error?: string } | undefined
-      if (!data || data.type !== 'wechat-login') return
-      if (!stateRef.current || data.state !== stateRef.current) return
-      if (data.error) {
-        toast.error('微信登录失败, 请重新扫码')
-        setExpired(true)
-        return
+  useEffect(() => {
+    if (!open || !state || expired || loading) return
+
+    let disposed = false
+    const poll = async () => {
+      try {
+        const result = await authApi.wechatMiniStatus(state)
+        if (disposed) return
+        if (result.status === 'ready') {
+          await handleExchange(state)
+        } else if (result.status === 'expired' || result.status === 'failed') {
+          cleanup()
+          setExpired(true)
+        }
+      } catch {
+        // 网络瞬时失败时继续轮询，二维码 TTL 到期后再提示用户刷新。
       }
-      handleExchange(data.state)
     }
-    window.addEventListener('message', handler)
 
+    poll()
+    pollRef.current = setInterval(poll, POLL_INTERVAL_MS)
     return () => {
-      window.removeEventListener('message', handler)
-      cleanup()
+      disposed = true
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [cleanup, expired, handleExchange, loading, open, state])
 
   return (
-    <Dialog open={open} onOpenChange={(v) => (!v ? onClose() : null)}>
+    <Dialog open={open} onOpenChange={(value) => (!value ? onClose() : null)}>
       <DialogContent className="sm:max-w-[360px] bg-white">
         <DialogHeader>
           <DialogTitle className="text-center text-base font-semibold text-gray-900">
@@ -120,38 +150,33 @@ export default function WechatLoginDialog({ open, onClose }: Props) {
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3 py-2">
-          {!qrUrl && !expired && (
-            <div className="w-[300px] h-[360px] flex items-center justify-center text-sm text-gray-400">
+          {!qrImage && !expired && (
+            <div className="flex h-[300px] w-[300px] items-center justify-center text-sm text-gray-400">
               加载中...
             </div>
           )}
-          {qrUrl && !expired && (
-            <iframe
-              src={qrUrl}
-              title="wechat-qrconnect"
-              width={300}
-              height={360}
-              className="border-0"
-              sandbox="allow-scripts allow-same-origin allow-top-navigation-by-user-activation"
-            />
+          {qrImage && !expired && (
+            <div className="flex h-[300px] w-[300px] items-center justify-center rounded-xl bg-white p-2 shadow-sm">
+              <img src={qrImage} alt="微信小程序扫码登录二维码" className="h-full w-full object-contain" />
+            </div>
           )}
           {expired && (
-            <div className="w-[300px] h-[360px] flex flex-col items-center justify-center gap-3">
+            <div className="flex h-[300px] w-[300px] flex-col items-center justify-center gap-3">
               <p className="text-sm text-gray-500">二维码已失效</p>
               <button
                 type="button"
                 onClick={loadQr}
-                className="h-9 px-4 rounded-lg text-[13px] font-medium text-white"
+                className="h-9 rounded-lg px-4 text-[13px] font-medium text-white"
                 style={{ background: '#07C160' }}
               >
                 点击刷新
               </button>
             </div>
           )}
-          <p className="text-[12px] text-gray-400 text-center">
-            请使用微信扫描二维码进行登录
+          <p className="text-center text-[12px] text-gray-400">
+            请使用微信扫描二维码
             <br />
-            登录后需绑定手机号完成账号验证
+            在小程序中确认登录后完成认证
           </p>
         </div>
       </DialogContent>
