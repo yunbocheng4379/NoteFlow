@@ -21,11 +21,30 @@ const sortConversations = (list: KbConversation[]): KbConversation[] => {
   })
 }
 
+interface KbStreamingDraft {
+  content: string
+  reasoning_content: string
+  sources: KbSource[]
+}
+
+const updateVisibleAssistant = (
+  messages: KbMessage[],
+  update: (message: KbMessage) => KbMessage
+): KbMessage[] => {
+  const last = messages[messages.length - 1]
+  if (!last || last.role !== 'assistant') {
+    return [...messages, update({ role: 'assistant', content: '' })]
+  }
+  return [...messages.slice(0, -1), update(last)]
+}
+
 interface KnowledgeBaseStore {
   conversations: KbConversation[]
   activeConversationId: number | null
   messages: KbMessage[]
   loaded: boolean
+  processingConversationIds: Record<number, true>
+  streamingDrafts: Record<number, KbStreamingDraft>
 
   loadConversations: (force?: boolean) => Promise<void>
   newConversation: () => Promise<number | null>
@@ -38,6 +57,11 @@ interface KnowledgeBaseStore {
   appendToLastMessage: (text: string) => void
   appendToLastReasoning: (text: string) => void
   setLastMessageSources: (sources: KbSource[]) => void
+  startConversationStream: (id: number) => void
+  appendConversationMessage: (id: number, text: string) => void
+  appendConversationReasoning: (id: number, text: string) => void
+  setConversationSources: (id: number, sources: KbSource[]) => void
+  finishConversationStream: (id: number) => Promise<void>
   clearMessages: () => void
 }
 
@@ -46,6 +70,8 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
   activeConversationId: null,
   messages: [],
   loaded: false,
+  processingConversationIds: {},
+  streamingDrafts: {},
 
   loadConversations: async (force = false) => {
     if (get().loaded && !force) return
@@ -84,11 +110,28 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
     }))
     try {
       const messages = await getConversationMessages(id)
-      set({ messages })
+      if (get().activeConversationId !== id) return
+
+      const draft = get().streamingDrafts[id]
+      const isProcessing = !!get().processingConversationIds[id]
+      set({
+        messages:
+          isProcessing && draft
+            ? [
+                ...messages,
+                {
+                  role: 'assistant',
+                  content: draft.content,
+                  reasoning_content: draft.reasoning_content,
+                  sources: draft.sources,
+                },
+              ]
+            : messages,
+      })
     } catch (error) {
       console.error('加载知识库会话消息失败', error)
     }
-    if (prev?.is_unread) {
+    if (prev?.is_unread && get().activeConversationId === id) {
       try {
         await updateConversation(id, { is_unread: false })
       } catch (error) {
@@ -104,6 +147,12 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
         conversations: state.conversations.filter(c => c.id !== id),
         activeConversationId: state.activeConversationId === id ? null : state.activeConversationId,
         messages: state.activeConversationId === id ? [] : state.messages,
+        processingConversationIds: Object.fromEntries(
+          Object.entries(state.processingConversationIds).filter(([conversationId]) => conversationId !== String(id))
+        ),
+        streamingDrafts: Object.fromEntries(
+          Object.entries(state.streamingDrafts).filter(([conversationId]) => conversationId !== String(id))
+        ),
       }))
     } catch (error) {
       console.error('删除知识库会话失败', error)
@@ -189,6 +238,123 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
       messages[messages.length - 1] = { ...last, sources }
       return { messages }
     })
+  },
+
+  startConversationStream: id =>
+    set(state => ({
+      processingConversationIds: { ...state.processingConversationIds, [id]: true },
+      streamingDrafts: {
+        ...state.streamingDrafts,
+        [id]: { content: '', reasoning_content: '', sources: [] },
+      },
+    })),
+
+  appendConversationMessage: (id, text) => {
+    set(state => {
+      const conversationExists =
+        state.activeConversationId === id || state.conversations.some(conversation => conversation.id === id)
+      const draft = state.streamingDrafts[id]
+      if (!conversationExists || !draft) return state
+
+      const nextDraft = { ...draft, content: draft.content + text }
+      const nextState: Partial<KnowledgeBaseStore> = {
+        streamingDrafts: { ...state.streamingDrafts, [id]: nextDraft },
+      }
+      if (state.activeConversationId === id) {
+        nextState.messages = updateVisibleAssistant(state.messages, message => ({
+          ...message,
+          content: message.content + text,
+        }))
+      }
+      return nextState
+    })
+  },
+
+  appendConversationReasoning: (id, text) => {
+    set(state => {
+      const conversationExists =
+        state.activeConversationId === id || state.conversations.some(conversation => conversation.id === id)
+      const draft = state.streamingDrafts[id]
+      if (!conversationExists || !draft) return state
+
+      const nextDraft = { ...draft, reasoning_content: draft.reasoning_content + text }
+      const nextState: Partial<KnowledgeBaseStore> = {
+        streamingDrafts: { ...state.streamingDrafts, [id]: nextDraft },
+      }
+      if (state.activeConversationId === id) {
+        nextState.messages = updateVisibleAssistant(state.messages, message => ({
+          ...message,
+          reasoning_content: (message.reasoning_content ?? '') + text,
+        }))
+      }
+      return nextState
+    })
+  },
+
+  setConversationSources: (id, sources) => {
+    set(state => {
+      const conversationExists =
+        state.activeConversationId === id || state.conversations.some(conversation => conversation.id === id)
+      const draft = state.streamingDrafts[id]
+      if (!conversationExists || !draft) return state
+
+      const nextDraft = { ...draft, sources }
+      const nextState: Partial<KnowledgeBaseStore> = {
+        streamingDrafts: { ...state.streamingDrafts, [id]: nextDraft },
+      }
+      if (state.activeConversationId === id) {
+        nextState.messages = updateVisibleAssistant(state.messages, message => ({ ...message, sources }))
+      }
+      return nextState
+    })
+  },
+
+  finishConversationStream: async id => {
+    const current = get()
+    if (!current.processingConversationIds[id]) return
+
+    const shouldMarkUnread =
+      current.activeConversationId !== id && current.conversations.some(conversation => conversation.id === id)
+
+    set(state => {
+      const processingConversationIds = { ...state.processingConversationIds }
+      const streamingDrafts = { ...state.streamingDrafts }
+      delete processingConversationIds[id]
+      delete streamingDrafts[id]
+      return {
+        processingConversationIds,
+        streamingDrafts,
+        conversations: shouldMarkUnread
+          ? state.conversations.map(conversation =>
+              conversation.id === id ? { ...conversation, is_unread: true } : conversation
+            )
+          : state.conversations,
+      }
+    })
+
+    if (!shouldMarkUnread) return
+
+    try {
+      const updated = await updateConversation(id, { is_unread: true })
+      set(state => ({
+        conversations: state.conversations.map(conversation =>
+          conversation.id === id ? { ...conversation, ...updated } : conversation
+        ),
+      }))
+
+      // If the user selected the conversation while the unread request was in flight,
+      // make the final persisted state match the active view.
+      if (get().activeConversationId === id) {
+        await updateConversation(id, { is_unread: false })
+        set(state => ({
+          conversations: state.conversations.map(conversation =>
+            conversation.id === id ? { ...conversation, is_unread: false } : conversation
+          ),
+        }))
+      }
+    } catch (error) {
+      console.error('自动标记会话未读失败', error)
+    }
   },
 
   clearMessages: () => set({ messages: [] }),

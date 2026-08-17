@@ -16,6 +16,7 @@ import {
   PinOff,
   Plus,
   Pencil,
+  LoaderCircle,
   MailPlus,
   MailOpen,
   Trash2,
@@ -194,9 +195,12 @@ export default function KnowledgeBasePage() {
   const togglePinConversation = useKnowledgeBaseStore(s => s.togglePinConversation)
   const markConversationUnread = useKnowledgeBaseStore(s => s.markConversationUnread)
   const addMessage = useKnowledgeBaseStore(s => s.addMessage)
-  const appendToLastMessage = useKnowledgeBaseStore(s => s.appendToLastMessage)
-  const appendToLastReasoning = useKnowledgeBaseStore(s => s.appendToLastReasoning)
-  const setLastMessageSources = useKnowledgeBaseStore(s => s.setLastMessageSources)
+  const processingConversationIds = useKnowledgeBaseStore(s => s.processingConversationIds)
+  const startConversationStream = useKnowledgeBaseStore(s => s.startConversationStream)
+  const appendConversationMessage = useKnowledgeBaseStore(s => s.appendConversationMessage)
+  const appendConversationReasoning = useKnowledgeBaseStore(s => s.appendConversationReasoning)
+  const setConversationSources = useKnowledgeBaseStore(s => s.setConversationSources)
+  const finishConversationStream = useKnowledgeBaseStore(s => s.finishConversationStream)
 
   const user = useUserStore(s => s.user)
   const activeSubscription = useUserStore(s => s.activeSubscription)
@@ -267,15 +271,25 @@ export default function KnowledgeBasePage() {
         }
       }
 
+      const streamConversationId = conversationId
+
       addMessage({ role: 'user', content: question })
       setInput('')
       setLoading(true)
       addMessage({ role: 'assistant', content: '', reasoning_content: '' })
+      startConversationStream(streamConversationId)
+
+      let streamFinished = false
+      const finishStream = async () => {
+        if (streamFinished) return
+        streamFinished = true
+        await finishConversationStream(streamConversationId)
+      }
 
       try {
         await askKbStream(
           {
-            conversation_id: conversationId,
+            conversation_id: streamConversationId,
             question,
             provider_id: selectedModel.provider_id,
             model_name: selectedModel.model_name,
@@ -283,20 +297,23 @@ export default function KnowledgeBasePage() {
             note_task_ids: noteTaskIds ?? undefined,
           },
           {
-            onSources: sources => setLastMessageSources(sources),
-            onReasoning: text => appendToLastReasoning(text),
-            onDelta: text => appendToLastMessage(text),
+            onSources: sources => setConversationSources(streamConversationId, sources),
+            onReasoning: text => appendConversationReasoning(streamConversationId, text),
+            onDelta: text => appendConversationMessage(streamConversationId, text),
             onError: msg => {
-              appendToLastMessage(msg || '知识库问答失败')
+              appendConversationMessage(streamConversationId, msg || '知识库问答失败')
               toast.error(msg || '知识库问答失败')
             },
           }
         )
+        await finishStream()
         loadConversations(true)
       } catch {
-        appendToLastMessage('\n\n（请求中断）')
+        appendConversationMessage(streamConversationId, '\n\n（请求中断）')
         toast.error('知识库问答失败')
+        await finishStream()
       } finally {
+        await finishStream()
         setLoading(false)
       }
     },
@@ -308,9 +325,11 @@ export default function KnowledgeBasePage() {
       noteTaskIds,
       newConversation,
       addMessage,
-      appendToLastMessage,
-      appendToLastReasoning,
-      setLastMessageSources,
+      startConversationStream,
+      appendConversationMessage,
+      appendConversationReasoning,
+      setConversationSources,
+      finishConversationStream,
       loadConversations,
     ]
   )
@@ -658,6 +677,7 @@ export default function KnowledgeBasePage() {
               conversations.map(c => {
                 const isActive = activeConversationId === c.id
                 const isMenuOpen = menuState?.convId === c.id
+                const isProcessing = !!processingConversationIds[c.id]
                 return (
                   <div
                     key={c.id}
@@ -679,12 +699,16 @@ export default function KnowledgeBasePage() {
                     <MarqueeOnHover className={`min-w-0 flex-1 ${c.is_unread ? 'font-semibold' : ''}`}>
                       {c.title || '新对话'}
                     </MarqueeOnHover>
-                    {c.is_unread && (
-                      <span
-                        className="ml-auto inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
-                        aria-label="未读"
-                      />
-                    )}
+                    <span className="ml-auto flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                      {isProcessing ? (
+                        <LoaderCircle
+                          className="h-3.5 w-3.5 animate-spin text-neutral-400"
+                          aria-label="执行中"
+                        />
+                      ) : c.is_unread ? (
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-label="未读" />
+                      ) : null}
+                    </span>
                   </div>
                 )
               })
