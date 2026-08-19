@@ -9,7 +9,7 @@
 - `noteflow-frontend`：React/Vite 前端静态服务
 - `noteflow-nginx`：统一入口，负责访问前端并代理 `/api`、`/static`
 
-默认访问地址由 `.env` 中的 `APP_PORT` 决定。当前推荐：
+默认访问地址由 `.env` 中的 `APP_PORT` 决定。生产环境建议将 `www.noteflow.vip` 的 HTTPS 入口反向代理到该端口：
 
 ```env
 APP_PORT=3015
@@ -19,6 +19,12 @@ APP_PORT=3015
 
 ```text
 http://服务器IP:3015
+```
+
+生产域名访问：
+
+```text
+https://www.noteflow.vip
 ```
 
 本地 Docker Desktop 验证时访问：
@@ -151,7 +157,15 @@ MYSQL_PASSWORD=请填写强密码
 
 JWT_SECRET_KEY=请填写高强度随机字符串
 COOKIE_ENCRYPT_KEY=请填写 Fernet Key
-FRONTEND_URL=http://YOUR_SERVER_IP:3015
+FRONTEND_URL=https://www.noteflow.vip
+
+# 支付宝电脑网站支付（申请并上线“电脑网站支付”后填写）
+ALIPAY_APP_ID=你的支付宝应用AppID
+ALIPAY_PRIVATE_KEY_PATH=/app/secrets/alipay_private_key.pem
+ALIPAY_PUBLIC_KEY_PATH=/app/secrets/alipay_public_key.pem
+ALIPAY_SANDBOX=false
+ALIPAY_NOTIFY_URL=https://www.noteflow.vip/api/billing/notify/alipay
+ALIPAY_RETURN_URL=https://www.noteflow.vip/payment/alipay/return
 
 TRANSCRIBER_TYPE=fast-whisper
 WHISPER_MODEL_SIZE=tiny
@@ -171,6 +185,9 @@ python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().
 - `docker-compose.yml` 会把后端数据库地址覆盖为容器内地址：`mysql:3306/${MYSQL_DATABASE}`。
 - Docker 前端镜像默认使用 `/api` 和 `/static/screenshots`，由 `noteflow-nginx` 反向代理到后端。
 - 正式环境不要把前端 API 地址写成 `http://127.0.0.1:8483`，否则线上用户浏览器会请求用户自己电脑的 127.0.0.1。
+- 正式环境前端使用同源 `VITE_API_BASE_URL=/api`；项目自带 Nginx 会把 `https://www.noteflow.vip/api/...` 转发到后端 8483 端口。
+- 支付宝异步通知地址必须从公网 HTTPS 访问，且不能使用当前不可用的 `api.noteflow.vip`。
+- 应用私钥和支付宝公钥文件要放入后端容器的 `/app/secrets/`（或把环境变量改成服务器实际绝对路径）；应用公钥只上传到支付宝开放平台，不用于后端验签。
 - `HF_ENDPOINT` 用于 Whisper 模型下载，默认使用 `https://huggingface.co`。只有当服务器无法访问官方源时，才改成实际可用的镜像源。
 
 如果服务器拉取 Docker Hub 较慢或失败，可以在 `.env` 中增加：
