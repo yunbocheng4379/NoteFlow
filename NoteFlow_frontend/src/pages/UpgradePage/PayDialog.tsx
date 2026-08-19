@@ -34,6 +34,7 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
   onSuccessRef.current = onSuccess
 
   const mock = order ? isMockOrder(order) : true
+  const isAlipayPageOrder = !!order && !mock && order.pay_method === 'ALIPAY'
 
   // 真实渠道: 轮询订单状态, notify 到账后自动关闭弹窗
   useEffect(() => {
@@ -73,6 +74,14 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
     } finally {
       setPaying(false)
     }
+  }
+
+  const handleAlipayPay = () => {
+    if (!order.payment_url) {
+      toast.error('支付宝支付地址缺失，请重新获取')
+      return
+    }
+    window.location.assign(order.payment_url)
   }
 
   const handleSwitchMethod = async (method: 'ALIPAY' | 'WECHAT') => {
@@ -126,19 +135,33 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
             ))}
           </div>
 
-          {/* 二维码 */}
+          {/* 支付宝电脑网站支付不展示二维码, 微信和 MOCK 保持二维码流程 */}
           <div className="flex h-[232px] w-[232px] items-center justify-center rounded-xl border border-neutral-200 bg-white p-4">
             {switching ? (
               <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+            ) : isAlipayPageOrder ? (
+              <div className="text-center text-sm text-neutral-500">
+                <div className="mb-2 text-4xl text-[#1677ff]">支</div>
+                <div>支付宝收银台</div>
+                <div className="mt-1 text-xs text-neutral-400">将在支付宝页面完成支付</div>
+              </div>
             ) : (
               <QRCodeCanvas value={qrPayload} size={200} level="H" />
             )}
           </div>
 
           <div className="text-center text-xs text-neutral-500">
-            <div>请使用 {METHODS.find((m) => m.code === activeMethod)?.label} 扫码支付</div>
+            <div>
+              {isAlipayPageOrder
+                ? '请点击下方按钮前往支付宝收银台'
+                : `请使用 ${METHODS.find((m) => m.code === activeMethod)?.label} 扫码支付`}
+            </div>
             <div className="mt-1 text-neutral-400">
-              {mock ? '测试环境：点击下方「我已支付」直接模拟支付成功' : '扫码支付成功后将自动到账，无需手动确认'}
+              {mock
+                ? '测试环境：点击下方「我已支付」直接模拟支付成功'
+                : isAlipayPageOrder
+                  ? '支付完成后将自动返回 NoteFlow 并确认到账'
+                  : '扫码支付成功后将自动到账，无需手动确认'}
             </div>
           </div>
 
@@ -146,6 +169,14 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
             <Button variant="outline" className="flex-1" onClick={onClose} disabled={paying}>
               取消
             </Button>
+            {isAlipayPageOrder && (
+              <Button
+                className="flex-1 bg-[#1677ff] text-white hover:bg-[#0f63d6]"
+                onClick={handleAlipayPay}
+              >
+                前往支付宝支付
+              </Button>
+            )}
             {mock && (
               <Button
                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"

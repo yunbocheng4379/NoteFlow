@@ -57,6 +57,7 @@ export interface Order {
   pay_method: string
   mock_qrcode_token: string | null
   qrcode_url: string | null
+  payment_url: string | null
   is_first_subscription: boolean
   paid_at: string | null
   cancelled_at: string | null
@@ -137,6 +138,11 @@ export const billingApi = {
 
   createSubscriptionOrder: (plan_id: number, pay_method: string = 'MOCK_ALIPAY') =>
     request.post<any, Order>('/billing/order/subscription', { plan_id, pay_method }),
+
+  createAlipayPayment: (order_no: string) =>
+    request.post<any, { order_no: string; payment_url: string }>(
+      `/billing/order/${order_no}/pay/alipay`,
+    ),
 
   mockPay: (order_no: string, mock_qrcode_token: string) =>
     request.post<any, Order>('/billing/order/mock_pay', { order_no, mock_qrcode_token }),

@@ -17,6 +17,7 @@ import { rehydrateTaskStore, useTaskStore } from '@/store/taskStore'
 const AuthPage = lazy(() => import('@/pages/AuthPage'))
 const BindPhonePage = lazy(() => import('@/pages/BindPhonePage'))
 const WechatCallbackPage = lazy(() => import('@/pages/WechatCallbackPage'))
+const AlipayReturnPage = lazy(() => import('@/pages/AlipayReturnPage'))
 const Onboarding = lazy(() => import('@/pages/Onboarding'))
 const SettingPage = lazy(() => import('./pages/SettingPage/index.tsx'))
 
@@ -155,6 +156,7 @@ function App() {
             <Route path="/login" element={<AuthPage />} />
             <Route path="/bind-phone" element={<BindPhonePage />} />
             <Route path="/wechat/callback" element={<WechatCallbackPage />} />
+            <Route path="/payment/alipay/return" element={<AlipayReturnPage />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/sn/:token" element={<ShareViewPage />} />
             <Route path="/sc/:token" element={<CollectionShareViewPage />} />
