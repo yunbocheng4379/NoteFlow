@@ -76,17 +76,49 @@ def list_user_orders(db: Session, user_id: int, page: int = 1, page_size: int = 
 
 # ---------- 创建订单 ----------
 
-def _issue_qrcode(order: Order, *, subject: str) -> None:
-    """
-    真实支付渠道 (ALIPAY/WECHAT) 下单后调用网关生成二维码, 写入 order.qrcode_url.
-    MOCK_ 渠道走 mock_qrcode_token, 不调用这里.
-    """
+def _issue_payment(order: Order, *, subject: str) -> Optional[str]:
+    """为真实支付渠道生成支付凭证; 支付宝返回临时 URL, 微信写入二维码字段."""
     if order.pay_method == "ALIPAY":
         from app.services.billing.pay_channels import alipay_channel
-        order.qrcode_url = alipay_channel.create_qrcode(order, subject=subject)
+        return alipay_channel.create_page_payment_url(order, subject=subject)
     elif order.pay_method == "WECHAT":
         from app.services.billing.pay_channels import wechat_channel
         order.qrcode_url = wechat_channel.create_qrcode(order, description=subject)
+    return None
+
+
+def payment_url_for_order(order: Order) -> Optional[str]:
+    """读取本次创单生成的支付宝 URL; 该值只存在于当前请求内, 不落库."""
+    return getattr(order, "_payment_url", None)
+
+
+def _subject_for_order(db: Session, order: Order) -> str:
+    if order.kind == "RECHARGE":
+        package = db.get(RechargePackage, order.package_id)
+        return f"NoteFlow 充值-{package.name if package else order.package_id}"
+    if order.kind == "SUBSCRIPTION":
+        plan = db.get(SubscriptionPlan, order.plan_id)
+        return f"NoteFlow 订阅-{plan.name if plan else order.plan_id}"
+    raise OrderStateError(f"未知订单类型: {order.kind}")
+
+
+def create_alipay_payment(db: Session, order_no: str, current_user_id: int) -> str:
+    """为已有的当前用户待支付支付宝订单生成新的收银台 URL."""
+    order: Order | None = db.execute(
+        select(Order).where(Order.order_no == order_no).with_for_update()
+    ).scalar_one_or_none()
+    if not order or order.user_id != current_user_id:
+        raise OrderStateError(f"订单不存在: {order_no}")
+    if order.status != "PENDING":
+        raise OrderStateError(f"订单状态非 PENDING (当前: {order.status})")
+    if order.pay_method != "ALIPAY":
+        raise InvalidTransactionError("该订单不是支付宝订单")
+
+    from app.services.billing.pay_channels import alipay_channel
+
+    return alipay_channel.create_page_payment_url(
+        order, subject=_subject_for_order(db, order)
+    )
 
 
 def create_recharge_order(
@@ -117,7 +149,9 @@ def create_recharge_order(
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
     if pay_method in ("ALIPAY", "WECHAT"):
-        _issue_qrcode(order, subject=f"NoteFlow 充值-{pkg.name}")
+        payment_url = _issue_payment(order, subject=f"NoteFlow 充值-{pkg.name}")
+        if payment_url:
+            order._payment_url = payment_url
     db.add(order)
     db.flush()
     logger.info(f"[order] create RECHARGE user={user_id} order_no={order.order_no} pkg={pkg.code} amount={pkg.price_cents}")
@@ -155,7 +189,9 @@ def create_subscription_order(
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
     if pay_method in ("ALIPAY", "WECHAT"):
-        _issue_qrcode(order, subject=f"NoteFlow 订阅-{plan.name}")
+        payment_url = _issue_payment(order, subject=f"NoteFlow 订阅-{plan.name}")
+        if payment_url:
+            order._payment_url = payment_url
     db.add(order)
     db.flush()
     logger.info(f"[order] create SUBSCRIPTION user={user_id} order_no={order.order_no} plan={plan.code} first={is_first} amount={price}")

@@ -177,7 +177,7 @@ class CreateSubscriptionOrderReq(BaseModel):
     pay_method: str = "MOCK_ALIPAY"
 
 
-def _serialize_order(o: Order) -> dict:
+def _serialize_order(o: Order, *, payment_url: Optional[str] = None) -> dict:
     return {
         "id": o.id,
         "order_no": o.order_no,
@@ -190,6 +190,7 @@ def _serialize_order(o: Order) -> dict:
         "pay_method": o.pay_method,
         "mock_qrcode_token": o.mock_qrcode_token,
         "qrcode_url": o.qrcode_url,
+        "payment_url": payment_url,
         "is_first_subscription": bool(o.is_first_subscription),
         "paid_at": o.paid_at.isoformat() if o.paid_at else None,
         "cancelled_at": o.cancelled_at.isoformat() if o.cancelled_at else None,
@@ -207,9 +208,10 @@ def create_recharge_order(
         order = order_service.create_recharge_order(
             db, user_id=current_user.id, package_id=body.package_id, pay_method=body.pay_method
         )
+        payment_url = order_service.payment_url_for_order(order)
         db.commit()
         db.refresh(order)
-        return R.success(_serialize_order(order))
+        return R.success(_serialize_order(order, payment_url=payment_url))
     except BillingError as e:
         db.rollback()
         return R.error(msg=e.message, code=e.code, data=e.data)
@@ -228,9 +230,30 @@ def create_subscription_order(
         order = order_service.create_subscription_order(
             db, user_id=current_user.id, plan_id=body.plan_id, pay_method=body.pay_method
         )
+        payment_url = order_service.payment_url_for_order(order)
         db.commit()
         db.refresh(order)
-        return R.success(_serialize_order(order))
+        return R.success(_serialize_order(order, payment_url=payment_url))
+    except BillingError as e:
+        db.rollback()
+        return R.error(msg=e.message, code=e.code, data=e.data)
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.post("/order/{order_no}/pay/alipay")
+def create_alipay_payment(
+    order_no: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        payment_url = order_service.create_alipay_payment(
+            db, order_no=order_no, current_user_id=current_user.id
+        )
+        db.commit()
+        return R.success({"order_no": order_no, "payment_url": payment_url})
     except BillingError as e:
         db.rollback()
         return R.error(msg=e.message, code=e.code, data=e.data)
