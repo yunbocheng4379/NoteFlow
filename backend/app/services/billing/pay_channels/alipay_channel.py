@@ -28,6 +28,10 @@ def _read_key_file(path: Optional[str]) -> Optional[str]:
         return f.read()
 
 
+def _is_sandbox() -> bool:
+    return os.getenv("ALIPAY_SANDBOX", "false").strip().lower() in ("1", "true", "yes")
+
+
 def _get_client():
     from alipay import AliPay
 
@@ -37,7 +41,7 @@ def _get_client():
     if not app_id or not private_key or not public_key:
         raise AlipayNotConfiguredError()
 
-    sandbox = os.getenv("ALIPAY_SANDBOX", "false").strip().lower() in ("1", "true", "yes")
+    sandbox = _is_sandbox()
     return AliPay(
         appid=app_id,
         app_notify_url=os.getenv("ALIPAY_NOTIFY_URL") or None,
@@ -66,6 +70,28 @@ def create_qrcode(order: Order, *, subject: str) -> str:
         logger.error(f"[alipay] precreate 未返回 qr_code, order_no={order.order_no}, resp={result}")
         raise BillingError("支付宝下单失败, 请稍后重试")
     return qr_code
+
+
+def create_page_payment_url(order: Order, *, subject: str) -> str:
+    """调用 alipay.trade.page.pay, 返回电脑网站支付收银台 URL."""
+    client = _get_client()
+    signed_query = client.api_alipay_trade_page_pay(
+        subject=subject,
+        out_trade_no=order.order_no,
+        total_amount=f"{order.amount_cents / 100:.2f}",
+        return_url=os.getenv("ALIPAY_RETURN_URL") or None,
+        notify_url=os.getenv("ALIPAY_NOTIFY_URL") or None,
+    )
+    if not signed_query:
+        logger.error(f"[alipay] page.pay 未返回签名参数, order_no={order.order_no}")
+        raise BillingError("支付宝下单失败, 请稍后重试")
+
+    gateway = (
+        "https://openapi-sandbox.dl.alipaydev.com/gateway.do"
+        if _is_sandbox()
+        else "https://openapi.alipay.com/gateway.do"
+    )
+    return f"{gateway}?{signed_query}"
 
 
 def verify_notify(form_data: dict) -> bool:

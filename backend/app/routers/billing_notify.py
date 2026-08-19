@@ -6,12 +6,16 @@
 不允许"先返回 success 再补校验"的顺序。
 """
 import json
+import os
+from decimal import Decimal, InvalidOperation
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.engine import SessionLocal
+from app.db.models.orders import Order
 from app.services.billing import order_service
 from app.services.billing.pay_channels import alipay_channel, wechat_channel
 from app.utils.logger import get_logger
@@ -19,6 +23,18 @@ from app.utils.logger import get_logger
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/billing/notify", tags=["billing-notify"])
+
+
+def _notify_amount_matches_order(data: dict, order: Order) -> bool:
+    try:
+        notified = Decimal(str(data.get("total_amount")))
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+    return notified == Decimal(order.amount_cents) / Decimal(100)
+
+
+class _AlipayNotifyRejected(Exception):
+    pass
 
 
 @router.post("/alipay")
@@ -39,12 +55,29 @@ async def alipay_notify(request: Request):
     db: Session = SessionLocal()
     try:
         with db.begin():
+            order = db.execute(
+                select(Order).where(Order.order_no == out_trade_no).with_for_update()
+            ).scalar_one_or_none()
+            expected_app_id = os.getenv("ALIPAY_APP_ID")
+            if (
+                not order
+                or not expected_app_id
+                or data.get("app_id") != expected_app_id
+                or not _notify_amount_matches_order(data, order)
+            ):
+                logger.warning(
+                    "[alipay-notify] 订单/AppID/金额校验失败, out_trade_no=%s",
+                    out_trade_no,
+                )
+                raise _AlipayNotifyRejected()
             order_service.settle_order_by_gateway(
                 db,
                 order_no=out_trade_no,
                 trade_no=data.get("trade_no"),
                 raw_payload=json.dumps(data, ensure_ascii=False),
             )
+    except _AlipayNotifyRejected:
+        return PlainTextResponse("fail")
     except Exception:
         logger.exception(f"[alipay-notify] 结算订单异常, out_trade_no={out_trade_no}")
         return PlainTextResponse("fail")
