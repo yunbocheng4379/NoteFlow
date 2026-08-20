@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -398,6 +400,27 @@ async def test_search_all_both_fail():
 
     assert items == []
     assert status == {"bilibili": "failed", "youtube": "failed"}
+
+
+@pytest.mark.asyncio
+async def test_search_all_times_out_slow_platform_and_keeps_other_results():
+    async def fake_bili(kw, lim):
+        return [_mk("bilibili", 0)]
+
+    async def slow_yt(kw, lim):
+        await asyncio.sleep(0.05)
+        return [_mk("youtube", 0)]
+
+    with patch("app.services.video_search.aggregator.bilibili_search",
+               side_effect=fake_bili), \
+         patch("app.services.video_search.aggregator.youtube_search",
+               side_effect=slow_yt), \
+         patch("app.services.video_search.aggregator.PLATFORM_TIMEOUT_SEC",
+               0.01, create=True):
+        items, status = await search_all("kw", 20)
+
+    assert [r.platform for r in items] == ["bilibili"]
+    assert status == {"bilibili": "ok", "youtube": "failed"}
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,9 @@ from .youtube_searcher import youtube_search
 
 logger = get_logger(__name__)
 
+# 外部平台搜索不可控，单个平台不能阻塞整个聚合接口。
+PLATFORM_TIMEOUT_SEC = 8.0
+
 
 def interleave(lists: list[list[SearchResult]]) -> list[SearchResult]:
     """Round-robin merge across lists, deduping by video_url. Preserves per-list order."""
@@ -31,10 +34,24 @@ async def search_all(
     keyword: str, per_platform: int = 20
 ) -> tuple[list[SearchResult], dict[str, PlatformStatus]]:
     """Fan out to per-platform searchers, tolerate individual failures."""
+
+    async def _search_with_timeout(searcher, platform: str):
+        try:
+            return await asyncio.wait_for(
+                searcher(keyword, per_platform), timeout=PLATFORM_TIMEOUT_SEC
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "video_search platform '%s' timed out after %.1fs",
+                platform,
+                PLATFORM_TIMEOUT_SEC,
+            )
+            raise
+
     platforms = ("bilibili", "youtube")
     coros = (
-        bilibili_search(keyword, per_platform),
-        youtube_search(keyword, per_platform),
+        _search_with_timeout(bilibili_search, "bilibili"),
+        _search_with_timeout(youtube_search, "youtube"),
     )
     settled = await asyncio.gather(*coros, return_exceptions=True)
 
