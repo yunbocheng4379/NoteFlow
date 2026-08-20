@@ -166,8 +166,8 @@ export default function AboutPage() {
         {/* Community & Service Section */}
         <section className="mb-16">
           <h2 className="mb-8 text-center text-3xl font-bold">联系我们</h2>
-          <div className="mx-auto max-w-3xl">
-            <div className="flex flex-col items-center justify-center gap-10 md:flex-row md:items-start">
+          <div className="mx-auto max-w-5xl">
+            <div className="grid grid-cols-1 items-start justify-items-center gap-10 md:grid-cols-3">
               <div className="text-center">
                 <h3 className="mb-3 text-xl font-semibold">NoteFlow 用户交流群</h3>
                 <button
@@ -198,6 +198,21 @@ export default function AboutPage() {
                   提供企业专属部署、定制集成与一对一技术支持
                   <br />
                   扫码加微信，备注「企业定制」即可咨询
+                </p>
+              </div>
+              <div className="text-center">
+                <h3 className="mb-3 text-xl font-semibold">联系客服</h3>
+                <button
+                  type="button"
+                  onClick={() => setPreviewQr({ src: enterpriseServiceQr, alt: 'NoteFlow 客服二维码' })}
+                  className="bg-muted mx-auto flex h-52 w-52 cursor-zoom-in items-center justify-center rounded-md transition-opacity hover:opacity-80"
+                >
+                  <img src={enterpriseServiceQr} alt="NoteFlow 客服二维码" className="h-full w-full object-contain" />
+                </button>
+                <p className="text-muted-foreground mt-3 text-sm">
+                  遇到支付、账号或使用问题
+                  <br />
+                  扫码联系人工客服
                 </p>
               </div>
             </div>

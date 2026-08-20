@@ -35,5 +35,6 @@ class Order(Base):
     notify_payload = Column(Text, nullable=True, comment="最近一次异步通知的原始报文, 用于排查与防重放审计")
     paid_at = Column(DateTime, nullable=True, comment="支付完成时间")
     cancelled_at = Column(DateTime, nullable=True, comment="取消时间")
+    expires_at = Column(DateTime, nullable=True, comment="待支付订单过期时间")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="更新时间")

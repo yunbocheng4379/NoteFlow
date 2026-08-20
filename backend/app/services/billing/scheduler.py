@@ -2,7 +2,7 @@
 定时任务调度
 - 每日 02:00 → run_monthly_grant_tick   (会员月度电力发放)
 - 每日 02:05 → expire_outdated_subscriptions (到期订阅置 EXPIRED)
-- 每日 02:10 → cleanup_stale_pending_orders  (清理 24h 未支付订单)
+- 每分钟     → expire_pending_orders          (关闭 15min 未支付订单)
 - 每 5 分钟   → reconcile_pending_gateway_orders (对账兜底: notify 丢失时主动查单补单)
 
 使用 apscheduler BackgroundScheduler, 单进程内存, MVP 不依赖 redis/celery.
@@ -38,8 +38,8 @@ def _job_expire_subs():
     _run_in_session(subscription_service.expire_outdated_subscriptions)
 
 
-def _job_cleanup_orders():
-    _run_in_session(order_service.cleanup_stale_pending_orders)
+def _job_expire_pending_orders():
+    _run_in_session(order_service.expire_pending_orders)
 
 
 def _job_reconcile_gateway_orders():
@@ -54,11 +54,11 @@ def start_scheduler():
     sch = BackgroundScheduler(daemon=True, timezone="Asia/Shanghai")
     sch.add_job(_job_monthly_grant,  "cron", hour=2, minute=0,  id="billing_monthly_grant")
     sch.add_job(_job_expire_subs,    "cron", hour=2, minute=5,  id="billing_expire_subs")
-    sch.add_job(_job_cleanup_orders, "cron", hour=2, minute=10, id="billing_cleanup_orders")
+    sch.add_job(_job_expire_pending_orders, "interval", minutes=1, id="billing_expire_pending_orders")
     sch.add_job(_job_reconcile_gateway_orders, "interval", minutes=5, id="billing_reconcile_gateway_orders")
     sch.start()
     _scheduler = sch
-    logger.info("[scheduler] billing scheduler started (3 daily cron jobs + 5min gateway reconcile)")
+    logger.info("[scheduler] billing scheduler started (2 daily cron jobs + 1min expiry + 5min gateway reconcile)")
     return sch
 
 

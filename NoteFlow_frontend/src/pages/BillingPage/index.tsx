@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Zap, ArrowUpRight, ArrowDownRight, Loader2, ReceiptText, CreditCard } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -9,6 +9,7 @@ import {
   TX_TYPE_LABEL,
   ORDER_STATUS_LABEL,
   formatYuan,
+  formatRemainingSeconds,
   Paginated,
 } from '@/services/billing'
 import { useUserStore } from '@/store/userStore'
@@ -27,6 +28,7 @@ const BillingPage = () => {
   const [loadingTx, setLoadingTx] = useState(false)
   const [loadingOrder, setLoadingOrder] = useState(false)
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
+  const [cancellingOrderNo, setCancellingOrderNo] = useState<string | null>(null)
 
   useEffect(() => {
     refreshBalance()
@@ -43,16 +45,20 @@ const BillingPage = () => {
     }
   }, [tab, txPage])
 
-  useEffect(() => {
-    if (tab === 'orders') {
-      setLoadingOrder(true)
-      billingApi
-        .listOrders(orderPage, 20)
-        .then(setOrders)
-        .catch(() => {})
-        .finally(() => setLoadingOrder(false))
+  const loadOrders = useCallback(async () => {
+    setLoadingOrder(true)
+    try {
+      setOrders(await billingApi.listOrders(orderPage, 20))
+    } catch {
+      // 保留当前列表，避免短暂网络波动导致页面空白。
+    } finally {
+      setLoadingOrder(false)
     }
-  }, [tab, orderPage])
+  }, [orderPage])
+
+  useEffect(() => {
+    if (tab === 'orders') void loadOrders()
+  }, [tab, loadOrders])
 
   const rePay = async (order: Order) => {
     try {
@@ -70,6 +76,20 @@ const BillingPage = () => {
       setPayingOrder(full)
     } catch (e: any) {
       toast.error(e?.msg || '获取订单失败')
+    }
+  }
+
+  const cancelOrder = async (order: Order) => {
+    if (!window.confirm('确定取消这个待支付订单吗？订单记录会保留，但之后不能继续支付。')) return
+    setCancellingOrderNo(order.order_no)
+    try {
+      await billingApi.cancelOrder(order.order_no)
+      toast.success('订单已取消')
+      await loadOrders()
+    } catch (e: any) {
+      toast.error(e?.msg || '取消订单失败')
+    } finally {
+      setCancellingOrderNo(null)
     }
   }
 
@@ -171,6 +191,9 @@ const BillingPage = () => {
               page={orderPage}
               onPageChange={setOrderPage}
               onRePay={rePay}
+              onCancel={cancelOrder}
+              cancellingOrderNo={cancellingOrderNo}
+              onRefresh={loadOrders}
             />
           )}
         </div>
@@ -259,13 +282,45 @@ const OrdersList = ({
   page,
   onPageChange,
   onRePay,
+  onCancel,
+  cancellingOrderNo,
+  onRefresh,
 }: {
   data: Paginated<Order> | null
   loading: boolean
   page: number
   onPageChange: (p: number) => void
   onRePay: (o: Order) => void
+  onCancel: (o: Order) => void
+  cancellingOrderNo: string | null
+  onRefresh: () => Promise<void>
 }) => {
+  const [now, setNow] = useState(() => Date.now())
+  const refreshedExpiredOrders = useRef(new Set<string>())
+
+  const pendingOrders = data?.list.filter(order => order.status === 'PENDING') || []
+  useEffect(() => {
+    if (!pendingOrders.length) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [pendingOrders.length])
+
+  const expiredOrderNos = pendingOrders
+    .filter(order => order.expires_at && new Date(order.expires_at).getTime() <= now)
+    .map(order => order.order_no)
+  const expiredKey = expiredOrderNos.join(',')
+  useEffect(() => {
+    const currentExpired = new Set(expiredOrderNos)
+    refreshedExpiredOrders.current.forEach(orderNo => {
+      if (!currentExpired.has(orderNo)) refreshedExpiredOrders.current.delete(orderNo)
+    })
+    if (!expiredKey) return
+    const shouldRefresh = expiredOrderNos.some(orderNo => !refreshedExpiredOrders.current.has(orderNo))
+    if (!shouldRefresh) return
+    expiredOrderNos.forEach(orderNo => refreshedExpiredOrders.current.add(orderNo))
+    void onRefresh()
+  }, [expiredKey, onRefresh])
+
   if (loading && !data) return <SpinnerRow />
   if (!data || data.list.length === 0) return <EmptyRow text="暂无订单" />
 
@@ -284,7 +339,13 @@ const OrdersList = ({
           </tr>
         </thead>
         <tbody>
-          {data.list.map((o) => (
+          {data.list.map((o) => {
+            const remainingSeconds =
+              o.status === 'PENDING' && o.expires_at
+                ? Math.max(0, Math.floor((new Date(o.expires_at).getTime() - now) / 1000))
+                : null
+            const canPay = o.status === 'PENDING' && (remainingSeconds === null || remainingSeconds > 0)
+            return (
             <tr key={o.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
               <td className="px-4 py-3 font-mono text-xs text-neutral-600">{o.order_no}</td>
               <td className="px-4 py-3 text-xs">
@@ -299,20 +360,37 @@ const OrdersList = ({
               </td>
               <td className="px-4 py-3">
                 <StatusBadge status={o.status} />
+                {o.status === 'PENDING' && remainingSeconds !== null && (
+                  <div className={`mt-1 text-xs ${remainingSeconds <= 60 ? 'text-red-500' : 'text-neutral-500'}`}>
+                    剩余 {formatRemainingSeconds(remainingSeconds)}
+                  </div>
+                )}
               </td>
               <td className="px-4 py-3 text-xs text-neutral-500">{fmtTime(o.created_at)}</td>
               <td className="px-4 py-3">
                 {o.status === 'PENDING' && (
-                  <button
-                    onClick={() => onRePay(o)}
-                    className="text-xs font-medium text-primary hover:underline"
-                  >
-                    继续支付
-                  </button>
+                  <div className="flex flex-col items-start gap-1.5">
+                    {canPay && (
+                      <button
+                        onClick={() => onRePay(o)}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        继续支付
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onCancel(o)}
+                      disabled={cancellingOrderNo === o.order_no}
+                      className="text-xs font-medium text-neutral-500 hover:text-red-500 hover:underline disabled:opacity-50"
+                    >
+                      {cancellingOrderNo === o.order_no ? '取消中…' : '取消订单'}
+                    </button>
+                  </div>
                 )}
               </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
       <Pager page={page} total={data.total} pageSize={data.page_size} onPageChange={onPageChange} />

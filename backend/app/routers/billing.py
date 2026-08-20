@@ -3,6 +3,7 @@
 所有接口都要求登录, 用户隔离.
 """
 from datetime import datetime
+import math
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -178,6 +179,9 @@ class CreateSubscriptionOrderReq(BaseModel):
 
 
 def _serialize_order(o: Order, *, payment_url: Optional[str] = None) -> dict:
+    remaining_seconds = None
+    if o.status == "PENDING" and o.expires_at:
+        remaining_seconds = max(0, math.floor((o.expires_at - datetime.now()).total_seconds()))
     return {
         "id": o.id,
         "order_no": o.order_no,
@@ -194,6 +198,8 @@ def _serialize_order(o: Order, *, payment_url: Optional[str] = None) -> dict:
         "is_first_subscription": bool(o.is_first_subscription),
         "paid_at": o.paid_at.isoformat() if o.paid_at else None,
         "cancelled_at": o.cancelled_at.isoformat() if o.cancelled_at else None,
+        "expires_at": o.expires_at.isoformat() if o.expires_at else None,
+        "remaining_seconds": remaining_seconds,
         "created_at": o.created_at.isoformat() if o.created_at else None,
     }
 
@@ -262,6 +268,27 @@ def create_alipay_payment(
         raise
 
 
+@router.post("/order/{order_no}/cancel")
+def cancel_order(
+    order_no: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        order = order_service.close_pending_order(
+            db, order_no=order_no, current_user_id=current_user.id
+        )
+        db.commit()
+        db.refresh(order)
+        return R.success(_serialize_order(order))
+    except BillingError as e:
+        db.rollback()
+        return R.error(msg=e.message, code=e.code, data=e.data)
+    except Exception:
+        db.rollback()
+        raise
+
+
 class MockPayReq(BaseModel):
     order_no: str
     mock_qrcode_token: str
@@ -297,6 +324,8 @@ def get_order(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    order_service.expire_pending_orders(db, user_id=current_user.id)
+    db.commit()
     o = order_service.get_order_by_no(db, current_user.id, order_no)
     if not o:
         return R.error(msg="订单不存在", code=OrderStateError.code)
@@ -310,6 +339,8 @@ def list_orders(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    order_service.expire_pending_orders(db, user_id=current_user.id)
+    db.commit()
     rows, total = order_service.list_user_orders(db, current_user.id, page=page, page_size=page_size)
     return R.success({
         "list": [_serialize_order(o) for o in rows],

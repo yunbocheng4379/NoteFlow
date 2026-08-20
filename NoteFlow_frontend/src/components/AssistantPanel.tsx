@@ -3,8 +3,10 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { BookOpen, ChevronDown, ChevronUp, Loader2, Send, Sparkles, X } from 'lucide-react'
 import xiaoliu from '@/assets/assistant/xiaoliu.png'
+import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
 import { askAssistantStream, getLatestUserQuestion } from '@/services/assistant'
 import { useAssistantStore } from '@/store/assistantStore'
+import { getCustomerSupportReply } from './assistantSupport'
 
 const QUICK_QUESTIONS = [
   'NoteFlow 是做什么的？',
@@ -82,6 +84,13 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
 
     const history = messages.map(({ role, content }) => ({ role, content }))
     addMessage({ role: 'user', content: question })
+    const supportReply = getCustomerSupportReply(question, enterpriseServiceQr)
+    if (supportReply) {
+      addMessage({ role: 'assistant', content: supportReply })
+      setInput('')
+      setError(null)
+      return
+    }
     addMessage({ role: 'assistant', content: '' })
     setInput('')
     setError(null)

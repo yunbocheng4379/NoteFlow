@@ -3,20 +3,23 @@
 """
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from app.db.models.orders import Order, ORDER_KINDS, ORDER_PAY_METHODS
 from app.db.models.subscriptions import Subscription
 from app.db.models.subscription_plans import SubscriptionPlan
 from app.db.models.recharge_packages import RechargePackage
+from app.db.models.users import User
 from app.services.billing.exceptions import OrderStateError, InvalidTransactionError
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+PENDING_ORDER_TTL_MINUTES = 15
 
 
 # ---------- 工具 ----------
@@ -52,6 +55,96 @@ def get_order_by_no(db: Session, user_id: int, order_no: str) -> Optional[Order]
     return db.execute(
         select(Order).where(Order.user_id == user_id, Order.order_no == order_no)
     ).scalar_one_or_none()
+
+
+def _order_expiry(order: Order) -> Optional[datetime]:
+    """返回订单过期时间，兼容迁移前仍未回填的历史记录。"""
+    expires_at = getattr(order, "expires_at", None)
+    if expires_at:
+        return expires_at
+    created_at = getattr(order, "created_at", None)
+    if created_at:
+        return created_at + timedelta(minutes=PENDING_ORDER_TTL_MINUTES)
+    return None
+
+
+def _close_expired_order(order: Order, *, now: Optional[datetime] = None) -> bool:
+    """订单已到期时关闭订单，返回是否发生状态变更。"""
+    if order.status != "PENDING":
+        return False
+    now = now or datetime.now()
+    expires_at = _order_expiry(order)
+    if not expires_at or expires_at > now:
+        return False
+    order.status = "CANCELLED"
+    order.cancelled_at = now
+    order.mock_qrcode_token = None
+    if getattr(order, "expires_at", None) is None:
+        order.expires_at = expires_at
+    return True
+
+
+def expire_pending_orders(db: Session, user_id: Optional[int] = None) -> int:
+    """关闭已超过 15 分钟的待支付订单，保留订单记录供审计。"""
+    conditions = [Order.status == "PENDING"]
+    if user_id is not None:
+        conditions.append(Order.user_id == user_id)
+
+    rows = db.execute(
+        select(Order).where(and_(*conditions)).with_for_update()
+    ).scalars().all()
+    now = datetime.now()
+    closed = sum(1 for order in rows if _close_expired_order(order, now=now))
+    if closed:
+        db.flush()
+        logger.info("[order] expire_pending: closed=%s user_id=%s", closed, user_id)
+    return closed
+
+
+def has_active_pending_order(db: Session, user_id: int) -> bool:
+    """判断用户是否存在仍在有效期内的待支付订单。"""
+    return db.execute(
+        select(Order.id)
+        .where(Order.user_id == user_id, Order.status == "PENDING")
+        .limit(1)
+    ).scalar_one_or_none() is not None
+
+
+def _lock_user_for_order_creation(db: Session, user_id: int) -> None:
+    """锁住用户行，串行化同一用户的充值/订阅创单。"""
+    user_id_in_db = db.execute(
+        select(User.id).where(User.id == user_id).with_for_update()
+    ).scalar_one_or_none()
+    if user_id_in_db is None:
+        raise OrderStateError("用户不存在")
+
+
+def _ensure_can_create_order(db: Session, user_id: int) -> None:
+    _lock_user_for_order_creation(db, user_id)
+    expire_pending_orders(db, user_id=user_id)
+    if has_active_pending_order(db, user_id):
+        raise OrderStateError("当前已有待支付订单，请先完成支付或取消原订单")
+
+
+def close_pending_order(db: Session, order_no: str, current_user_id: int) -> Order:
+    """关闭当前用户的待支付订单，已关闭订单重复调用保持幂等。"""
+    order: Order | None = db.execute(
+        select(Order).where(Order.order_no == order_no).with_for_update()
+    ).scalar_one_or_none()
+    if not order or order.user_id != current_user_id:
+        raise OrderStateError(f"订单不存在: {order_no}")
+    if order.status == "CANCELLED":
+        return order
+    if order.status != "PENDING":
+        raise OrderStateError(f"订单状态不可取消 (当前: {order.status})")
+
+    _close_expired_order(order)
+    if order.status == "PENDING":
+        order.status = "CANCELLED"
+        order.cancelled_at = datetime.now()
+        order.mock_qrcode_token = None
+    db.flush()
+    return order
 
 
 def list_user_orders(db: Session, user_id: int, page: int = 1, page_size: int = 20):
@@ -109,6 +202,7 @@ def create_alipay_payment(db: Session, order_no: str, current_user_id: int) -> s
     ).scalar_one_or_none()
     if not order or order.user_id != current_user_id:
         raise OrderStateError(f"订单不存在: {order_no}")
+    _close_expired_order(order)
     if order.status != "PENDING":
         raise OrderStateError(f"订单状态非 PENDING (当前: {order.status})")
     if order.pay_method != "ALIPAY":
@@ -126,6 +220,8 @@ def create_recharge_order(
 ) -> Order:
     if pay_method not in ORDER_PAY_METHODS:
         raise InvalidTransactionError(f"不支持的支付方式: {pay_method}")
+
+    _ensure_can_create_order(db, user_id)
 
     pkg = db.execute(
         select(RechargePackage).where(
@@ -146,6 +242,7 @@ def create_recharge_order(
         credits_amount=pkg.credits,
         status="PENDING",
         pay_method=pay_method,
+        expires_at=datetime.now() + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
     if pay_method in ("ALIPAY", "WECHAT"):
@@ -163,6 +260,8 @@ def create_subscription_order(
 ) -> Order:
     if pay_method not in ORDER_PAY_METHODS:
         raise InvalidTransactionError(f"不支持的支付方式: {pay_method}")
+
+    _ensure_can_create_order(db, user_id)
 
     plan = db.execute(
         select(SubscriptionPlan).where(
@@ -186,6 +285,7 @@ def create_subscription_order(
         credits_amount=plan.monthly_credits,  # 首期发放量
         status="PENDING",
         pay_method=pay_method,
+        expires_at=datetime.now() + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
     if pay_method in ("ALIPAY", "WECHAT"):
@@ -258,6 +358,7 @@ def mock_pay(
         # 用户隔离; 严格来说这是安全事件, 但对外表现为订单不存在
         raise OrderStateError(f"订单不存在: {order_no}")
 
+    _close_expired_order(order)
     if order.status != "PENDING":
         raise OrderStateError(f"订单状态非 PENDING (当前: {order.status})")
 
@@ -289,6 +390,10 @@ def settle_order_by_gateway(
 
     if order.status != "PENDING":
         logger.warning(f"[order] settle_order_by_gateway: 订单状态非 PENDING/PAID (当前 {order.status}), order_no={order_no}")
+        return None
+
+    if _close_expired_order(order):
+        logger.info("[order] settle skipped expired order_no=%s", order_no)
         return None
 
     _settle_paid_order(db, order=order, trade_no=trade_no, raw_payload=raw_payload)
@@ -350,20 +455,5 @@ def reconcile_pending_gateway_orders(db: Session, *, min_age_minutes: int = 2) -
 # ---------- 定时清理 ----------
 
 def cleanup_stale_pending_orders(db: Session, older_than_hours: int = 24) -> int:
-    """将 PENDING 且 created_at < now - N 小时的订单 set CANCELLED"""
-    from datetime import timedelta
-
-    cutoff = datetime.now() - timedelta(hours=older_than_hours)
-    result = db.execute(
-        update(Order)
-        .where(
-            and_(
-                Order.status == "PENDING",
-                Order.created_at < cutoff,
-            )
-        )
-        .values(status="CANCELLED", cancelled_at=datetime.now(), mock_qrcode_token=None)
-    )
-    count = result.rowcount or 0
-    logger.info(f"[order] cleanup_stale: {count} 个 PENDING 订单已取消 (>{older_than_hours}h)")
-    return count
+    """兼容旧调用方：统一按 15 分钟规则关闭待支付订单。"""
+    return expire_pending_orders(db)

@@ -61,7 +61,9 @@ export interface Order {
   is_first_subscription: boolean
   paid_at: string | null
   cancelled_at: string | null
-  created_at: string
+  expires_at: string | null
+  remaining_seconds: number | null
+  created_at: string | null
 }
 
 export interface CreditTransaction {
@@ -149,6 +151,9 @@ export const billingApi = {
 
   getOrder: (order_no: string) => request.get<any, Order>(`/billing/order/${order_no}`),
 
+  cancelOrder: (order_no: string) =>
+    request.post<any, Order>(`/billing/order/${order_no}/cancel`),
+
   listOrders: (page: number = 1, page_size: number = 20) =>
     request.get<any, Paginated<Order>>('/billing/orders', { params: { page, page_size } }),
 
@@ -193,4 +198,11 @@ export const ORDER_STATUS_LABEL: Record<string, string> = {
   PAID: '已支付',
   CANCELLED: '已取消',
   REFUNDED: '已退款',
+}
+
+export function formatRemainingSeconds(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds))
+  const minutes = Math.floor(safeSeconds / 60)
+  const remainder = safeSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
 }
