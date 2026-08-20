@@ -240,7 +240,7 @@ INSERT INTO credit_pricing (model_name, rate_per_minute, is_active, is_default, 
 
 -- 充值套餐 (与截图严格对齐)
 INSERT INTO recharge_packages (code, name, price_cents, credits, unit_price_text, sort_order, badge, is_active, description) VALUES
-  ('PKG_BASIC',    '入门包', 990,  100,  '¥0.099/电力', 1, NULL,         1, '≈5 篇 30 分钟视频'),
+  ('PKG_BASIC',    '入门包', 1,    100,  '¥0.0001/电力', 1, NULL,         1, '≈5 篇 30 分钟视频'),
   ('PKG_STANDARD', '标准包', 2900, 350,  '¥0.083/电力', 2, '最受欢迎',   1, '≈17 篇 30 分钟视频'),
   ('PKG_PRO',      '专业包', 9900, 1500, '¥0.066/电力', 3, NULL,         1, '≈75 篇 30 分钟视频');
 
