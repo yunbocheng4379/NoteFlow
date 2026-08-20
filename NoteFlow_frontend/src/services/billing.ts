@@ -196,7 +196,7 @@ export const TX_TYPE_LABEL: Record<string, string> = {
 export const ORDER_STATUS_LABEL: Record<string, string> = {
   PENDING: '待支付',
   PAID: '已支付',
-  CANCELLED: '已取消',
+  CANCELLED: '已关闭',
   REFUNDED: '已退款',
 }
 
