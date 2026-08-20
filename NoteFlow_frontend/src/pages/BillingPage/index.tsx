@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Zap, ArrowUpRight, ArrowDownRight, Loader2, ReceiptText, CreditCard } from 'lucide-react'
+import { Zap, ArrowUpRight, ArrowDownRight, Loader2, ReceiptText, CreditCard, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   billingApi,
@@ -14,6 +14,16 @@ import {
 } from '@/services/billing'
 import { useUserStore } from '@/store/userStore'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import PayDialog from '@/pages/UpgradePage/PayDialog'
 
 type Tab = 'transactions' | 'orders'
@@ -30,6 +40,7 @@ const BillingPage = () => {
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
   const [cancellingOrderNo, setCancellingOrderNo] = useState<string | null>(null)
   const [hidingOrderNo, setHidingOrderNo] = useState<string | null>(null)
+  const [pendingHideOrder, setPendingHideOrder] = useState<Order | null>(null)
 
   useEffect(() => {
     refreshBalance()
@@ -94,12 +105,18 @@ const BillingPage = () => {
     }
   }
 
-  const hideOrder = async (order: Order) => {
-    if (!window.confirm('确定从订单记录中移除这条已关闭订单吗？订单数据仍会保留。')) return
+  const hideOrder = (order: Order) => {
+    setPendingHideOrder(order)
+  }
+
+  const confirmHideOrder = async () => {
+    if (!pendingHideOrder) return
+    const order = pendingHideOrder
     setHidingOrderNo(order.order_no)
     try {
       await billingApi.hideOrder(order.order_no)
       toast.success('订单记录已移除')
+      setPendingHideOrder(null)
       await loadOrders()
     } catch (e: any) {
       toast.error(e?.msg || '移除订单记录失败')
@@ -225,6 +242,44 @@ const BillingPage = () => {
           refreshBalance()
         }}
       />
+
+      <AlertDialog
+        open={pendingHideOrder !== null}
+        onOpenChange={open => {
+          if (!open && !hidingOrderNo) setPendingHideOrder(null)
+        }}
+      >
+        <AlertDialogContent className="max-w-[360px] gap-0 rounded-xl p-6 sm:max-w-[360px]">
+          <button
+            type="button"
+            aria-label="关闭"
+            disabled={hidingOrderNo !== null}
+            onClick={() => setPendingHideOrder(null)}
+            className="absolute right-4 top-4 text-neutral-400 transition-colors hover:text-neutral-700 disabled:pointer-events-none disabled:opacity-50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <AlertDialogHeader className="gap-1.5 text-left">
+            <AlertDialogTitle className="text-lg">确认删除</AlertDialogTitle>
+            <AlertDialogDescription className="leading-relaxed">
+              确定从订单记录中移除这条已关闭订单吗？订单数据仍会保留，但此操作不可恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-5 sm:flex-row sm:justify-end">
+            <AlertDialogCancel disabled={hidingOrderNo !== null}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={hidingOrderNo !== null}
+              onClick={event => {
+                event.preventDefault()
+                void confirmHideOrder()
+              }}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {hidingOrderNo !== null ? '删除中…' : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
