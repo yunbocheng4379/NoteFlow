@@ -289,6 +289,27 @@ def cancel_order(
         raise
 
 
+@router.post("/order/{order_no}/hide")
+def hide_order(
+    order_no: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        order = order_service.hide_order(
+            db, order_no=order_no, current_user_id=current_user.id
+        )
+        db.commit()
+        db.refresh(order)
+        return R.success(_serialize_order(order))
+    except BillingError as e:
+        db.rollback()
+        return R.error(msg=e.message, code=e.code, data=e.data)
+    except Exception:
+        db.rollback()
+        raise
+
+
 class MockPayReq(BaseModel):
     order_no: str
     mock_qrcode_token: str

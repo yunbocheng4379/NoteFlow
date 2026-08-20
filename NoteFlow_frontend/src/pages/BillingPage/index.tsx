@@ -29,6 +29,7 @@ const BillingPage = () => {
   const [loadingOrder, setLoadingOrder] = useState(false)
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
   const [cancellingOrderNo, setCancellingOrderNo] = useState<string | null>(null)
+  const [hidingOrderNo, setHidingOrderNo] = useState<string | null>(null)
 
   useEffect(() => {
     refreshBalance()
@@ -90,6 +91,20 @@ const BillingPage = () => {
       toast.error(e?.msg || '取消订单失败')
     } finally {
       setCancellingOrderNo(null)
+    }
+  }
+
+  const hideOrder = async (order: Order) => {
+    if (!window.confirm('确定从订单记录中移除这条已关闭订单吗？订单数据仍会保留。')) return
+    setHidingOrderNo(order.order_no)
+    try {
+      await billingApi.hideOrder(order.order_no)
+      toast.success('订单记录已移除')
+      await loadOrders()
+    } catch (e: any) {
+      toast.error(e?.msg || '移除订单记录失败')
+    } finally {
+      setHidingOrderNo(null)
     }
   }
 
@@ -193,6 +208,8 @@ const BillingPage = () => {
               onRePay={rePay}
               onCancel={cancelOrder}
               cancellingOrderNo={cancellingOrderNo}
+              onHide={hideOrder}
+              hidingOrderNo={hidingOrderNo}
               onRefresh={loadOrders}
             />
           )}
@@ -284,6 +301,8 @@ const OrdersList = ({
   onRePay,
   onCancel,
   cancellingOrderNo,
+  onHide,
+  hidingOrderNo,
   onRefresh,
 }: {
   data: Paginated<Order> | null
@@ -293,6 +312,8 @@ const OrdersList = ({
   onRePay: (o: Order) => void
   onCancel: (o: Order) => void
   cancellingOrderNo: string | null
+  onHide: (o: Order) => void
+  hidingOrderNo: string | null
   onRefresh: () => Promise<void>
 }) => {
   const [now, setNow] = useState(() => Date.now())
@@ -386,6 +407,15 @@ const OrdersList = ({
                       {cancellingOrderNo === o.order_no ? '取消中…' : '取消订单'}
                     </button>
                   </div>
+                )}
+                {o.status === 'CANCELLED' && (
+                  <button
+                    onClick={() => onHide(o)}
+                    disabled={hidingOrderNo === o.order_no}
+                    className="text-xs font-medium text-neutral-500 hover:text-red-500 hover:underline disabled:opacity-50"
+                  >
+                    {hidingOrderNo === o.order_no ? '移除中…' : '移除记录'}
+                  </button>
                 )}
               </td>
             </tr>

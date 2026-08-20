@@ -154,6 +154,9 @@ export const billingApi = {
   cancelOrder: (order_no: string) =>
     request.post<any, Order>(`/billing/order/${order_no}/cancel`),
 
+  hideOrder: (order_no: string) =>
+    request.post<any, Order>(`/billing/order/${order_no}/hide`),
+
   listOrders: (page: number = 1, page_size: number = 20) =>
     request.get<any, Paginated<Order>>('/billing/orders', { params: { page, page_size } }),
 

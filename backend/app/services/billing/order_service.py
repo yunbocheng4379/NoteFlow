@@ -51,9 +51,13 @@ def is_first_subscription(db: Session, user_id: int, plan_id: int) -> bool:
 
 
 def get_order_by_no(db: Session, user_id: int, order_no: str) -> Optional[Order]:
-    """用户隔离查订单"""
+    """用户隔离查订单，已隐藏的订单对普通用户不可见。"""
     return db.execute(
-        select(Order).where(Order.user_id == user_id, Order.order_no == order_no)
+        select(Order).where(
+            Order.user_id == user_id,
+            Order.order_no == order_no,
+            Order.hidden_at.is_(None),
+        )
     ).scalar_one_or_none()
 
 
@@ -147,19 +151,36 @@ def close_pending_order(db: Session, order_no: str, current_user_id: int) -> Ord
     return order
 
 
+def hide_order(db: Session, order_no: str, current_user_id: int) -> Order:
+    """隐藏当前用户的一条已关闭订单记录，底层订单数据仍然保留。"""
+    order: Order | None = db.execute(
+        select(Order).where(Order.order_no == order_no).with_for_update()
+    ).scalar_one_or_none()
+    if not order or order.user_id != current_user_id:
+        raise OrderStateError(f"订单不存在: {order_no}")
+    if order.hidden_at is not None:
+        return order
+    if order.status != "CANCELLED":
+        raise OrderStateError("只有已关闭订单可以移除记录")
+
+    order.hidden_at = datetime.now()
+    db.flush()
+    return order
+
+
 def list_user_orders(db: Session, user_id: int, page: int = 1, page_size: int = 20):
     page = max(1, int(page))
     page_size = max(1, min(100, int(page_size)))
     offset = (page - 1) * page_size
 
     total = db.execute(
-        select(Order).where(Order.user_id == user_id)
+        select(Order).where(Order.user_id == user_id, Order.hidden_at.is_(None))
     ).scalars().all()
     total_count = len(total)
 
     rows = db.execute(
         select(Order)
-        .where(Order.user_id == user_id)
+        .where(Order.user_id == user_id, Order.hidden_at.is_(None))
         .order_by(Order.created_at.desc())
         .offset(offset)
         .limit(page_size)

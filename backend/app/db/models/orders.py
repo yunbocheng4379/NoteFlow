@@ -36,5 +36,6 @@ class Order(Base):
     paid_at = Column(DateTime, nullable=True, comment="支付完成时间")
     cancelled_at = Column(DateTime, nullable=True, comment="取消时间")
     expires_at = Column(DateTime, nullable=True, comment="待支付订单过期时间")
+    hidden_at = Column(DateTime, nullable=True, comment="用户隐藏订单记录时间")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="更新时间")
