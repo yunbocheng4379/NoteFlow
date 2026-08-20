@@ -5,12 +5,27 @@
 --   docker exec -i noteflow-mysql mysql -uroot -p$MYSQL_ROOT_PASSWORD noteflow \
 --     < backend/sql/migrate_add_order_expiry.sql
 --
--- 可重复执行: MySQL 8 的 ADD COLUMN IF NOT EXISTS 会跳过已存在的字段。
+-- 可重复执行: 通过 information_schema 判断字段是否已经存在，兼容旧版 MySQL。
 -- =============================================================================
 USE noteflow;
 
-ALTER TABLE orders
-  ADD COLUMN IF NOT EXISTS expires_at DATETIME NULL COMMENT '待支付订单过期时间' AFTER cancelled_at;
+SET @order_expiry_column_exists := (
+  SELECT COUNT(*)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'orders'
+    AND column_name = 'expires_at'
+);
+
+SET @add_order_expiry_sql := IF(
+  @order_expiry_column_exists = 0,
+  'ALTER TABLE orders ADD COLUMN expires_at DATETIME NULL AFTER cancelled_at',
+  'SELECT 1'
+);
+
+PREPARE add_order_expiry_stmt FROM @add_order_expiry_sql;
+EXECUTE add_order_expiry_stmt;
+DEALLOCATE PREPARE add_order_expiry_stmt;
 
 UPDATE orders
 SET expires_at = DATE_ADD(created_at, INTERVAL 15 MINUTE)
