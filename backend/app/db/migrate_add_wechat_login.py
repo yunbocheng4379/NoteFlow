@@ -5,7 +5,7 @@
 新库部署可直接走 init_db() (Base.metadata.create_all 已包含这些列),
 本脚本仅用于已有数据库的平滑升级, 自动通过 ALTER TABLE 添加列.
 """
-import sqlite3
+from sqlalchemy import text
 
 from app.db.engine import get_engine
 
@@ -18,13 +18,17 @@ MIGRATIONS = [
 
 def run():
     engine = get_engine()
-    with engine.connect() as conn:
-        # 检查是否为 SQLite
-        dialect = engine.dialect.name
-        if dialect != "sqlite":
-            print(f"[wechat-migrate] 数据库类型为 {dialect}, 跳过 ALTER TABLE 迁移 (请用 Alembic 等工具)")
-            return
+    dialect = engine.dialect.name
+    if dialect == "sqlite":
+        _run_sqlite(engine)
+    elif dialect == "mysql":
+        _run_mysql(engine)
+    else:
+        print(f"[wechat-migrate] 未知数据库方言 {dialect}, 请手动执行 ALTER TABLE")
 
+
+def _run_sqlite(engine):
+    with engine.connect() as conn:
         raw_conn = conn.connection  # sqlite3 原生连接
         existing_cols = {
             row[1]
@@ -41,6 +45,41 @@ def run():
 
         conn.commit()
     print("[wechat-migrate] 迁移完成")
+
+
+def _run_mysql(engine):
+    migrations = [
+        (
+            "wechat_openid",
+            "VARCHAR(64) NULL COMMENT '微信小程序 openid, 用于快捷登录' "
+            "AFTER hashed_password, ADD UNIQUE KEY uk_users_wechat_openid (wechat_openid)",
+        ),
+        (
+            "wechat_unionid",
+            "VARCHAR(64) NULL COMMENT '微信开放平台 unionid, 跨应用统一用户标识' "
+            "AFTER wechat_openid, ADD UNIQUE KEY uk_users_wechat_unionid (wechat_unionid)",
+        ),
+    ]
+
+    with engine.connect() as conn:
+        for column_name, column_definition in migrations:
+            exists = conn.execute(
+                text(
+                    "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' "
+                    f"AND COLUMN_NAME = '{column_name}'"
+                )
+            ).scalar()
+            if exists:
+                print(f"[wechat-migrate] MySQL: 列 {column_name} 已存在, 跳过")
+                continue
+
+            sql = f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"
+            print(f"[wechat-migrate] MySQL 执行: {sql}")
+            conn.execute(text(sql))
+
+        conn.commit()
+    print("[wechat-migrate] MySQL: 迁移完成")
 
 
 if __name__ == "__main__":

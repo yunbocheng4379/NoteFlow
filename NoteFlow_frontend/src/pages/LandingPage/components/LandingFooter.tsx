@@ -2,6 +2,27 @@ import { Link } from 'react-router-dom'
 import BrandLogo from '@/components/BrandLogo'
 import { GITHUB_URL } from '../constants'
 
+const COLUMNS = [
+  {
+    title: '产品',
+    links: [
+      { label: '功能介绍', href: '/welcome#features', internal: true },
+      { label: '立即使用', href: '/login', internal: true },
+    ],
+  },
+  {
+    title: '指南',
+    links: [
+      { label: '快速开始', href: '/guide/quick-start', internal: true },
+      { label: '会员说明', href: '/guide/membership', internal: true },
+    ],
+  },
+  {
+    title: '社区',
+    links: [{ label: 'GitHub', href: GITHUB_URL, internal: false }],
+  },
+]
+
 export default function LandingFooter() {
   return (
     <footer className="border-t border-neutral-100 bg-[#fbfaf7] py-16">
