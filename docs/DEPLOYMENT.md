@@ -2,6 +2,8 @@
 
 本文档用于部署 NoteFlow Web 系统，适用于 Linux 服务器，也适用于本地 Docker Desktop 验证。
 
+正式环境如需交给 AI 执行，请优先阅读并遵循 [AI 正式环境部署 Runbook](./AI_DEPLOYMENT_RUNBOOK.md)。本文件后续章节保留通用的首次部署、Docker、模型和数据运维说明。
+
 当前 Docker Compose 会启动 4 个服务：
 
 - `noteflow-mysql`：MySQL 8.0 数据库
@@ -304,10 +306,16 @@ docker exec noteflow-mysql mysqldump \
 
 ### 3.2 拉取最新代码
 
+先确认服务器工作区没有正式环境专用修改，并确认当前分支可以快进；不要在分叉或脏工作区直接覆盖文件：
+
 ```bash
 cd /opt/NoteFlow
-git pull
+git status --short
+git fetch origin main
+git pull --ff-only origin main
 ```
+
+如果 `git pull --ff-only` 失败，停止并按 [AI 正式环境部署 Runbook](./AI_DEPLOYMENT_RUNBOOK.md) 的服务器预检规则处理，不要使用 `git reset --hard` 或强制覆盖。
 
 ### 3.3 重新构建并启动
 
