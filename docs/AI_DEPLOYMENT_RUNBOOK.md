@@ -53,8 +53,10 @@ git clean -fd
 前端变更至少执行：
 
 ```bash
-pnpm --dir NoteFlow_frontend build
+VITE_WEB_BUILD=1 pnpm --dir NoteFlow_frontend build
 ```
+
+正式 Web 构建必须设置 `VITE_WEB_BUILD=1`（Docker 构建会自动使用 `DOCKER_BUILD=1`）。这样生成的资源路径是 `/assets/...`，在 `/payment/alipay/return` 等嵌套路由下不会被解析成 `/payment/alipay/assets/...`。
 
 后端变更执行对应的测试；支付、订单、数据库迁移、视频搜索变更优先执行相关 `backend/tests/` 测试。任何非零退出码都必须先解决，不能以“线上再看”为理由继续发布。
 
@@ -183,6 +185,7 @@ docker restart noteflow-backend
 
 ```bash
 # 本地
+VITE_WEB_BUILD=1 pnpm --dir NoteFlow_frontend build
 tar -czf /tmp/noteflow-frontend-dist-$(date +%Y%m%d%H%M%S).tar.gz -C NoteFlow_frontend dist
 scp /tmp/noteflow-frontend-dist-*.tar.gz root@47.99.136.241:/tmp/
 

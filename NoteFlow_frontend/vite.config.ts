@@ -31,9 +31,12 @@ export default defineConfig(({ mode }) => {
   const apiProxyTarget = resolveProxyTarget(apiBaseUrl, env.VITE_PROXY_TARGET)
   const port = parseInt(env.VITE_FRONTEND_PORT || '3015', 10)
   const appVersion = env.VITE_APP_VERSION || process.env.VITE_APP_VERSION || readAppVersion()
+  const isWebBuild = process.env.DOCKER_BUILD === '1' || process.env.VITE_WEB_BUILD === '1'
 
   return {
-    base: process.env.DOCKER_BUILD ? '/' : './',
+    // Browser web routes can be nested (for example /payment/alipay/return),
+    // so their assets must resolve from the site root. Tauri keeps relative assets.
+    base: isWebBuild ? '/' : './',
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
     },
