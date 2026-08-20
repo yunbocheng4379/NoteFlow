@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import tailwindcss from '@tailwindcss/vite'
+import { resolveProxyTarget } from './viteProxyTarget.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -27,6 +28,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, envDir)
 
   const apiBaseUrl = env.VITE_API_BASE_URL || 'http://127.0.0.1:8483'
+  const apiProxyTarget = resolveProxyTarget(apiBaseUrl, env.VITE_PROXY_TARGET)
   const port = parseInt(env.VITE_FRONTEND_PORT || '3015', 10)
   const appVersion = env.VITE_APP_VERSION || process.env.VITE_APP_VERSION || readAppVersion()
 
@@ -58,12 +60,12 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true, // 允许任意域名访问
       proxy: {
         '/api': {
-          target: apiBaseUrl,
+          target: apiProxyTarget,
           changeOrigin: true,
           rewrite: path => path.replace(/^\/api/, '/api'),
         },
         '/static': {
-          target: apiBaseUrl,
+          target: apiProxyTarget,
           changeOrigin: true,
           rewrite: path => path.replace(/^\/static/, '/static'),
         },
