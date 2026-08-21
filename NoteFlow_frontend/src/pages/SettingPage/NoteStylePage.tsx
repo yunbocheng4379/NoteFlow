@@ -1,12 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, Globe, Lock, Trash2, Pencil, X } from 'lucide-react'
+import { Search, Plus, Globe, Lock, Trash2, Pencil, Eye } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import toast from 'react-hot-toast'
 import { noteStyleApi, type NoteStyle, type CreateStyleParams } from '@/services/note_style'
 import ConfirmDialog from '@/components/ConfirmDialog'
+import 'github-markdown-css/github-markdown-light.css'
 
 type Category = 'all' | 'system' | 'user' | 'public'
 
@@ -33,6 +42,68 @@ const PROMPT_ICONS: { key: string; label: string }[] = [
 
 function styleIconUrl(key: string) {
   return `/prompt_icon/icons/${key}.png`
+}
+
+interface MarkdownEditorProps {
+  value: string
+  onChange: (value: string) => void
+  maxLength: number
+  placeholder: string
+}
+
+function MarkdownPreview({ value }: { value: string }) {
+  return (
+    <div className="markdown-body !bg-transparent text-sm [&_*]:!bg-transparent">
+      {value.trim() ? (
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+      ) : (
+        <p className="text-sm text-gray-400">暂无内容</p>
+      )}
+    </div>
+  )
+}
+
+function MarkdownEditor({ value, onChange, maxLength, placeholder }: MarkdownEditorProps) {
+  const [mode, setMode] = useState<'edit' | 'preview'>('edit')
+
+  return (
+    <div className="overflow-hidden rounded-md border border-neutral-200 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+      <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-2 py-1">
+        <div className="flex items-center gap-1">
+          {(['edit', 'preview'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setMode(item)}
+              className={`rounded px-2.5 py-1 text-xs transition-colors ${
+                mode === item
+                  ? 'bg-white font-medium text-primary shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {item === 'edit' ? '编辑 Markdown' : '预览'}
+            </button>
+          ))}
+        </div>
+        <span className="text-[11px] text-gray-400">{value.length}/{maxLength}</span>
+      </div>
+
+      {mode === 'edit' ? (
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          maxLength={maxLength}
+          rows={9}
+          placeholder={placeholder}
+          className="block min-h-[220px] w-full resize-y border-0 px-3 py-2 text-sm leading-6 outline-none focus:ring-0"
+        />
+      ) : (
+        <div className="min-h-[220px] max-h-[320px] overflow-y-auto px-3 py-2">
+          <MarkdownPreview value={value} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 // 首字母头像兜底
@@ -232,15 +303,12 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
                 风格提示词 <span className="text-red-400">*</span>
                 <span className="ml-1 text-[11px] text-gray-400 font-normal">(最多 2000 字)</span>
               </label>
-              <textarea
+              <MarkdownEditor
                 value={form.prompt}
-                onChange={set('prompt')}
+                onChange={(prompt) => setForm((p) => ({ ...p, prompt }))}
                 maxLength={2000}
-                rows={5}
-                placeholder="描述你希望 LLM 以什么风格生成笔记..."
-                className="w-full rounded-md border border-neutral-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                placeholder="使用 Markdown 描述你希望 LLM 以什么风格生成笔记..."
               />
-              <div className="text-right text-[11px] text-gray-300">{form.prompt.length}/2000</div>
             </div>
 
             {/* Public toggle */}
@@ -286,21 +354,81 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
   )
 }
 
+// ── Style Details Modal ─────────────────────────────────────────────────────
+
+interface StyleDetailsModalProps {
+  style: NoteStyle
+  onClose: () => void
+}
+
+function StyleDetailsModal({ style, onClose }: StyleDetailsModalProps) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {style.name}
+            {style.source === 'system' && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20"
+              >
+                内置
+              </Badge>
+            )}
+          </DialogTitle>
+          <DialogDescription>查看该笔记风格的简介和风格提示词。</DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 space-y-5 overflow-y-auto pr-1">
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">简介</h3>
+            <p className="rounded-lg bg-neutral-50 px-4 py-3 text-sm leading-6 text-gray-700">
+              {style.description || '暂无简介'}
+            </p>
+          </section>
+
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">风格提示词</h3>
+            <div className="max-h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white px-4 py-3">
+              <MarkdownPreview value={style.prompt || ''} />
+            </div>
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ── Style Card ───────────────────────────────────────────────────────────────
 
 interface StyleCardProps {
   style: NoteStyle
   currentUserId?: number | null
+  isAdmin: boolean
+  onView: (s: NoteStyle) => void
   onEdit: (s: NoteStyle) => void
   onDelete: (id: number) => void
   onTogglePublic: (id: number, val: boolean) => void
 }
 
-function StyleCard({ style, currentUserId, onEdit, onDelete, onTogglePublic }: StyleCardProps) {
+function StyleCard({
+  style,
+  currentUserId,
+  isAdmin,
+  onView,
+  onEdit,
+  onDelete,
+  onTogglePublic,
+}: StyleCardProps) {
   const isOwner = style.source === 'user' && style.user_id === currentUserId
+  const isSystemStyle = style.source === 'system'
+  const canManageSystemStyle = isSystemStyle && isAdmin
 
   return (
-    <div className="group relative rounded-xl border border-neutral-200 bg-white p-4 hover:border-primary/30 hover:shadow-sm transition-all">
+    <div
+      className="group relative rounded-xl border border-neutral-200 bg-white p-4 transition-all hover:border-primary/30 hover:shadow-sm"
+    >
       <div className="flex items-start gap-3">
         {/* Icon / Avatar */}
         {style.icon ? (
@@ -317,7 +445,7 @@ function StyleCard({ style, currentUserId, onEdit, onDelete, onTogglePublic }: S
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-gray-900 truncate">{style.name}</span>
             {style.source === 'system' && (
@@ -345,6 +473,53 @@ function StyleCard({ style, currentUserId, onEdit, onDelete, onTogglePublic }: S
           )}
         </div>
       </div>
+
+      {/* Built-in style actions: visible only when hovering/focusing the card. */}
+      {isSystemStyle && (
+        <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <button
+            type="button"
+            aria-label={`查看${style.name}详情`}
+            title="查看详情"
+            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            onClick={(event) => {
+              event.stopPropagation()
+              onView(style)
+            }}
+          >
+            <Eye size={15} />
+          </button>
+
+          {canManageSystemStyle && (
+            <>
+              <button
+                type="button"
+                aria-label={`编辑${style.name}`}
+                title="编辑"
+                className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onEdit(style)
+                }}
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                type="button"
+                aria-label={`删除${style.name}`}
+                title="删除"
+                className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDelete(style.id)
+                }}
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Owner actions */}
       {isOwner && (
@@ -386,13 +561,14 @@ import { useUserStore } from '@/store/userStore'
 
 export default function NoteStylePage() {
   const user = useUserStore((s) => s.user)
+  const isAdmin = !!user?.is_admin
   const [allStyles, setAllStyles] = useState<NoteStyle[]>([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState<Category>('all')
   const [keyword, setKeyword] = useState('')
-  const [searchInput, setSearchInput] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editTarget, setEditTarget] = useState<NoteStyle | undefined>(undefined)
+  const [detailTarget, setDetailTarget] = useState<NoteStyle | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -432,11 +608,6 @@ export default function NoteStylePage() {
     fetchStyles()
   }, [fetchStyles])
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    setKeyword(searchInput)
-  }
-
   const handleDelete = async () => {
     if (pendingDeleteId === null) return
     setDeleting(true)
@@ -456,7 +627,7 @@ export default function NoteStylePage() {
     fetchStyles()
   }
 
-  const handleSaved = (_style: NoteStyle) => {
+  const handleSaved = () => {
     setShowModal(false)
     setEditTarget(undefined)
     fetchStyles()
@@ -508,27 +679,18 @@ export default function NoteStylePage() {
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 border-b border-neutral-100 px-6 py-3">
-        <form onSubmit={handleSearch} className="flex-1 relative max-w-sm">
+        <div className="relative max-w-sm flex-1">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
           />
           <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
             placeholder="搜索名称或描述..."
             className="w-full h-8 pl-8 pr-3 rounded-lg border border-neutral-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
           />
-        </form>
-
-        {keyword && (
-          <button
-            onClick={() => { setKeyword(''); setSearchInput('') }}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600"
-          >
-            <X size={12} /> 清除
-          </button>
-        )}
+        </div>
 
         <div className="ml-auto">
           <Button
@@ -574,6 +736,8 @@ export default function NoteStylePage() {
                 key={s.id}
                 style={s}
                 currentUserId={user?.id ?? null}
+                isAdmin={isAdmin}
+                onView={setDetailTarget}
                 onEdit={openEdit}
                 onDelete={setPendingDeleteId}
                 onTogglePublic={handleTogglePublic}
@@ -588,6 +752,13 @@ export default function NoteStylePage() {
           initial={editTarget}
           onClose={() => { setShowModal(false); setEditTarget(undefined) }}
           onSaved={handleSaved}
+        />
+      )}
+
+      {detailTarget && (
+        <StyleDetailsModal
+          style={detailTarget}
+          onClose={() => setDetailTarget(null)}
         />
       )}
 

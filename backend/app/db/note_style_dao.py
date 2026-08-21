@@ -29,6 +29,7 @@ def get_styles(
     db = next(get_db())
     try:
         q = db.query(NoteStyle)
+        q = q.filter(NoteStyle.is_deleted.is_(False))
 
         if category == "system":
             q = q.filter(NoteStyle.source == "system")
@@ -61,7 +62,7 @@ def get_styles(
 def get_style_by_value(value: str) -> Optional[dict]:
     db = next(get_db())
     try:
-        s = db.query(NoteStyle).filter_by(value=value).first()
+        s = db.query(NoteStyle).filter_by(value=value, is_deleted=False).first()
         return _to_dict(s) if s else None
     finally:
         db.close()
@@ -96,10 +97,25 @@ def create_style(
         db.close()
 
 
-def update_style(style_id: int, user_id: int, **kwargs) -> Optional[dict]:
+def can_manage_style(style: NoteStyle, user_id: int, is_admin: bool = False) -> bool:
+    """Return whether a user may mutate the supplied style record."""
+    if style.source == "system":
+        return bool(is_admin)
+    return style.source == "user" and style.user_id == user_id
+
+
+def _get_manageable_style(db, style_id: int, user_id: int, is_admin: bool) -> Optional[NoteStyle]:
+    styles = db.query(NoteStyle).filter_by(id=style_id, is_deleted=False).all()
+    for style in styles:
+        if can_manage_style(style, user_id=user_id, is_admin=is_admin):
+            return style
+    return None
+
+
+def update_style(style_id: int, user_id: int, is_admin: bool = False, **kwargs) -> Optional[dict]:
     db = next(get_db())
     try:
-        s = db.query(NoteStyle).filter_by(id=style_id, user_id=user_id, source="user").first()
+        s = _get_manageable_style(db, style_id, user_id=user_id, is_admin=is_admin)
         if not s:
             return None
         for k, v in kwargs.items():
@@ -112,13 +128,16 @@ def update_style(style_id: int, user_id: int, **kwargs) -> Optional[dict]:
         db.close()
 
 
-def delete_style(style_id: int, user_id: int) -> bool:
+def delete_style(style_id: int, user_id: int, is_admin: bool = False) -> bool:
     db = next(get_db())
     try:
-        s = db.query(NoteStyle).filter_by(id=style_id, user_id=user_id, source="user").first()
+        s = _get_manageable_style(db, style_id, user_id=user_id, is_admin=is_admin)
         if not s:
             return False
-        db.delete(s)
+        if s.source == "system":
+            s.is_deleted = True
+        else:
+            db.delete(s)
         db.commit()
         return True
     finally:
@@ -238,7 +257,7 @@ def seed_system_styles():
                     is_public=False,
                 )
                 db.add(s)
-            elif not existing.icon and item.get("icon"):
+            elif not existing.is_deleted and not existing.icon and item.get("icon"):
                 # 补齐旧版本 seed 遗留的空 icon 字段
                 existing.icon = item["icon"]
         db.commit()

@@ -158,14 +158,11 @@ const ExplorePanel: FC<ExplorePanelProps> = ({
             aria-label="视频搜索关键词"
           />
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleClear}
-          disabled={!keyword && items.length === 0}
-        >
-          清除
-        </Button>
+        {keyword.trim() && (
+          <Button type="button" variant="outline" onClick={handleClear}>
+            清除
+          </Button>
+        )}
       </div>
 
       {/* Results area */}

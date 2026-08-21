@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Zap, Check, Sparkles, Download, HelpCircle, Infinity as InfIcon } from 'lucide-react'
+import { Zap, Check, Sparkles, HelpCircle, Headphones, Infinity as InfIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   billingApi,
@@ -10,6 +10,15 @@ import {
   SubscriptionPlan,
 } from '@/services/billing'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
 import PayDialog from './PayDialog'
 
 type Tab = 'recharge' | 'subscription'
@@ -22,6 +31,7 @@ const UpgradePage = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false)
 
   // URL ?tab= 变化时同步切换 (支持从账单页带参跳转 / 浏览器前进后退)
   useEffect(() => {
@@ -141,8 +151,16 @@ const UpgradePage = () => {
         <FAQ />
 
         {/* 底部提示 */}
-        <div className="mt-8 border-t border-neutral-200 pt-6 text-center text-xs text-neutral-400">
-          所有支付通过支付宝官方渠道处理，不存储您的支付信息。电力到账后不支持退款，请按需购买。
+        <div className="mt-8 flex flex-col items-center gap-3 border-t border-neutral-200 pt-6 text-center text-xs text-neutral-400 sm:flex-row sm:justify-between sm:text-left">
+          <p>所有支付通过支付宝官方渠道处理，不存储您的支付信息。电力到账后请按实际需求使用。</p>
+          <button
+            type="button"
+            onClick={() => setRefundDialogOpen(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+          >
+            <Headphones className="h-3.5 w-3.5" />
+            退款说明
+          </button>
         </div>
       </div>
 
@@ -152,6 +170,8 @@ const UpgradePage = () => {
         onSwitchMethod={handleSwitchMethod}
       />
 
+      <RefundInfoDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen} />
+
       {/* 蓝色主题覆盖 */}
       <style>{`
         .theme-pro { --pro-primary: #2563eb; }
@@ -159,6 +179,74 @@ const UpgradePage = () => {
     </div>
   )
 }
+
+const REFUND_GUIDANCE = [
+  'NoteFlow 的充值和订阅权益会用于视频转写、AI 笔记生成、视频理解、导出等功能，到账后的权益会记录在当前账号中。',
+  '如果遇到支付成功但电力或会员权益未到账、重复扣款等异常，请先保留订单信息，联系客服核对支付结果和权益状态。',
+  '如果生成任务失败或任务状态异常导致电力变动，客服会结合任务记录核查实际消耗，并按系统处理结果确认是否恢复相应电力。',
+  '已经用于转写、模型调用或其他已完成服务的电力，不能直接按未使用余额处理；具体退款范围以订单和使用记录的人工核验结果为准。',
+  '联系客服时请提供 NoteFlow 账号、订单号、支付时间和异常截图，信息越完整，越方便快速定位问题。',
+]
+
+const RefundInfoDialog = ({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent className="max-h-[min(760px,calc(100vh-2rem))] w-[calc(100vw-2rem)] !max-w-[1100px] overflow-y-auto p-0">
+      <DialogHeader className="border-b border-neutral-100 bg-gradient-to-br from-blue-50 via-white to-white px-6 pb-5 pt-6 pr-14 text-left">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+          <Headphones className="h-5 w-5" />
+        </div>
+        <DialogTitle className="text-xl text-neutral-900">退款说明与客服联系方式</DialogTitle>
+        <DialogDescription className="mt-2 leading-6 text-neutral-500">
+          订单、到账或任务扣费遇到异常时，可以通过人工客服协助核查。
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="grid gap-8 px-7 py-7 md:grid-cols-[minmax(0,1fr)_240px]">
+        <section>
+          <h3 className="mb-4 text-sm font-semibold text-neutral-900">处理说明</h3>
+          <ol className="space-y-3.5">
+            {REFUND_GUIDANCE.map((item, index) => (
+              <li key={item} className="flex gap-3 text-sm leading-6 text-neutral-600">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                  {index + 1}
+                </span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-xs leading-5 text-amber-800">
+            这是人工客服咨询入口，页面不会直接发起退款或提交申请，最终处理结果以客服核验为准。请不要发送密码、支付密码或验证码。
+          </div>
+        </section>
+
+        <aside className="flex flex-col items-center rounded-2xl border border-neutral-200 bg-neutral-50/70 p-5 text-center">
+          <div className="text-sm font-semibold text-neutral-800">联系 NoteFlow 客服</div>
+          <div className="mt-4 rounded-xl bg-white p-2 shadow-sm ring-1 ring-neutral-100">
+            <img
+              src={enterpriseServiceQr}
+              alt="NoteFlow 客服微信二维码"
+              className="h-48 w-48 object-contain"
+            />
+          </div>
+          <p className="mt-3 text-xs leading-5 text-neutral-500">扫码添加客服微信</p>
+          <p className="mt-1 text-xs leading-5 text-neutral-400">请备注“退款咨询”和账号信息</p>
+        </aside>
+      </div>
+
+      <DialogFooter className="border-t border-neutral-100 bg-neutral-50/60 px-6 py-4">
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          我知道了
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+)
 
 // ============================================================================
 // 电力充值 Tab

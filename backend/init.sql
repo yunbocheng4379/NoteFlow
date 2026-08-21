@@ -447,6 +447,7 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `notify_payload` text COMMENT '最近一次异步通知的原始报文, 用于排查与防重放审计',
   `paid_at` datetime DEFAULT NULL COMMENT '支付完成时间',
   `cancelled_at` datetime DEFAULT NULL COMMENT '取消时间',
+  `hidden_at` datetime DEFAULT NULL COMMENT '用户隐藏订单记录时间',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),

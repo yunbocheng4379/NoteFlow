@@ -27,8 +27,23 @@ from app.db.models.orders import Order
 from app.db.models.subscriptions import Subscription
 from app.db.models.referral_rewards import ReferralReward
 
+from sqlalchemy import inspect, text
+
 from app.db.engine import get_engine, Base
 
 def init_db():
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
+
+    # Base.metadata.create_all 不会给已有表补列；对已经存在的数据库执行轻量级、
+    # 幂等的补列，避免模型升级后旧库在查询时出现 Unknown column。
+    with engine.begin() as conn:
+        columns = {column["name"] for column in inspect(conn).get_columns("note_styles")}
+        if "is_deleted" not in columns:
+            conn.execute(text(
+                "ALTER TABLE note_styles ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT 0"
+            ))
+
+        order_columns = {column["name"] for column in inspect(conn).get_columns("orders")}
+        if "hidden_at" not in order_columns:
+            conn.execute(text("ALTER TABLE orders ADD COLUMN hidden_at DATETIME NULL"))

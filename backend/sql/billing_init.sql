@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS orders (
     mock_qrcode_token      VARCHAR(64) NULL                                               COMMENT '一次性二维码 token; PAID 后清空',
     paid_at                DATETIME NULL                                                  COMMENT '支付完成时间',
     cancelled_at           DATETIME NULL                                                  COMMENT '取消时间',
+    hidden_at              DATETIME NULL                                                  COMMENT '用户隐藏订单记录时间',
     created_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP                    COMMENT '创建时间',
     updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_created (user_id, created_at DESC),
