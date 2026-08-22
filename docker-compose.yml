@@ -47,6 +47,7 @@ services:
       - backend_models:/app/models
       - backend_vector_db:/app/vector_db
       - backend_logs:/app/logs
+      - ./backend/secrets:/app/secrets:ro
     expose:
       - "${BACKEND_PORT}"
     depends_on:
