@@ -121,6 +121,12 @@ export interface Paginated<T> {
   page_size: number
 }
 
+export function isPendingOrderError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const detail = error as { code?: unknown; msg?: unknown }
+  return detail.code === 50002 || String(detail.msg || '').includes('待支付订单')
+}
+
 // ============ API ============
 
 export const billingApi = {
@@ -138,10 +144,18 @@ export const billingApi = {
   subscriptionPlans: () => request.get<any, SubscriptionPlan[]>('/billing/subscription/plans'),
 
   createRechargeOrder: (package_id: number, pay_method: string = 'MOCK_ALIPAY') =>
-    request.post<any, Order>('/billing/order/recharge', { package_id, pay_method }),
+    request.post<any, Order>(
+      '/billing/order/recharge',
+      { package_id, pay_method },
+      { suppressToast: true },
+    ),
 
   createSubscriptionOrder: (plan_id: number, pay_method: string = 'MOCK_ALIPAY') =>
-    request.post<any, Order>('/billing/order/subscription', { plan_id, pay_method }),
+    request.post<any, Order>(
+      '/billing/order/subscription',
+      { plan_id, pay_method },
+      { suppressToast: true },
+    ),
 
   createAlipayPayment: (order_no: string) =>
     request.post<any, { order_no: string; payment_url: string }>(

@@ -2,7 +2,7 @@
 计费 / 订单 / 推荐相关 API
 所有接口都要求登录, 用户隔离.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 from typing import Optional
 
@@ -26,6 +26,7 @@ from app.services.billing import (
     order_service,
     referral_service,
 )
+from app.services.billing.order_service import utcnow_naive
 from app.services.billing.exceptions import (
     BillingError,
     InsufficientCreditError,
@@ -188,7 +189,14 @@ def _serialize_order(o: Order, *, payment_url: Optional[str] = None) -> dict:
     order_service._close_expired_order(o)
     remaining_seconds = None
     if o.status == "PENDING" and o.expires_at:
-        remaining_seconds = max(0, math.floor((o.expires_at - datetime.now()).total_seconds()))
+        remaining_seconds = max(0, math.floor((o.expires_at - utcnow_naive()).total_seconds()))
+
+    def serialize_timestamp(value: Optional[datetime]) -> Optional[str]:
+        if value is None:
+            return None
+        aware = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+        return aware.isoformat().replace("+00:00", "Z")
+
     return {
         "id": o.id,
         "order_no": o.order_no,
@@ -203,11 +211,11 @@ def _serialize_order(o: Order, *, payment_url: Optional[str] = None) -> dict:
         "qrcode_url": o.qrcode_url,
         "payment_url": payment_url,
         "is_first_subscription": bool(o.is_first_subscription),
-        "paid_at": o.paid_at.isoformat() if o.paid_at else None,
-        "cancelled_at": o.cancelled_at.isoformat() if o.cancelled_at else None,
-        "expires_at": o.expires_at.isoformat() if o.expires_at else None,
+        "paid_at": serialize_timestamp(o.paid_at),
+        "cancelled_at": serialize_timestamp(o.cancelled_at),
+        "expires_at": serialize_timestamp(o.expires_at),
         "remaining_seconds": remaining_seconds,
-        "created_at": o.created_at.isoformat() if o.created_at else None,
+        "created_at": serialize_timestamp(o.created_at),
     }
 
 

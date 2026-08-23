@@ -3,7 +3,7 @@
 """
 import secrets
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import select, and_
@@ -22,11 +22,16 @@ logger = get_logger(__name__)
 PENDING_ORDER_TTL_MINUTES = 15
 
 
+def utcnow_naive() -> datetime:
+    """返回统一的 UTC 无时区时间，兼容 MySQL 的 DATETIME 字段。"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 # ---------- 工具 ----------
 
 def _gen_order_no() -> str:
     """订单号: BN + yyyymmdd + 12 位随机 (base32 大写)"""
-    prefix = datetime.now().strftime("BN%Y%m%d")
+    prefix = utcnow_naive().strftime("BN%Y%m%d")
     charset = string.ascii_uppercase + string.digits
     rand = "".join(secrets.choice(charset) for _ in range(12))
     return prefix + rand
@@ -96,7 +101,7 @@ def _close_expired_order(order: Order, *, now: Optional[datetime] = None) -> boo
     """订单已到期时关闭订单，返回是否发生状态变更。"""
     if order.status != "PENDING":
         return False
-    now = now or datetime.now()
+    now = now or utcnow_naive()
     expires_at = _order_expiry(order)
     if not expires_at or expires_at > now:
         return False
@@ -117,7 +122,7 @@ def expire_pending_orders(db: Session, user_id: Optional[int] = None) -> int:
     rows = db.execute(
         select(Order).where(and_(*conditions)).with_for_update()
     ).scalars().all()
-    now = datetime.now()
+    now = utcnow_naive()
     closed = sum(1 for order in rows if _close_expired_order(order, now=now))
     if closed:
         db.flush()
@@ -165,7 +170,7 @@ def close_pending_order(db: Session, order_no: str, current_user_id: int) -> Ord
     _close_expired_order(order)
     if order.status == "PENDING":
         order.status = "CANCELLED"
-        order.cancelled_at = datetime.now()
+        order.cancelled_at = utcnow_naive()
         order.mock_qrcode_token = None
     db.flush()
     return order
@@ -183,7 +188,7 @@ def hide_order(db: Session, order_no: str, current_user_id: int) -> Order:
     if order.status != "CANCELLED":
         raise OrderStateError("只有已关闭订单可以移除记录")
 
-    order.hidden_at = datetime.now()
+    order.hidden_at = utcnow_naive()
     db.flush()
     return order
 
@@ -289,7 +294,7 @@ def create_recharge_order(
         credits_amount=pkg.credits,
         status="PENDING",
         pay_method=pay_method,
-        expires_at=datetime.now() + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
+        expires_at=utcnow_naive() + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
     if pay_method in ("ALIPAY", "WECHAT"):
@@ -332,7 +337,7 @@ def create_subscription_order(
         credits_amount=plan.monthly_credits,  # 首期发放量
         status="PENDING",
         pay_method=pay_method,
-        expires_at=datetime.now() + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
+        expires_at=utcnow_naive() + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
         mock_qrcode_token=_gen_qrcode_token() if pay_method.startswith("MOCK_") else None,
     )
     if pay_method in ("ALIPAY", "WECHAT"):
@@ -376,7 +381,7 @@ def _settle_paid_order(
             raise OrderStateError("福利包每个账号仅限成功购买一次")
 
     order.status = "PAID"
-    order.paid_at = datetime.now()
+    order.paid_at = utcnow_naive()
     order.mock_qrcode_token = None
     if trade_no:
         order.trade_no = trade_no
@@ -472,7 +477,7 @@ def reconcile_pending_gateway_orders(db: Session, *, min_age_minutes: int = 2) -
     from datetime import timedelta
     from app.services.billing.pay_channels import alipay_channel, wechat_channel
 
-    cutoff = datetime.now() - timedelta(minutes=min_age_minutes)
+    cutoff = utcnow_naive() - timedelta(minutes=min_age_minutes)
     pending = db.execute(
         select(Order).where(
             and_(

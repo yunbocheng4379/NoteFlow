@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Zap, Check, Sparkles, HelpCircle, Headphones, Infinity as InfIcon } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Zap, Check, Sparkles, HelpCircle, Headphones, AlertTriangle, Infinity as InfIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   billingApi,
@@ -8,6 +8,7 @@ import {
   Order,
   RechargePackage,
   SubscriptionPlan,
+  isPendingOrderError,
 } from '@/services/billing'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,6 +26,7 @@ import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 type Tab = 'recharge' | 'subscription'
 
 const UpgradePage = () => {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab: Tab = searchParams.get('tab') === 'recharge' ? 'recharge' : 'subscription'
   const [tab, setTab] = useState<Tab>(initialTab)
@@ -33,6 +35,31 @@ const UpgradePage = () => {
   const [loading, setLoading] = useState(true)
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
   const [refundDialogOpen, setRefundDialogOpen] = useState(false)
+  const pendingOrderRedirectedRef = useRef(false)
+
+  const showPendingOrderNotice = () => {
+    if (pendingOrderRedirectedRef.current) return
+    pendingOrderRedirectedRef.current = true
+
+    const toastId = toast.custom(
+      t => (
+        <div
+          className={`flex max-w-[380px] items-center gap-3 rounded-xl border border-amber-200 border-l-4 border-l-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 shadow-lg transition-opacity ${
+            t.visible ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+          <span>当前已有待支付订单，请先完成支付或取消原订单</span>
+        </div>
+      ),
+      { duration: 1800 },
+    )
+
+    window.setTimeout(() => {
+      toast.dismiss(toastId)
+      navigate('/billing?tab=orders', { replace: true })
+    }, 1000)
+  }
 
   // URL ?tab= 变化时同步切换 (支持从账单页带参跳转 / 浏览器前进后退)
   useEffect(() => {
@@ -71,7 +98,11 @@ const UpgradePage = () => {
       setPayingOrder(order)
     } catch (e: any) {
       trackFeatureResult('upgrade_recharge', false, { package: pkg.code })
-      toast.error(e?.msg || '下单失败')
+      if (isPendingOrderError(e)) {
+        showPendingOrderNotice()
+      } else {
+        toast.error(e?.msg || '下单失败')
+      }
     }
   }
 
@@ -84,7 +115,11 @@ const UpgradePage = () => {
       setPayingOrder(order)
     } catch (e: any) {
       trackFeatureResult('upgrade_subscription', false, { plan: plan.code })
-      toast.error(e?.msg || '下单失败')
+      if (isPendingOrderError(e)) {
+        showPendingOrderNotice()
+      } else {
+        toast.error(e?.msg || '下单失败')
+      }
     }
   }
 
