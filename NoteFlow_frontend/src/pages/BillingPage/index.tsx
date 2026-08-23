@@ -442,11 +442,16 @@ const OrdersList = ({
         </thead>
         <tbody>
           {data.list.map((o) => {
+            const isExpired =
+              o.status === 'PENDING' &&
+              !!o.expires_at &&
+              new Date(o.expires_at).getTime() <= now
+            const displayStatus = isExpired ? 'CANCELLED' : o.status
             const remainingSeconds =
-              o.status === 'PENDING' && o.expires_at
+              displayStatus === 'PENDING' && o.expires_at
                 ? Math.max(0, Math.floor((new Date(o.expires_at).getTime() - now) / 1000))
                 : null
-            const canPay = o.status === 'PENDING' && (remainingSeconds === null || remainingSeconds > 0)
+            const canPay = displayStatus === 'PENDING' && (remainingSeconds === null || remainingSeconds > 0)
             return (
             <tr key={o.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
               <td className="px-4 py-3 font-mono text-xs text-neutral-600">{o.order_no}</td>
@@ -461,8 +466,8 @@ const OrdersList = ({
                 {o.credits_amount}
               </td>
               <td className="px-4 py-3">
-                <StatusBadge status={o.status} />
-                {o.status === 'PENDING' && remainingSeconds !== null && (
+                <StatusBadge status={displayStatus} />
+                {displayStatus === 'PENDING' && remainingSeconds !== null && (
                   <div className={`mt-1 text-xs ${remainingSeconds <= 60 ? 'text-red-500' : 'text-neutral-500'}`}>
                     剩余 {formatRemainingSeconds(remainingSeconds)}
                   </div>
@@ -470,7 +475,7 @@ const OrdersList = ({
               </td>
               <td className="px-4 py-3 text-xs text-neutral-500">{fmtTime(o.created_at)}</td>
               <td className="px-4 py-3">
-                {o.status === 'PENDING' && (
+                {displayStatus === 'PENDING' && (
                   <div className="flex flex-col items-start gap-1.5">
                     {canPay && (
                       <button

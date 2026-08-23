@@ -183,6 +183,9 @@ class CreateSubscriptionOrderReq(BaseModel):
 
 
 def _serialize_order(o: Order, *, payment_url: Optional[str] = None) -> dict:
+    # 兜底处理刚好跨过截止时间的订单，避免接口先返回
+    # `PENDING + remaining_seconds=0`，让前端短暂显示“剩余 00:00”。
+    order_service._close_expired_order(o)
     remaining_seconds = None
     if o.status == "PENDING" and o.expires_at:
         remaining_seconds = max(0, math.floor((o.expires_at - datetime.now()).total_seconds()))
