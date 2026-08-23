@@ -23,6 +23,7 @@ class User(Base):
     last_login_at = Column(DateTime, nullable=True, comment="最近登录时间")
     email_notify_enabled = Column(Integer, default=1, nullable=False, comment="是否开启邮件通知 (笔记生成完成时发邮件)：1=开启，0=关闭")
     system_announce_enabled = Column(Integer, default=1, nullable=False, comment="是否开启系统公告邮件通知 (管理员发布更新日志时发邮件)：1=开启，0=关闭")
+    pending_notification_email_enabled = Column(Integer, default=0, nullable=False, comment="是否接收待处理系统通知邮件：1=开启，0=关闭")
 
     # ===== 电力 / 计费 (双写期: total_points 保留, 实际余额走 credits) =====
     total_points = Column(Integer, default=100, nullable=False, comment="[deprecated 双写期保留] 旧字段, 由 phase2 删除")

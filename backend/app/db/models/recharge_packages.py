@@ -16,6 +16,7 @@ class RechargePackage(Base):
     sort_order = Column(Integer, nullable=False, default=0, comment="展示排序 (升序)")
     badge = Column(String(32), nullable=True, comment="徽章文案, 如 最受欢迎")
     is_active = Column(Integer, nullable=False, default=1, comment="是否上架: 1/0")
+    is_one_time = Column(Integer, nullable=False, default=0, comment="是否每个用户仅可成功购买一次: 1/0")
     description = Column(String(255), nullable=True, comment="描述, 如 ≈5 篇 30 分钟视频")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="更新时间")

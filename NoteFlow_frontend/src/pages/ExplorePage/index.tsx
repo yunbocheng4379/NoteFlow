@@ -8,6 +8,7 @@ import ExplorePanel from '@/pages/HomePage/components/ExplorePanel'
 import { useTaskStore } from '@/store/taskStore'
 import { useModelStore } from '@/store/modelStore'
 import { generateNote } from '@/services/note.ts'
+import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
 /**
  * ExplorePage
@@ -38,6 +39,7 @@ const ExplorePage: FC = () => {
       return
     }
     try {
+      trackFeatureSubmit('explore_search', { platform: prefill.platform })
       new URL(url)
     } catch {
       toast.error('视频链接格式不正确')
@@ -69,8 +71,10 @@ const ExplorePage: FC = () => {
       // 探索页没有 URL 输入框，也没有 info 预解析，pending 卡片会退化为纯 URL
       // 展示；任务开始跑之后 loadHistory 会补回封面/标题。
       addPendingTask(data.task_id, prefill.platform, payload, undefined)
+      trackFeatureResult('explore_search', true, { platform: prefill.platform })
       navigate('/')
     } catch (e: any) {
+      trackFeatureResult('explore_search', false, { platform: prefill.platform })
       if (e?.data?.reason === 'transcriber_model_not_ready') {
         toast.error('请先配置转写模型')
         navigate('/settings/transcriber')

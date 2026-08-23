@@ -36,8 +36,10 @@ def get_profile(current_user: User = Depends(get_current_user)):
         "total_points": current_user.total_points,
         "used_points": current_user.used_points,
         "credits": current_user.credits,
+        "is_admin": bool(current_user.is_admin),
         "email_notify_enabled": bool(current_user.email_notify_enabled),
         "system_announce_enabled": bool(current_user.system_announce_enabled),
+        "pending_notification_email_enabled": bool(current_user.pending_notification_email_enabled),
     })
 
 
@@ -89,6 +91,7 @@ def change_password(
 class UpdateNotifyRequest(BaseModel):
     email_notify_enabled: Optional[bool] = None
     system_announce_enabled: Optional[bool] = None
+    pending_notification_email_enabled: Optional[bool] = None
 
 
 @router.put("/notify")
@@ -97,14 +100,20 @@ def update_notify_setting(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if body.pending_notification_email_enabled is not None and not int(current_user.is_admin or 0):
+        raise HTTPException(status_code=403, detail="仅管理员可以配置待处理任务通知")
+
     if body.email_notify_enabled is not None:
         current_user.email_notify_enabled = 1 if body.email_notify_enabled else 0
     if body.system_announce_enabled is not None:
         current_user.system_announce_enabled = 1 if body.system_announce_enabled else 0
+    if body.pending_notification_email_enabled is not None:
+        current_user.pending_notification_email_enabled = 1 if body.pending_notification_email_enabled else 0
     db.commit()
     return R.success({
         "email_notify_enabled": bool(current_user.email_notify_enabled),
         "system_announce_enabled": bool(current_user.system_announce_enabled),
+        "pending_notification_email_enabled": bool(current_user.pending_notification_email_enabled),
     })
 
 

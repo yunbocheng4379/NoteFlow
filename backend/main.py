@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from app.db.init_db import init_db
 from app.db.provider_dao import seed_default_providers
 from app.db.note_style_dao import seed_system_styles
+from app.db.recharge_package_dao import seed_default_recharge_packages
 from app.exceptions.exception_handlers import register_exception_handlers
 # from app.db.model_dao import init_model_table
 # from app.db.provider_dao import init_provider_table
@@ -75,6 +76,9 @@ async def lifespan(app: FastAPI):
 
         logger.info("[startup 4.5/5] seed_system_styles() — 初始化内置笔记风格")
         seed_system_styles()
+
+        logger.info("[startup 4.55/5] seed_default_recharge_packages() — 初始化充值套餐")
+        seed_default_recharge_packages()
 
         logger.info("[startup 4.6/5] seed_default_format_pricing() — 初始化默认笔记格式费率")
         try:

@@ -34,6 +34,7 @@ const PAGE_SIZE = 20
 const CATEGORY_LABELS: Record<string, string> = {
   cookie_failure: 'Cookie 失效',
   pool_exhausted: '池耗尽',
+  smtp_health: 'SMTP 邮件服务',
 }
 
 const STATUS_LABELS: Record<NotificationStatus, string> = {

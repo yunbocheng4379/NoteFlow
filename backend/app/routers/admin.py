@@ -12,7 +12,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, EmailStr, field_validator
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, and_
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
@@ -22,10 +22,25 @@ from app.db.models.users import User
 from app.db.models.credit_transactions import CreditTransaction
 from app.db.models.subscriptions import Subscription
 from app.db.models.subscription_plans import SubscriptionPlan
+from app.db.models.orders import Order
+from app.db.models.recharge_packages import RechargePackage
 from app.utils.response import ResponseWrapper as R
 from app.utils.status_code import StatusCode
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def build_recharge_metrics(rows) -> dict[str, int]:
+    """从充值订单行计算运营口径，供接口和回归测试复用。"""
+    rows = list(rows)
+    paid_rows = [row for row in rows if row.status == "PAID"]
+    return {
+        "order_count": len(rows),
+        "order_users": len({row.user_id for row in rows}),
+        "paid_orders": len(paid_rows),
+        "paid_users": len({row.user_id for row in paid_rows}),
+        "revenue_cents": sum(int(row.amount_cents or 0) for row in paid_rows),
+    }
 
 
 # ============================================================================
@@ -118,6 +133,174 @@ def _serialize_user(db: Session, user: User, stats: dict) -> dict:
         "is_member": sub is not None,
         "subscription": sub,
     }
+
+
+# ============================================================================
+# 充值运营
+# ============================================================================
+@router.get("/billing/overview")
+def billing_overview(
+    _: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """充值运营概览：今日经营数据、累计收入和套餐表现。"""
+    from datetime import time
+
+    today_start = datetime.combine(datetime.now().date(), time.min)
+    recharge_filter = Order.kind == "RECHARGE"
+    paid_filter = Order.status == "PAID"
+
+    def scalar(statement):
+        return db.execute(statement).scalar() or 0
+
+    today_order_count = scalar(
+        select(func.count(Order.id)).where(recharge_filter, Order.created_at >= today_start)
+    )
+    today_order_users = scalar(
+        select(func.count(func.distinct(Order.user_id))).where(
+            recharge_filter, Order.created_at >= today_start
+        )
+    )
+    today_paid_orders = scalar(
+        select(func.count(Order.id)).where(
+            recharge_filter, paid_filter, Order.paid_at >= today_start
+        )
+    )
+    today_paid_users = scalar(
+        select(func.count(func.distinct(Order.user_id))).where(
+            recharge_filter, paid_filter, Order.paid_at >= today_start
+        )
+    )
+    today_revenue = scalar(
+        select(func.sum(Order.amount_cents)).where(
+            recharge_filter, paid_filter, Order.paid_at >= today_start
+        )
+    )
+    total_paid_orders = scalar(select(func.count(Order.id)).where(recharge_filter, paid_filter))
+    total_paid_users = scalar(
+        select(func.count(func.distinct(Order.user_id))).where(recharge_filter, paid_filter)
+    )
+    total_revenue = scalar(
+        select(func.sum(Order.amount_cents)).where(recharge_filter, paid_filter)
+    )
+    total_credits = scalar(
+        select(func.sum(Order.credits_amount)).where(recharge_filter, paid_filter)
+    )
+
+    package_rows = db.execute(
+        select(
+            RechargePackage.code,
+            RechargePackage.name,
+            func.count(Order.id),
+            func.count(func.distinct(Order.user_id)),
+            func.coalesce(func.sum(Order.amount_cents), 0),
+            func.coalesce(func.sum(Order.credits_amount), 0),
+        )
+        .join(RechargePackage, RechargePackage.id == Order.package_id)
+        .where(recharge_filter, paid_filter)
+        .group_by(RechargePackage.code, RechargePackage.name)
+        .order_by(func.sum(Order.amount_cents).desc())
+    ).all()
+
+    return R.success({
+        "today": {
+            "order_count": int(today_order_count),
+            "order_users": int(today_order_users),
+            "paid_orders": int(today_paid_orders),
+            "paid_users": int(today_paid_users),
+            "revenue_cents": int(today_revenue),
+        },
+        "total": {
+            "paid_orders": int(total_paid_orders),
+            "paid_users": int(total_paid_users),
+            "revenue_cents": int(total_revenue),
+            "credits": int(total_credits),
+        },
+        "package_breakdown": [
+            {
+                "code": code,
+                "name": name,
+                "paid_orders": int(order_count),
+                "paid_users": int(user_count),
+                "revenue_cents": int(revenue or 0),
+                "credits": int(credits or 0),
+            }
+            for code, name, order_count, user_count, revenue, credits in package_rows
+        ],
+    })
+
+
+@router.get("/billing/recharges")
+def list_recharge_orders(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    keyword: Optional[str] = Query(None, description="搜索订单号、用户名或邮箱"),
+    status: Optional[str] = Query(None, description="订单状态"),
+    package_code: Optional[str] = Query(None, description="套餐编码"),
+    _: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """管理员查看全部充值订单，支持按用户、订单状态和套餐筛选。"""
+    conditions = [Order.kind == "RECHARGE"]
+    if status in {"PENDING", "PAID", "CANCELLED", "REFUNDED"}:
+        conditions.append(Order.status == status)
+    if package_code:
+        conditions.append(RechargePackage.code == package_code.strip())
+    if keyword and keyword.strip():
+        like = f"%{keyword.strip()}%"
+        conditions.append(or_(
+            Order.order_no.like(like),
+            User.username.like(like),
+            User.email.like(like),
+        ))
+
+    base = (
+        select(Order, User, RechargePackage)
+        .join(User, User.id == Order.user_id)
+        .join(RechargePackage, RechargePackage.id == Order.package_id)
+        .where(and_(*conditions))
+    )
+    count = db.execute(
+        select(func.count(Order.id))
+        .join(User, User.id == Order.user_id)
+        .join(RechargePackage, RechargePackage.id == Order.package_id)
+        .where(and_(*conditions))
+    ).scalar() or 0
+    rows = db.execute(
+        base.order_by(Order.created_at.desc(), Order.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+
+    return R.success({
+        "list": [
+            {
+                "id": order.id,
+                "order_no": order.order_no,
+                "status": order.status,
+                "pay_method": order.pay_method,
+                "amount_cents": order.amount_cents,
+                "credits_amount": order.credits_amount,
+                "created_at": order.created_at.isoformat() if order.created_at else None,
+                "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                    "phone": user.phone,
+                },
+                "package": {
+                    "code": package.code,
+                    "name": package.name,
+                    "is_one_time": bool(package.is_one_time),
+                },
+            }
+            for order, user, package in rows
+        ],
+        "total": int(count),
+        "page": page,
+        "page_size": page_size,
+    })
 
 
 # ============================================================================

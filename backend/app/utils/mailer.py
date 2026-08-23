@@ -6,6 +6,7 @@
 """
 import os
 import smtplib
+from dataclasses import dataclass
 from email.mime.text import MIMEText
 from email.header import Header
 from email.utils import formataddr, parseaddr
@@ -13,6 +14,37 @@ from email.utils import formataddr, parseaddr
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class SmtpCheckResult:
+    ok: bool
+    kind: str | None
+    error: str | None
+
+
+def check_smtp_login() -> SmtpCheckResult:
+    host = os.getenv("SMTP_HOST")
+    port = os.getenv("SMTP_PORT")
+    user = os.getenv("SMTP_USER")
+    password = os.getenv("SMTP_PASSWORD")
+    if not host or not port or not user or not password:
+        return SmtpCheckResult(False, "config", "SMTP_HOST/PORT/USER/PASSWORD 配置不完整")
+
+    try:
+        with smtplib.SMTP_SSL(host, int(port), timeout=10) as server:
+            server.login(user, password)
+        return SmtpCheckResult(True, None, None)
+    except Exception as exc:
+        return SmtpCheckResult(False, _classify_smtp_error(exc), str(exc)[:500])
+
+
+def _classify_smtp_error(exc: Exception) -> str:
+    if isinstance(exc, smtplib.SMTPAuthenticationError) or getattr(exc, "smtp_code", None) in {530, 534, 535}:
+        return "auth"
+    if isinstance(exc, (smtplib.SMTPConnectError, smtplib.SMTPServerDisconnected, TimeoutError, OSError)):
+        return "connection"
+    return "unknown"
 
 
 def _mask_email(email: str) -> str:
@@ -26,15 +58,8 @@ def _mask_email(email: str) -> str:
     return f"{masked_local}@{domain}"
 
 
-def send_email(to: str, subject: str, html_body: str) -> bool:
-    """
-    发送一封 HTML 邮件。
-
-    :param to: 收件人邮箱地址
-    :param subject: 邮件主题
-    :param html_body: HTML 格式正文
-    :return: 是否发送成功 (失败只记日志，不抛异常)
-    """
+def send_email_detailed(to: str, subject: str, html_body: str) -> SmtpCheckResult:
+    """Send an HTML email and retain enough failure detail for health alerts."""
     host = os.getenv("SMTP_HOST")
     port = os.getenv("SMTP_PORT")
     user = os.getenv("SMTP_USER")
@@ -42,12 +67,14 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
     sender = os.getenv("SMTP_FROM") or user
 
     if not host or not port or not user or not password:
+        result = SmtpCheckResult(False, "config", "SMTP_HOST/PORT/USER/PASSWORD 配置不完整")
         logger.warning("SMTP 未配置 (SMTP_HOST/PORT/USER/PASSWORD 缺失)，跳过发送邮件")
-        return False
+        return result
 
     if not to:
+        result = SmtpCheckResult(False, "config", "收件人邮箱为空")
         logger.warning("收件人邮箱为空，跳过发送邮件")
-        return False
+        return result
 
     name, addr = parseaddr(sender)
     msg = MIMEText(html_body, "html", "utf-8")
@@ -60,10 +87,23 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
             server.login(user, password)
             server.sendmail(addr, [to], msg.as_string())
         logger.info(f"邮件已发送: to={_mask_email(to)}, subject={subject}")
-        return True
-    except Exception as e:
-        logger.error(f"邮件发送失败: to={_mask_email(to)}, subject={subject}, error={e}")
-        return False
+        return SmtpCheckResult(True, None, None)
+    except Exception as exc:
+        result = SmtpCheckResult(False, _classify_smtp_error(exc), str(exc)[:500])
+        logger.error(f"邮件发送失败: to={_mask_email(to)}, subject={subject}, error={result.error}")
+        return result
+
+
+def send_email(to: str, subject: str, html_body: str) -> bool:
+    """
+    发送一封 HTML 邮件。
+
+    :param to: 收件人邮箱地址
+    :param subject: 邮件主题
+    :param html_body: HTML 格式正文
+    :return: 是否发送成功 (失败只记日志，不抛异常)
+    """
+    return send_email_detailed(to=to, subject=subject, html_body=html_body).ok
 
 
 def send_task_completed_email(to: str, title: str, task_id: str) -> bool:

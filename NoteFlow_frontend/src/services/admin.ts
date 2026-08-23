@@ -44,6 +44,61 @@ export interface CreateUserPayload {
   initial_credits?: number
 }
 
+export interface RechargeOverview {
+  today: {
+    order_count: number
+    order_users: number
+    paid_orders: number
+    paid_users: number
+    revenue_cents: number
+  }
+  total: {
+    paid_orders: number
+    paid_users: number
+    revenue_cents: number
+    credits: number
+  }
+  package_breakdown: RechargePackagePerformance[]
+}
+
+export interface RechargePackagePerformance {
+  code: string
+  name: string
+  paid_orders: number
+  paid_users: number
+  revenue_cents: number
+  credits: number
+}
+
+export interface AdminRechargeOrder {
+  id: number
+  order_no: string
+  status: 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDED'
+  pay_method: string
+  amount_cents: number
+  credits_amount: number
+  created_at: string | null
+  paid_at: string | null
+  user: {
+    id: number
+    username: string
+    email: string | null
+    phone: string | null
+  }
+  package: {
+    code: string
+    name: string
+    is_one_time: boolean
+  }
+}
+
+export interface AdminRechargeOrderList {
+  list: AdminRechargeOrder[]
+  total: number
+  page: number
+  page_size: number
+}
+
 // ============ API ============
 
 export const adminApi = {
@@ -62,6 +117,17 @@ export const adminApi = {
     request.post<any, { deleted: number; skipped: number[] }>('/admin/users/batch_delete', {
       user_ids: userIds,
     }),
+
+  rechargeOverview: () =>
+    request.get<any, RechargeOverview>('/admin/billing/overview'),
+
+  listRechargeOrders: (params: {
+    page?: number
+    page_size?: number
+    keyword?: string
+    status?: string
+    package_code?: string
+  }) => request.get<any, AdminRechargeOrderList>('/admin/billing/recharges', { params }),
 }
 
 // ============ Cookie 池 ============
@@ -180,6 +246,7 @@ export const cookiesApi = {
 export type NotificationCategory =
   | 'cookie_failure'
   | 'pool_exhausted'
+  | 'smtp_health'
 
 export type NotificationStatus = 'pending' | 'handled' | 'closed' | 'ignored'
 
@@ -243,4 +310,85 @@ export const notificationsApi = {
     payload: { status: NotificationStatus; handler_note?: string | null }
   ) =>
     request.patch<any, NotificationItem>(`/admin/notifications/${id}`, payload),
+}
+
+// ============ 数据分析 ============
+
+export interface AnalyticsDateParams {
+  start_date: string
+  end_date: string
+}
+
+export interface AnalyticsOverview {
+  start_date: string
+  end_date: string
+  pv: number
+  uv: number
+  logged_in_uv: number
+  anonymous_uv: number
+  active_users: number
+  feature_events: number
+  feature_success: number
+  feature_error: number
+  feature_success_rate: number
+}
+
+export interface AnalyticsTrendPoint {
+  date: string
+  pv: number
+  uv: number
+  logged_in_uv: number
+  anonymous_uv: number
+}
+
+export interface AnalyticsFeature {
+  feature: string
+  clicks: number
+  submits: number
+  successes: number
+  errors: number
+  users: number
+  usage_rate: number
+  success_rate: number
+}
+
+export interface AnalyticsUser {
+  user_id: number
+  username: string
+  email: string | null
+  pv: number
+  active_days: number
+  feature_count: number
+  last_seen_at: string | null
+}
+
+export interface AnalyticsEventItem {
+  id: number
+  event_name: string
+  page_path: string
+  target: string | null
+  user_type: '登录用户' | '匿名访客'
+  username: string | null
+  properties: Record<string, string | number | boolean | null>
+  occurred_at: string | null
+}
+
+export interface AnalyticsPage<T> {
+  list: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export const analyticsAdminApi = {
+  overview: (params: AnalyticsDateParams) =>
+    request.get<any, AnalyticsOverview>('/admin/analytics/overview', { params }),
+  trend: (params: AnalyticsDateParams) =>
+    request.get<any, AnalyticsTrendPoint[]>('/admin/analytics/trend', { params }),
+  features: (params: AnalyticsDateParams) =>
+    request.get<any, AnalyticsFeature[]>('/admin/analytics/features', { params }),
+  users: (params: AnalyticsDateParams & { page?: number; page_size?: number }) =>
+    request.get<any, AnalyticsPage<AnalyticsUser>>('/admin/analytics/users', { params }),
+  events: (params: AnalyticsDateParams & { page?: number; page_size?: number }) =>
+    request.get<any, AnalyticsPage<AnalyticsEventItem>>('/admin/analytics/events', { params }),
 }

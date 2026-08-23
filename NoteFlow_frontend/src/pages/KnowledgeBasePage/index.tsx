@@ -54,6 +54,7 @@ import { useUserStore } from '@/store/userStore'
 import { askKbStream, getKbIndexStatus, type KbSource } from '@/services/knowledgeBase'
 import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 import logo from '@/assets/icon.svg'
+import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '')
 
@@ -272,6 +273,7 @@ export default function KnowledgeBasePage() {
       }
 
       const streamConversationId = conversationId
+      trackFeatureSubmit('knowledge_base', { action: 'ask' })
 
       addMessage({ role: 'user', content: question })
       setInput('')
@@ -287,6 +289,7 @@ export default function KnowledgeBasePage() {
       }
 
       try {
+        let streamFailed = false
         await askKbStream(
           {
             conversation_id: streamConversationId,
@@ -301,6 +304,7 @@ export default function KnowledgeBasePage() {
             onReasoning: text => appendConversationReasoning(streamConversationId, text),
             onDelta: text => appendConversationMessage(streamConversationId, text),
             onError: msg => {
+              streamFailed = true
               appendConversationMessage(streamConversationId, msg || '知识库问答失败')
               toast.error(msg || '知识库问答失败')
             },
@@ -308,7 +312,9 @@ export default function KnowledgeBasePage() {
         )
         await finishStream()
         loadConversations(true)
+        trackFeatureResult('knowledge_base', !streamFailed)
       } catch {
+        trackFeatureResult('knowledge_base', false)
         appendConversationMessage(streamConversationId, '\n\n（请求中断）')
         toast.error('知识库问答失败')
         await finishStream()

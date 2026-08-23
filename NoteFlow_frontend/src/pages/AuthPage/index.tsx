@@ -9,6 +9,7 @@ import BrandLogo from '@/components/BrandLogo'
 import ForgotPasswordDialog from '@/components/ForgotPasswordDialog'
 import WechatLoginDialog from '@/components/WechatLoginDialog'
 import toast from 'react-hot-toast'
+import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
 type TopMode = 'password' | 'code'
 type Mode = 'login' | 'register'
@@ -161,15 +162,18 @@ export default function AuthPage() {
   const submitPasswordLogin = async () => {
     if (!form.account.trim()) return toast.error('请输入用户名/邮箱/手机号')
     if (!form.password) return toast.error('请输入密码')
+    trackFeatureSubmit('auth_login', { method: 'password' })
     setLoading(true)
     try {
       const result = await authApi.login({ account: form.account.trim(), password: form.password })
       setAuth(result.token, result.user)
       rehydrateTaskStore(result.user.id)
       await loadHistory()
+      trackFeatureResult('auth_login', true, { method: 'password' })
       toast.success('登录成功')
       navigate('/', { replace: true })
     } catch (err: any) {
+      trackFeatureResult('auth_login', false, { method: 'password' })
       const code = err?.code
       if (code === AuthErrorCode.ACCOUNT_NOT_FOUND) {
         // 账户不存在 —— 提示并跳转到注册页
@@ -192,6 +196,7 @@ export default function AuthPage() {
     const target = form.codeTarget.trim()
     if (!target) return toast.error(codeTargetType === 'email' ? '请输入邮箱' : '请输入手机号')
     if (!form.code.trim()) return toast.error('请输入验证码')
+    trackFeatureSubmit('auth_login', { method: 'code' })
     setLoading(true)
     try {
       const result = await authApi.loginByCode({
@@ -202,9 +207,11 @@ export default function AuthPage() {
       setAuth(result.token, result.user)
       rehydrateTaskStore(result.user.id)
       await loadHistory()
+      trackFeatureResult('auth_login', true, { method: 'code' })
       toast.success('登录成功')
       navigate('/', { replace: true })
     } catch (err: any) {
+      trackFeatureResult('auth_login', false, { method: 'code' })
       const code = err?.code
       if (code === AuthErrorCode.ACCOUNT_NOT_FOUND) {
         toast.error('账户不存在，请先注册')
@@ -229,6 +236,7 @@ export default function AuthPage() {
     if (form.password.length < 6) return toast.error('密码至少 6 位')
     if (!form.confirmPassword) return toast.error('请再次输入密码')
     if (form.password !== form.confirmPassword) return toast.error('两次输入的密码不一致')
+    trackFeatureSubmit('auth_register')
     setLoading(true)
     try {
       await authApi.register({
@@ -238,11 +246,13 @@ export default function AuthPage() {
         confirm_password: form.confirmPassword,
         invite_code: form.inviteCode.trim() || undefined,
       })
+      trackFeatureResult('auth_register', true)
       toast.success('注册成功，请登录')
       setForm((prev) => ({ ...prev, account: prev.username, email: '', password: '', confirmPassword: '' }))
       setMode('login')
       setTopMode('password')
     } catch (err: any) {
+      trackFeatureResult('auth_register', false)
       const code = err?.code
       if (code === AuthErrorCode.USERNAME_EXISTS) {
         toast.error('用户名已存在')
@@ -661,7 +671,10 @@ export default function AuthPage() {
               <div className="mt-4 flex items-center justify-center">
                 <button
                   type="button"
-                  onClick={() => setShowWechatLogin(true)}
+                  onClick={() => {
+                    trackFeatureSubmit('auth_login', { method: 'wechat_mini' })
+                    setShowWechatLogin(true)
+                  }}
                   className="flex flex-col items-center gap-1.5 group"
                   aria-label="微信登录"
                 >

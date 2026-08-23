@@ -116,7 +116,7 @@ def pricing_preview(
 # ============================================================================
 
 @router.get("/recharge/packages")
-def list_recharge_packages(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_recharge_packages(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.execute(
         select(RechargePackage).where(RechargePackage.is_active == 1).order_by(RechargePackage.sort_order.asc())
     ).scalars().all()
@@ -129,6 +129,10 @@ def list_recharge_packages(_: User = Depends(get_current_user), db: Session = De
         "unit_price_text": p.unit_price_text,
         "sort_order": p.sort_order,
         "badge": p.badge,
+        "is_one_time": bool(p.is_one_time),
+        "is_purchased": order_service.has_paid_recharge_package(
+            db, user_id=current_user.id, package_id=p.id
+        ),
         "description": p.description,
     } for p in rows])
 

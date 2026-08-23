@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS recharge_packages (
     sort_order       INT NOT NULL DEFAULT 0                                                COMMENT '展示排序 (升序)',
     badge            VARCHAR(32) NULL                                                      COMMENT '徽章文案, 如 "最受欢迎"',
     is_active        TINYINT NOT NULL DEFAULT 1                                            COMMENT '是否上架: 1/0',
+    is_one_time      TINYINT NOT NULL DEFAULT 0                                            COMMENT '是否每个用户仅可成功购买一次: 1/0',
     description      VARCHAR(255) NULL                                                     COMMENT '描述, 如 "≈5 篇 30 分钟视频"',
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP                           COMMENT '创建时间',
     updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -240,10 +241,11 @@ INSERT INTO credit_pricing (model_name, rate_per_minute, is_active, is_default, 
   ('__default__',     3,  1, 1, '未匹配模型时的兜底单价');
 
 -- 充值套餐 (与截图严格对齐)
-INSERT INTO recharge_packages (code, name, price_cents, credits, unit_price_text, sort_order, badge, is_active, description) VALUES
-  ('PKG_BASIC',    '入门包', 1,    100,  '¥0.0001/电力', 1, NULL,         1, '≈5 篇 30 分钟视频'),
-  ('PKG_STANDARD', '标准包', 2900, 350,  '¥0.083/电力', 2, '最受欢迎',   1, '≈17 篇 30 分钟视频'),
-  ('PKG_PRO',      '专业包', 9900, 1500, '¥0.066/电力', 3, NULL,         1, '≈75 篇 30 分钟视频');
+INSERT INTO recharge_packages (code, name, price_cents, credits, unit_price_text, sort_order, badge, is_active, is_one_time, description) VALUES
+  ('PKG_WELFARE',  '福利包', 99,   50,   '¥0.0198/电力', 1, '新人专享',   1, 1, '新人首次充值专享，送 50 电力'),
+  ('PKG_BASIC',    '入门包', 1,    100,  '¥0.0001/电力', 2, NULL,         1, 0, '≈5 篇 30 分钟视频'),
+  ('PKG_STANDARD', '标准包', 2900, 350,  '¥0.083/电力', 3, '最受欢迎',   1, 0, '≈17 篇 30 分钟视频'),
+  ('PKG_PRO',      '专业包', 9900, 1500, '¥0.066/电力', 4, NULL,         1, 0, '≈75 篇 30 分钟视频');
 
 -- 会员订阅方案 (与截图严格对齐)
 INSERT INTO subscription_plans (code, name, duration_days, monthly_credits, first_price_cents, renewal_price_cents, original_price_cents, sort_order, badge, is_active, description) VALUES

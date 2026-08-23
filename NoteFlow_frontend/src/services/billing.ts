@@ -26,6 +26,8 @@ export interface RechargePackage {
   unit_price_text: string | null
   sort_order: number
   badge: string | null
+  is_one_time: boolean
+  is_purchased: boolean
   description: string | null
 }
 

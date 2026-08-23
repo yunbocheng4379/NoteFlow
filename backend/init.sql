@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `is_admin` tinyint NOT NULL DEFAULT '0',
   `email_notify_enabled` tinyint NOT NULL DEFAULT '1',
   `system_announce_enabled` tinyint NOT NULL DEFAULT '1',
+  `pending_notification_email_enabled` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `ix_users_username` (`username`),
   UNIQUE KEY `ix_users_email` (`email`),
@@ -265,7 +266,7 @@ CREATE TABLE IF NOT EXISTS `feedbacks` (
 
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键 ID, 自增',
-  `category` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '通知分类: cookie_failure / pool_exhausted / user_feedback',
+  `category` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '通知分类: cookie_failure / pool_exhausted / smtp_health / user_feedback',
   `severity` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '严重等级: info / warning / error',
   `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '一句话标题, 列表显示',
   `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '详细描述, 详情面板展开',
@@ -288,6 +289,52 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   KEY `ix_notifications_status_last_seen` (`status`,`last_seen_at`),
   KEY `ix_notifications_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `notification_email_batches` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '邮件批次 ID',
+  `batch_key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '幂等批次键',
+  `batch_type` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'instant / daily',
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'pending / sent / partial / failed / skipped',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `sent_at` datetime DEFAULT NULL,
+  `last_error` text COLLATE utf8mb4_unicode_ci,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_notification_email_batch_key` (`batch_key`),
+  KEY `ix_notification_email_batch_type` (`batch_type`),
+  KEY `ix_notification_email_batch_type_created` (`batch_type`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统通知邮件批次';
+
+CREATE TABLE IF NOT EXISTS `notification_email_batch_items` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '批次通知项 ID',
+  `batch_id` int NOT NULL,
+  `notification_id` int NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `severity` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `platform` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_notification_email_batch_item` (`batch_id`,`notification_id`),
+  KEY `ix_notification_email_batch_item_notification` (`notification_id`),
+  CONSTRAINT `fk_notification_email_item_batch` FOREIGN KEY (`batch_id`) REFERENCES `notification_email_batches` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_notification_email_item_notification` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='邮件批次中的系统通知快照';
+
+CREATE TABLE IF NOT EXISTS `notification_email_deliveries` (
+  `id` int NOT NULL AUTO_INCREMENT COMMENT '邮件投递记录 ID',
+  `batch_id` int NOT NULL,
+  `recipient_user_id` int DEFAULT NULL,
+  `recipient_email` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'pending / sent / failed',
+  `attempt_count` int NOT NULL DEFAULT '0',
+  `last_error` text COLLATE utf8mb4_unicode_ci,
+  `sent_at` datetime DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_notification_email_delivery_recipient` (`batch_id`,`recipient_user_id`),
+  KEY `ix_notification_email_delivery_status` (`status`),
+  CONSTRAINT `fk_notification_email_delivery_batch` FOREIGN KEY (`batch_id`) REFERENCES `notification_email_batches` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_notification_email_delivery_user` FOREIGN KEY (`recipient_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统通知邮件管理员投递明细';
 
 CREATE TABLE IF NOT EXISTS `update_logs` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键 ID, 自增',
@@ -380,6 +427,7 @@ CREATE TABLE IF NOT EXISTS `recharge_packages` (
   `sort_order` int NOT NULL DEFAULT '0' COMMENT '展示排序 (升序)',
   `badge` varchar(32) DEFAULT NULL COMMENT '徽章文案, 如 "最受欢迎"',
   `is_active` tinyint NOT NULL DEFAULT '1' COMMENT '是否上架: 1/0',
+  `is_one_time` tinyint NOT NULL DEFAULT '0' COMMENT '是否每个用户仅可成功购买一次: 1/0',
   `description` varchar(255) DEFAULT NULL COMMENT '描述, 如 "≈5 篇 30 分钟视频"',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -519,10 +567,11 @@ INSERT INTO credit_format_pricing (format_key, rate_per_minute, is_active, descr
   ('summary',    1, 1, 'AI总结 (成本低, 仅多生成一段总结文字)');
 
 -- 充值套餐 (与截图严格对齐)
-INSERT INTO recharge_packages (code, name, price_cents, credits, unit_price_text, sort_order, badge, is_active, description) VALUES
-  ('PKG_BASIC',    '入门包', 1,    100,  '¥0.0001/电力', 1, NULL,         1, '≈5 篇 30 分钟视频'),
-  ('PKG_STANDARD', '标准包', 2900, 350,  '¥0.083/电力', 2, '最受欢迎',   1, '≈17 篇 30 分钟视频'),
-  ('PKG_PRO',      '专业包', 9900, 1500, '¥0.066/电力', 3, NULL,         1, '≈75 篇 30 分钟视频');
+INSERT INTO recharge_packages (code, name, price_cents, credits, unit_price_text, sort_order, badge, is_active, is_one_time, description) VALUES
+  ('PKG_WELFARE',  '福利包', 99,   50,   '¥0.0198/电力', 1, '新人专享',   1, 1, '新人首次充值专享，送 50 电力'),
+  ('PKG_BASIC',    '入门包', 1,    100,  '¥0.0001/电力', 2, NULL,         1, 0, '≈5 篇 30 分钟视频'),
+  ('PKG_STANDARD', '标准包', 2900, 350,  '¥0.083/电力', 3, '最受欢迎',   1, 0, '≈17 篇 30 分钟视频'),
+  ('PKG_PRO',      '专业包', 9900, 1500, '¥0.066/电力', 4, NULL,         1, 0, '≈75 篇 30 分钟视频');
 
 -- 会员订阅方案 (与截图严格对齐)
 INSERT INTO subscription_plans (code, name, duration_days, monthly_credits, first_price_cents, renewal_price_cents, original_price_cents, sort_order, badge, is_active, description) VALUES

@@ -55,6 +55,7 @@ import { cn } from '@/lib/utils'
 import { ModelOptionLabel, ModelProviderLogo } from '@/components/ModelProviderLogo'
 import CloudDrivePanel from './CloudDrivePanel'
 import { v4 as uuidv4 } from 'uuid'
+import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
 /* ---------- Schema ---------- */
 const formSchema = z
@@ -849,6 +850,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       return
     }
     setBatchSubmitting(true)
+    trackFeatureSubmit('note_generate_batch', { count: selected.length })
     try {
       const { batch_id, results } = await generateNotesBatch({
         items: selected.map(v => ({ video_url: v.video_url, platform: v.platform })),
@@ -891,6 +893,10 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
         }
       }
       const failCount = results.length - successCount
+      trackFeatureResult('note_generate_batch', successCount > 0, {
+        requested: selected.length,
+        succeeded: successCount,
+      })
       if (failCount > 0) {
         toast.error(`${successCount} 个任务已提交，${failCount} 个失败`)
       } else {
@@ -900,6 +906,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       onSubmitSuccess?.()
     } catch (e) {
       console.error('批量提交失败：', e)
+      trackFeatureResult('note_generate_batch', false, { requested: selected.length })
       toast.error('批量提交失败，请稍后重试')
     } finally {
       setBatchSubmitting(false)
@@ -916,6 +923,10 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
 
     const isRegenerate = mode === 'regenerate' && !!currentTaskId
     const taskId = isRegenerate ? currentTaskId : uuidv4()
+    trackFeatureSubmit('note_generate', {
+      mode: isRegenerate ? 'regenerate' : 'create',
+      platform: values.platform,
+    })
     const payload = {
       ...values,
       provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
@@ -924,6 +935,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
     }
     if (isRegenerate) {
       retryTask(currentTaskId, payload)
+      trackFeatureResult('note_generate', true, { mode: 'regenerate' })
       onSubmitSuccess?.()
       return
     }
@@ -947,8 +959,10 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       const request = generateNote(payload)
       onSubmitSuccess?.()
       await request
+      trackFeatureResult('note_generate', true, { mode: 'create', platform: values.platform })
       updateTaskContent(taskId, { submissionPending: false })
     } catch (e: any) {
+      trackFeatureResult('note_generate', false, { mode: isRegenerate ? 'regenerate' : 'create' })
       updateTaskContent(taskId, {
         status: 'FAILED',
         submissionPending: false,

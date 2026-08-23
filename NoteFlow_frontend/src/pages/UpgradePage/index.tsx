@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog'
 import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
 import PayDialog from './PayDialog'
+import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
 type Tab = 'recharge' | 'subscription'
 
@@ -62,21 +63,27 @@ const UpgradePage = () => {
   >(null)
 
   const handleBuyRecharge = async (pkg: RechargePackage) => {
+    trackFeatureSubmit('upgrade_recharge', { package: pkg.code })
     try {
       const order = await billingApi.createRechargeOrder(pkg.id, 'ALIPAY')
+      trackFeatureResult('upgrade_recharge', true, { package: pkg.code })
       setLastPurchase({ kind: 'recharge', id: pkg.id })
       setPayingOrder(order)
     } catch (e: any) {
+      trackFeatureResult('upgrade_recharge', false, { package: pkg.code })
       toast.error(e?.msg || '下单失败')
     }
   }
 
   const handleBuySubscription = async (plan: SubscriptionPlan) => {
+    trackFeatureSubmit('upgrade_subscription', { plan: plan.code })
     try {
       const order = await billingApi.createSubscriptionOrder(plan.id, 'ALIPAY')
+      trackFeatureResult('upgrade_subscription', true, { plan: plan.code })
       setLastPurchase({ kind: 'subscription', id: plan.id })
       setPayingOrder(order)
     } catch (e: any) {
+      trackFeatureResult('upgrade_subscription', false, { plan: plan.code })
       toast.error(e?.msg || '下单失败')
     }
   }
@@ -259,14 +266,17 @@ const RechargeTab = ({
   onBuy: (pkg: RechargePackage) => void
 }) => {
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
       {packages.map(pkg => {
         const isFeatured = pkg.badge === '最受欢迎'
+        const isUnavailable = pkg.is_one_time && pkg.is_purchased
         return (
           <div
             key={pkg.id}
-            className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${
-              isFeatured ? 'border-blue-500 ring-1 ring-blue-500/40' : 'border-neutral-200'
+            className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition ${
+              isUnavailable
+                ? 'border-neutral-200 bg-neutral-50/70 opacity-75'
+                : `hover:-translate-y-0.5 hover:shadow-md ${isFeatured ? 'border-blue-500 ring-1 ring-blue-500/40' : 'border-neutral-200'}`
             }`}
           >
             {pkg.badge && (
@@ -297,15 +307,24 @@ const RechargeTab = ({
               电力永久有效
             </div>
 
+            {isUnavailable && (
+              <div className="mb-3 rounded-lg bg-neutral-100 px-3 py-2 text-xs leading-5 text-neutral-500">
+                已完成福利包充值，每个账号仅限购买一次
+              </div>
+            )}
+
             <Button
               onClick={() => onBuy(pkg)}
+              disabled={isUnavailable}
               className={`mt-auto w-full ${
-                isFeatured
+                isUnavailable
+                  ? 'cursor-not-allowed bg-neutral-200 text-neutral-500 hover:bg-neutral-200'
+                  : isFeatured
                   ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-700 hover:to-blue-600'
                   : 'bg-white text-blue-600 ring-1 ring-blue-500/50 hover:bg-blue-50'
               }`}
             >
-              立即购买 ¥{formatYuan(pkg.price_cents)}
+              {isUnavailable ? '已购买（仅限一次）' : `立即购买 ¥${formatYuan(pkg.price_cents)}`}
             </Button>
           </div>
         )

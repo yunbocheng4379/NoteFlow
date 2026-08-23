@@ -95,6 +95,8 @@ def upsert_for_publish(
                 first_seen_at=now,
                 last_seen_at=now,
                 occurrence_count=1,
+                created_at=now,
+                updated_at=now,
             )
             db.add(row)
             db.commit()

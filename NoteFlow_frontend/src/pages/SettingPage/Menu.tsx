@@ -8,6 +8,8 @@ import {
   Cookie,
   Megaphone,
   Zap,
+  BarChart3,
+  LineChart,
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
 import { useUserStore } from '@/store/userStore'
@@ -67,6 +69,18 @@ const Menu = () => {
             name: '电力规则',
             icon: <Zap />,
             path: '/settings/pricing',
+          },
+          {
+            id: 'recharge-operations',
+            name: '充值运营',
+            icon: <BarChart3 />,
+            path: '/settings/recharge-operations',
+          },
+          {
+            id: 'analytics',
+            name: '数据分析',
+            icon: <LineChart />,
+            path: '/settings/analytics',
           },
           {
             id: 'update-logs-admin',

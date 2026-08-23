@@ -25,9 +25,11 @@ from app.db.engine import Base
 # -------- 通知分类 (应用的语义类型) --------
 NOTIFICATION_CATEGORY_COOKIE_FAILURE = "cookie_failure"
 NOTIFICATION_CATEGORY_POOL_EXHAUSTED = "pool_exhausted"
+NOTIFICATION_CATEGORY_SMTP_HEALTH = "smtp_health"
 NOTIFICATION_CATEGORIES = {
     NOTIFICATION_CATEGORY_COOKIE_FAILURE,
     NOTIFICATION_CATEGORY_POOL_EXHAUSTED,
+    NOTIFICATION_CATEGORY_SMTP_HEALTH,
 }
 
 # -------- 严重等级 --------
@@ -64,7 +66,7 @@ class Notification(Base):
     category = Column(
         String(64),
         nullable=False,
-        comment="通知分类: cookie_failure / pool_exhausted (用户反馈已迁回 Feedback 表)",
+        comment="通知分类: cookie_failure / pool_exhausted / smtp_health (用户反馈已迁回 Feedback 表)",
     )
     severity = Column(
         String(16),

@@ -16,6 +16,12 @@ from app.db.models.cloud_credentials import CloudCredential
 from app.db.models.notifications import Notification
 from app.db.models.platforms import Platform
 from app.db.models.update_logs import UpdateLog
+from app.db.models.analytics_events import AnalyticsEvent
+from app.db.models.notification_email import (
+    NotificationEmailBatch,
+    NotificationEmailBatchItem,
+    NotificationEmailDelivery,
+)
 
 # === 电力 / 计费 / 订阅 / 推荐相关模型 ===
 from app.db.models.credit_pricing import CreditPricing
@@ -47,3 +53,9 @@ def init_db():
         order_columns = {column["name"] for column in inspect(conn).get_columns("orders")}
         if "hidden_at" not in order_columns:
             conn.execute(text("ALTER TABLE orders ADD COLUMN hidden_at DATETIME NULL"))
+
+        package_columns = {column["name"] for column in inspect(conn).get_columns("recharge_packages")}
+        if "is_one_time" not in package_columns:
+            conn.execute(text(
+                "ALTER TABLE recharge_packages ADD COLUMN is_one_time INTEGER NOT NULL DEFAULT 0"
+            ))

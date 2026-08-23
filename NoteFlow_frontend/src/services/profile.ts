@@ -11,8 +11,10 @@ export interface ProfileInfo {
   total_points: number
   used_points: number
   credits: number
+  is_admin: boolean
   email_notify_enabled: boolean
   system_announce_enabled: boolean
+  pending_notification_email_enabled: boolean
 }
 
 export const profileApi = {
@@ -27,8 +29,13 @@ export const profileApi = {
   updateNotifySetting: (data: {
     email_notify_enabled?: boolean
     system_announce_enabled?: boolean
+    pending_notification_email_enabled?: boolean
   }) =>
-    request.put<any, { email_notify_enabled: boolean; system_announce_enabled: boolean }>(
+    request.put<any, {
+      email_notify_enabled: boolean
+      system_announce_enabled: boolean
+      pending_notification_email_enabled: boolean
+    }>(
       '/profile/notify',
       data,
     ),

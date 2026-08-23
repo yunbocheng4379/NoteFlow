@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, CircleAlert, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { billingApi } from '@/services/billing'
@@ -9,6 +9,7 @@ type Result = 'loading' | 'paid' | 'pending' | 'failed' | 'invalid'
 
 const AlipayReturnPage = () => {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [result, setResult] = useState<Result>('loading')
   const refreshBalance = useUserStore((s) => s.refreshBalance)
   const orderNo = searchParams.get('out_trade_no')
@@ -30,6 +31,7 @@ const AlipayReturnPage = () => {
         if (latest.status === 'PAID') {
           setResult('paid')
           await refreshBalance()
+          if (!cancelled) navigate('/billing?tab=orders', { replace: true })
           return
         }
         if (latest.status !== 'PENDING') {
@@ -57,7 +59,7 @@ const AlipayReturnPage = () => {
       cancelled = true
       if (timer) clearTimeout(timer)
     }
-  }, [orderNo, refreshBalance])
+  }, [navigate, orderNo, refreshBalance])
 
   const title = {
     loading: '正在确认支付结果',

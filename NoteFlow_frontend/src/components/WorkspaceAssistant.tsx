@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { MessageCircle } from 'lucide-react'
 import xiaoliu from '@/assets/assistant/xiaoliu.png'
 import AssistantPanel from '@/components/AssistantPanel'
+import { trackFeatureClick } from '@/services/analytics'
 
 export default function WorkspaceAssistant() {
   const [open, setOpen] = useState(false)
@@ -23,7 +24,10 @@ export default function WorkspaceAssistant() {
           type="button"
           aria-label="打开小流 AI 客服"
           aria-expanded={open}
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            trackFeatureClick('product_assistant')
+            setOpen(true)
+          }}
           className="group relative flex h-16 w-16 items-center justify-center rounded-full border-2 border-white bg-[#e6f7f5] shadow-[0_10px_28px_rgba(22,122,110,0.24)] transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#ff9b8a]/45 max-sm:h-14 max-sm:w-14"
         >
           <span className="absolute inset-0 rounded-full bg-[#e6f7f5] opacity-70 assistant-launcher-pulse" />

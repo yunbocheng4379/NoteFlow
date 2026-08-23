@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import toast from 'react-hot-toast'
 import { Loader2, Check } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { billingApi, Order, formatYuan } from '@/services/billing'
@@ -30,30 +31,45 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
   const [paying, setPaying] = useState(false)
   const [switching, setSwitching] = useState(false)
   const refreshBalance = useUserStore((s) => s.refreshBalance)
+  const navigate = useNavigate()
   const onSuccessRef = useRef(onSuccess)
+  const redirectedRef = useRef(false)
   onSuccessRef.current = onSuccess
+
+  useEffect(() => {
+    redirectedRef.current = false
+  }, [order?.order_no])
+
+  const completePayment = useCallback(async () => {
+    if (redirectedRef.current) return
+    redirectedRef.current = true
+    toast.success('支付成功，电力已到账')
+    await refreshBalance()
+    onSuccessRef.current?.()
+    navigate('/billing?tab=orders', { replace: true })
+  }, [navigate, refreshBalance])
 
   const mock = order ? isMockOrder(order) : true
   const isAlipayPageOrder = !!order && !mock && order.pay_method === 'ALIPAY'
+  const orderNo = order?.order_no
+  const orderStatus = order?.status
 
   // 真实渠道: 轮询订单状态, notify 到账后自动关闭弹窗
   useEffect(() => {
-    if (!order || mock || order.status !== 'PENDING') return
+    if (!orderNo || mock || orderStatus !== 'PENDING') return
     const timer = setInterval(async () => {
       try {
-        const latest = await billingApi.getOrder(order.order_no)
+        const latest = await billingApi.getOrder(orderNo)
         if (latest.status === 'PAID') {
           clearInterval(timer)
-          toast.success('支付成功，电力已到账')
-          await refreshBalance()
-          onSuccessRef.current?.()
+          await completePayment()
         }
       } catch {
         // 轮询失败静默重试, 不打扰用户
       }
     }, 2000)
     return () => clearInterval(timer)
-  }, [order?.order_no, order?.status, mock, refreshBalance])
+  }, [completePayment, mock, orderNo, orderStatus])
 
   if (!order) return null
 
@@ -65,10 +81,7 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
     setPaying(true)
     try {
       await billingApi.mockPay(order.order_no, order.mock_qrcode_token)
-      toast.success('支付成功，电力已到账')
-      await refreshBalance()
-      onSuccess?.()
-      onClose()
+      await completePayment()
     } catch (e: any) {
       toast.error(e?.msg || '支付失败')
     } finally {

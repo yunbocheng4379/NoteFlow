@@ -42,6 +42,7 @@ export default function ProfilePage() {
   // 邮件通知设置
   const [savingNotify, setSavingNotify] = useState(false)
   const [savingAnnounce, setSavingAnnounce] = useState(false)
+  const [savingPendingNotification, setSavingPendingNotification] = useState(false)
 
   // 修改手机号/邮箱 弹窗
   const [contactDialogField, setContactDialogField] = useState<'phone' | 'email' | null>(null)
@@ -138,6 +139,19 @@ export default function ProfilePage() {
       // toast shown by interceptor
     } finally {
       setSavingAnnounce(false)
+    }
+  }
+
+  const handleTogglePendingNotification = async (checked: boolean) => {
+    setSavingPendingNotification(true)
+    try {
+      await profileApi.updateNotifySetting({ pending_notification_email_enabled: checked })
+      setProfile((p) => p ? { ...p, pending_notification_email_enabled: checked } : p)
+      toast.success(checked ? '已开启待处理任务通知' : '已关闭待处理任务通知')
+    } catch {
+      // toast shown by interceptor
+    } finally {
+      setSavingPendingNotification(false)
     }
   }
 
@@ -350,6 +364,15 @@ export default function ProfilePage() {
                     onChange={handleToggleAnnounce}
                     disabled={savingAnnounce}
                   />
+                  {profile?.is_admin && (
+                    <ToggleRow
+                      label="待处理任务通知"
+                      description="有待处理系统通知时立即提醒，并每天汇总提醒"
+                      checked={profile.pending_notification_email_enabled ?? false}
+                      onChange={handleTogglePendingNotification}
+                      disabled={savingPendingNotification}
+                    />
+                  )}
                 </div>
               </div>
             </section>

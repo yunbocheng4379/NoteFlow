@@ -21,7 +21,12 @@ from app.db.models.notifications import (
     NOTIFICATION_STATUS_HANDLED,
     NOTIFICATION_STATUS_CLOSED,
     NOTIFICATION_STATUS_IGNORED,
+    NOTIFICATION_CATEGORY_SMTP_HEALTH,
 )
+from app.services.notification_email_service import NotificationEmailService
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class NotificationService:
@@ -63,7 +68,25 @@ class NotificationService:
             platform=platform,
             dedup_window_seconds=dedup_window_seconds,
         )
-        return _row_to_dict(row), state
+        record = _row_to_dict(row)
+        is_new_record = (
+            record.get("created_at")
+            and record.get("created_at") == record.get("first_seen_at")
+            and record.get("occurrence_count") == 1
+        )
+        if (
+            category != NOTIFICATION_CATEGORY_SMTP_HEALTH
+            and state == "created"
+            and is_new_record
+            and record.get("status") == NOTIFICATION_STATUS_PENDING
+        ):
+            try:
+                NotificationEmailService.send_immediate(record)
+            except Exception:
+                # Mail delivery is an out-of-band notification and must never
+                # fail the business operation that produced the system notice.
+                logger.exception("即时系统通知邮件发送任务失败: notification_id=%s", record.get("id"))
+        return record, state
 
     @staticmethod
     def publish_cookie_failure(

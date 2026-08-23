@@ -13,6 +13,7 @@ import { HomePage } from './pages/HomePage/Home.tsx'
 import LandingPage from '@/pages/LandingPage'
 import { useUserStore } from '@/store/userStore'
 import { rehydrateTaskStore, useTaskStore } from '@/store/taskStore'
+import { trackPageView } from '@/services/analytics'
 
 const AuthPage = lazy(() => import('@/pages/AuthPage'))
 const BindPhonePage = lazy(() => import('@/pages/BindPhonePage'))
@@ -54,6 +55,16 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function AnalyticsTracker() {
+  const location = useLocation()
+
+  useEffect(() => {
+    trackPageView(location.pathname)
+  }, [location.pathname])
+
+  return null
+}
+
 const Model = lazy(() => import('@/pages/SettingPage/Model.tsx'))
 const DownloaderForm = lazy(() => import('@/components/Form/DownloaderForm/Form.tsx'))
 const ProviderForm = lazy(() => import('@/components/Form/modelForm/Form.tsx'))
@@ -72,6 +83,8 @@ const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'))
 const CookiePoolPage = lazy(() => import('@/pages/SettingPage/CookiePool'))
 const NotificationsPage = lazy(() => import('@/pages/SettingPage/Notifications'))
 const PricingPage = lazy(() => import('@/pages/SettingPage/Pricing'))
+const RechargeOperationsPage = lazy(() => import('@/pages/SettingPage/RechargeOperations'))
+const AnalyticsPage = lazy(() => import('@/pages/SettingPage/Analytics'))
 const UpgradePage = lazy(() => import('@/pages/UpgradePage'))
 const BillingPage = lazy(() => import('@/pages/BillingPage'))
 const ReferralPage = lazy(() => import('@/pages/ReferralPage'))
@@ -145,6 +158,7 @@ function App() {
       <UpdateLogBanner />
       <BackendHealthIndicator />
       <Router>
+        <AnalyticsTracker />
         <Suspense fallback={<div className="flex h-screen items-center justify-center">加载中…</div>}>
           <Routes>
             <Route path="/welcome" element={<LandingPage />} />
@@ -208,6 +222,8 @@ function App() {
                 <Route path="cookie-pool" element={<CookiePoolPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route path="pricing" element={<PricingPage />} />
+                <Route path="recharge-operations" element={<RechargeOperationsPage />} />
+                <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="update-logs-admin" element={<UpdateLogsAdminPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

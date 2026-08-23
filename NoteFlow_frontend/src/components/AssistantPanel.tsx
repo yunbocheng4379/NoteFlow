@@ -5,6 +5,7 @@ import { BookOpen, ChevronDown, ChevronUp, Loader2, Send, Sparkles, X } from 'lu
 import xiaoliu from '@/assets/assistant/xiaoliu.png'
 import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
 import { askAssistantStream, getLatestUserQuestion } from '@/services/assistant'
+import { trackAssistantHandoff, trackAssistantQuestion } from '@/services/analytics'
 import { useAssistantStore } from '@/store/assistantStore'
 import { getCustomerSupportReply } from './assistantSupport'
 
@@ -84,8 +85,10 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
 
     const history = messages.map(({ role, content }) => ({ role, content }))
     addMessage({ role: 'user', content: question })
+    trackAssistantQuestion()
     const supportReply = getCustomerSupportReply(question, enterpriseServiceQr)
     if (supportReply) {
+      trackAssistantHandoff()
       addMessage({ role: 'assistant', content: supportReply })
       setInput('')
       setError(null)

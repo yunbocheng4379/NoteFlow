@@ -13,6 +13,12 @@ from app.db.models.platforms import Platform
 
 # === 更新日志 (全体用户可见 / 管理员配置) ===
 from app.db.models.update_logs import UpdateLog
+from app.db.models.analytics_events import AnalyticsEvent
+from app.db.models.notification_email import (
+    NotificationEmailBatch,
+    NotificationEmailBatchItem,
+    NotificationEmailDelivery,
+)
 
 __all__ = [
     "User",
@@ -24,4 +30,8 @@ __all__ = [
     "Notification",
     "Platform",
     "UpdateLog",
+    "AnalyticsEvent",
+    "NotificationEmailBatch",
+    "NotificationEmailBatchItem",
+    "NotificationEmailDelivery",
 ]

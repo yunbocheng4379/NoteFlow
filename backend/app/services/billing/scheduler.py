@@ -11,6 +11,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.db.engine import SessionLocal
 from app.services.billing import subscription_service, order_service
+from app.services.notification_email_service import NotificationEmailService
+from app.services.smtp_health_service import SmtpHealthService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,6 +48,24 @@ def _job_reconcile_gateway_orders():
     _run_in_session(order_service.reconcile_pending_gateway_orders)
 
 
+def _job_notification_email_digest():
+    """Send the daily pending-system-notification digest without stopping the scheduler."""
+    try:
+        result = NotificationEmailService.send_daily_digest()
+        logger.info("[scheduler] system notification digest finished: %s", result)
+    except Exception:
+        logger.exception("[scheduler] system notification digest failed")
+
+
+def _job_smtp_health_check():
+    """Check SMTP login without sending a message and create an in-app alert on failure."""
+    try:
+        result = SmtpHealthService.check()
+        logger.info("[scheduler] SMTP health check finished: %s", result)
+    except Exception:
+        logger.exception("[scheduler] SMTP health check failed")
+
+
 def start_scheduler():
     """在 FastAPI lifespan 启动时调用一次"""
     global _scheduler
@@ -56,9 +76,23 @@ def start_scheduler():
     sch.add_job(_job_expire_subs,    "cron", hour=2, minute=5,  id="billing_expire_subs")
     sch.add_job(_job_expire_pending_orders, "interval", minutes=1, id="billing_expire_pending_orders")
     sch.add_job(_job_reconcile_gateway_orders, "interval", minutes=5, id="billing_reconcile_gateway_orders")
+    sch.add_job(
+        _job_smtp_health_check,
+        "cron",
+        hour=8,
+        minute=0,
+        id="smtp_daily_health_check",
+    )
+    sch.add_job(
+        _job_notification_email_digest,
+        "cron",
+        hour=8,
+        minute=0,
+        id="system_notification_daily_digest",
+    )
     sch.start()
     _scheduler = sch
-    logger.info("[scheduler] billing scheduler started (2 daily cron jobs + 1min expiry + 5min gateway reconcile)")
+    logger.info("[scheduler] billing scheduler started (4 daily cron jobs + 1min expiry + 5min gateway reconcile)")
     return sch
 
 

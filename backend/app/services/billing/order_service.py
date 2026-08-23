@@ -50,6 +50,26 @@ def is_first_subscription(db: Session, user_id: int, plan_id: int) -> bool:
     return row is None
 
 
+def is_one_time_package_available(*, is_one_time: bool, has_paid_order: bool) -> bool:
+    """一次性套餐只有在用户尚未成功购买时可用。"""
+    return not is_one_time or not has_paid_order
+
+
+def has_paid_recharge_package(
+    db: Session, *, user_id: int, package_id: int, exclude_order_id: Optional[int] = None
+) -> bool:
+    """判断用户是否已经成功购买过指定充值套餐。"""
+    conditions = [
+        Order.user_id == user_id,
+        Order.package_id == package_id,
+        Order.kind == "RECHARGE",
+        Order.status == "PAID",
+    ]
+    if exclude_order_id is not None:
+        conditions.append(Order.id != exclude_order_id)
+    return db.execute(select(Order.id).where(*conditions).limit(1)).scalar_one_or_none() is not None
+
+
 def get_order_by_no(db: Session, user_id: int, order_no: str) -> Optional[Order]:
     """用户隔离查订单，已隐藏的订单对普通用户不可见。"""
     return db.execute(
@@ -252,6 +272,12 @@ def create_recharge_order(
     if not pkg:
         raise InvalidTransactionError(f"套餐不存在或已下架: id={package_id}")
 
+    if not is_one_time_package_available(
+        is_one_time=bool(pkg.is_one_time),
+        has_paid_order=has_paid_recharge_package(db, user_id=user_id, package_id=pkg.id),
+    ):
+        raise InvalidTransactionError("福利包每个账号仅限成功购买一次")
+
     order = Order(
         order_no=_gen_order_no(),
         user_id=user_id,
@@ -335,6 +361,19 @@ def _settle_paid_order(
       referral_service.maybe_pay_first_subscription_reward(order)  # 仅 SUBSCRIPTION 起作用
     """
     from app.services.billing import credit_ledger, subscription_service, referral_service
+
+    if order.kind == "RECHARGE":
+        pkg = db.get(RechargePackage, order.package_id)
+        if pkg and not is_one_time_package_available(
+            is_one_time=bool(pkg.is_one_time),
+            has_paid_order=has_paid_recharge_package(
+                db,
+                user_id=order.user_id,
+                package_id=order.package_id,
+                exclude_order_id=order.id,
+            ),
+        ):
+            raise OrderStateError("福利包每个账号仅限成功购买一次")
 
     order.status = "PAID"
     order.paid_at = datetime.now()

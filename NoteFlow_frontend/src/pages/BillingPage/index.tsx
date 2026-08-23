@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Zap, ArrowUpRight, ArrowDownRight, Loader2, ReceiptText, CreditCard, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/services/billing'
 import { useUserStore } from '@/store/userStore'
 import { Button } from '@/components/ui/button'
+import ConfirmDialog from '@/components/ConfirmDialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +31,9 @@ type Tab = 'transactions' | 'orders'
 
 const BillingPage = () => {
   const { credits, activeSubscription, refreshBalance } = useUserStore()
-  const [tab, setTab] = useState<Tab>('transactions')
+  const [searchParams] = useSearchParams()
+  const tabFromUrl: Tab = searchParams.get('tab') === 'orders' ? 'orders' : 'transactions'
+  const [tab, setTab] = useState<Tab>(tabFromUrl)
   const [txs, setTxs] = useState<Paginated<CreditTransaction> | null>(null)
   const [orders, setOrders] = useState<Paginated<Order> | null>(null)
   const [txPage, setTxPage] = useState(1)
@@ -40,7 +43,12 @@ const BillingPage = () => {
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
   const [cancellingOrderNo, setCancellingOrderNo] = useState<string | null>(null)
   const [hidingOrderNo, setHidingOrderNo] = useState<string | null>(null)
+  const [pendingCancelOrder, setPendingCancelOrder] = useState<Order | null>(null)
   const [pendingHideOrder, setPendingHideOrder] = useState<Order | null>(null)
+
+  useEffect(() => {
+    setTab(tabFromUrl)
+  }, [tabFromUrl])
 
   useEffect(() => {
     refreshBalance()
@@ -91,12 +99,18 @@ const BillingPage = () => {
     }
   }
 
-  const cancelOrder = async (order: Order) => {
-    if (!window.confirm('确定取消这个待支付订单吗？订单记录会保留，但之后不能继续支付。')) return
+  const cancelOrder = (order: Order) => {
+    setPendingCancelOrder(order)
+  }
+
+  const confirmCancelOrder = async () => {
+    if (!pendingCancelOrder) return
+    const order = pendingCancelOrder
     setCancellingOrderNo(order.order_no)
     try {
       await billingApi.cancelOrder(order.order_no)
       toast.success('订单已取消')
+      setPendingCancelOrder(null)
       await loadOrders()
     } catch (e: any) {
       toast.error(e?.msg || '取消订单失败')
@@ -241,6 +255,18 @@ const BillingPage = () => {
           setOrderPage(1)
           refreshBalance()
         }}
+      />
+
+      <ConfirmDialog
+        open={pendingCancelOrder !== null}
+        onOpenChange={open => {
+          if (!open && !cancellingOrderNo) setPendingCancelOrder(null)
+        }}
+        title="确认取消订单"
+        description="确定取消这个待支付订单吗？订单记录会保留，但之后不能继续支付。"
+        confirmText="确认取消"
+        loading={cancellingOrderNo === pendingCancelOrder?.order_no}
+        onConfirm={() => { void confirmCancelOrder() }}
       />
 
       <AlertDialog

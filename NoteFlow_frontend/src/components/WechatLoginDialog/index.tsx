@@ -5,6 +5,7 @@ import { authApi } from '@/services/auth'
 import { useUserStore } from '@/store/userStore'
 import { rehydrateTaskStore, useTaskStore } from '@/store/taskStore'
 import toast from 'react-hot-toast'
+import { trackFeatureResult } from '@/services/analytics'
 
 const QR_TIMEOUT_MS = 3 * 60 * 1000
 const POLL_INTERVAL_MS = 2000
@@ -81,6 +82,7 @@ export default function WechatLoginDialog({ open, onClose }: Props) {
       setLoading(true)
       try {
         const result = await authApi.wechatMiniExchange(currentState)
+        trackFeatureResult('auth_login', true, { method: 'wechat_mini' })
         setAuth(result.token, result.user)
         rehydrateTaskStore()
         loadHistory()
@@ -91,6 +93,7 @@ export default function WechatLoginDialog({ open, onClose }: Props) {
           navigate('/', { replace: true })
         }
       } catch (err: unknown) {
+        trackFeatureResult('auth_login', false, { method: 'wechat_mini' })
         exchangeStartedRef.current = false
         toast.error(getErrorMessage(err, '登录已失效，请重新扫码'))
         setExpired(true)
