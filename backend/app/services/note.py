@@ -297,7 +297,7 @@ class NoteGenerator:
             provider=provider["type"],
             name=provider["name"],
         )
-        return GPTFactory().from_config(config)
+        return GPTFactory().from_config(config, user_id=self.user_id)
 
     def _get_downloader(self, platform: str) -> Downloader:
         downloader_cls = SUPPORT_PLATFORM_MAP.get(platform)
@@ -931,6 +931,7 @@ class NoteGenerator:
             style=style,
             extras=extras,
             checkpoint_key=task_id,
+            user_id=self.user_id,
         )
 
         try:

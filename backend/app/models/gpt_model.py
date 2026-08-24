@@ -16,4 +16,4 @@ class GPTSource:
     _format: Optional[list] = None
     video_img_urls:  Optional[list] = None
     checkpoint_key: Optional[str] = None
-
+    user_id: Optional[int] = None

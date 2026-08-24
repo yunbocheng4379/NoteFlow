@@ -22,9 +22,16 @@ def simple_completion(provider_id: str, model_name: str, messages: list[dict], t
         name=provider["name"],
     )
     gpt = GPTFactory.from_config(config)
-    response = gpt.client.chat.completions.create(
-        model=gpt.model,
-        messages=messages,
-        temperature=temperature,
-    )
+    try:
+        response = gpt.client.chat.completions.create(
+            model=gpt.model,
+            messages=messages,
+            temperature=temperature,
+        )
+    except Exception as exc:
+        # GPT-5/o 系列等模型可能只接受默认 temperature；复用视频管线的兼容策略。
+        raw = str(exc).lower()
+        if "temperature" not in raw or ("does not support" not in raw and "unsupported_value" not in raw):
+            raise
+        response = gpt.client.chat.completions.create(model=gpt.model, messages=messages)
     return response.choices[0].message.content or ""

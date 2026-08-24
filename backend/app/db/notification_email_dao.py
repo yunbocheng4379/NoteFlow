@@ -159,19 +159,21 @@ def get_batch_items(batch_id: int) -> list[dict]:
         db.close()
 
 
-def list_eligible_admins() -> list[dict]:
+def list_eligible_admins(*, require_pending_preference: bool = True) -> list[dict]:
     db = SessionLocal()
     try:
+        filters = [
+            User.is_admin == 1,
+            User.is_active == 1,
+            User.email_notify_enabled == 1,
+            User.email.isnot(None),
+            User.email != "",
+        ]
+        if require_pending_preference:
+            filters.append(User.pending_notification_email_enabled == 1)
         rows = (
             db.query(User)
-            .filter(
-                User.is_admin == 1,
-                User.is_active == 1,
-                User.email_notify_enabled == 1,
-                User.pending_notification_email_enabled == 1,
-                User.email.isnot(None),
-                User.email != "",
-            )
+            .filter(*filters)
             .order_by(User.id.asc())
             .all()
         )

@@ -3,6 +3,11 @@ from app.db.models.providers import Provider
 from app.db.models.models import Model
 from app.db.models.video_tasks import VideoTask
 from app.db.models.user_transcriber_configs import UserTranscriberConfig
+from app.db.models.system_settings import SystemSetting
+from app.db.models.note_style import NoteStyle
+from app.db.models.note_style_versions import NoteStyleVersion
+from app.db.models.note_style_reviews import NoteStyleReview
+from app.db.models.user_notifications import UserNotification
 
 # === Cookie 池 + 系统通知 ===
 from app.db.models.platform_cookies import PlatformCookie
@@ -26,6 +31,11 @@ __all__ = [
     "Model",
     "VideoTask",
     "UserTranscriberConfig",
+    "SystemSetting",
+    "NoteStyle",
+    "NoteStyleVersion",
+    "NoteStyleReview",
+    "UserNotification",
     "PlatformCookie",
     "Notification",
     "Platform",

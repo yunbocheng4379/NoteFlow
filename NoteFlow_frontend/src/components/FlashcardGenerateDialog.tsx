@@ -13,17 +13,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { ModelSelect } from '@/components/ModelSelect'
+import { getModelKey } from '@/components/modelSelect.utils'
 import { useModelStore } from '@/store/modelStore'
 import { useProviderStore } from '@/store/providerStore'
 import { generateFlashcards } from '@/services/flashcard'
-import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 
 interface Props {
   taskId: string | null
@@ -41,7 +35,7 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
   const providers = useProviderStore(s => s.provider)
   const fetchProviderList = useProviderStore(s => s.fetchProviderList)
 
-  const [modelName, setModelName] = useState('')
+  const [modelKey, setModelKey] = useState('')
   const [customPrompt, setCustomPrompt] = useState('')
   const [cardCount, setCardCount] = useState(10)
   const [generating, setGenerating] = useState(false)
@@ -52,10 +46,10 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
   }, [open, modelList.length, loadEnabledModels, providers.length, fetchProviderList])
 
   useEffect(() => {
-    if (open && !modelName && modelList.length > 0) {
-      setModelName(modelList[0].model_name)
+    if (open && !modelKey && modelList.length > 0) {
+      setModelKey(getModelKey(modelList[0].provider_id, modelList[0].model_name))
     }
-  }, [open, modelName, modelList])
+  }, [open, modelKey, modelList])
 
   useEffect(() => {
     if (!open) {
@@ -66,7 +60,7 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
 
   const handleGenerate = async () => {
     if (!taskId) return
-    const selected = modelList.find(m => m.model_name === modelName)
+    const selected = modelList.find(m => getModelKey(m.provider_id, m.model_name) === modelKey)
     if (!selected) {
       toast.error('请选择生成模型')
       return
@@ -108,22 +102,13 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-700">生成模型</label>
-            <Select value={modelName} onValueChange={setModelName}>
-              <SelectTrigger className="w-full shadow-none">
-                <SelectValue placeholder="请选择模型" />
-              </SelectTrigger>
-              <SelectContent>
-                {modelList.map(m => (
-                  <SelectItem key={m.id} value={m.model_name}>
-                    <ModelOptionLabel
-                      providerId={m.provider_id}
-                      modelName={m.model_name}
-                      providers={providers}
-                    />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ModelSelect
+              models={modelList}
+              providers={providers}
+              value={modelKey}
+              onValueChange={setModelKey}
+              triggerClassName="shadow-none"
+            />
           </div>
 
           <div>
@@ -162,7 +147,7 @@ export default function FlashcardGenerateDialog({ taskId, open, onOpenChange }: 
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button size="sm" disabled={generating || !modelName} onClick={handleGenerate}>
+          <Button size="sm" disabled={generating || !modelKey} onClick={handleGenerate}>
             {generating ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (

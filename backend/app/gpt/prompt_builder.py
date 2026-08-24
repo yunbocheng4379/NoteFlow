@@ -22,7 +22,7 @@ note_styles = [
 ]
 
 
-def generate_base_prompt(title, segment_text, tags, _format=None, style=None, extras=None):
+def generate_base_prompt(title, segment_text, tags, _format=None, style=None, extras=None, user_id=None):
     prompt = BASE_PROMPT.format(
         video_title=title,
         segment_text=segment_text,
@@ -33,7 +33,7 @@ def generate_base_prompt(title, segment_text, tags, _format=None, style=None, ex
         prompt += "\n" + "\n".join([get_format_function(f) for f in _format])
 
     if style:
-        prompt += "\n" + get_style_format(style)
+        prompt += "\n" + get_style_format(style, user_id=user_id)
 
     if extras:
         prompt += "\n" + extras
@@ -51,10 +51,10 @@ def get_format_function(format_type):
     return format_map.get(format_type, lambda: '')()
 
 
-def get_style_format(style):
+def get_style_format(style, user_id=None):
     try:
         from app.db.note_style_dao import get_style_by_value
-        record = get_style_by_value(style)
+        record = get_style_by_value(style, user_id=user_id)
         if record and record.get("prompt"):
             return record["prompt"]
     except Exception:

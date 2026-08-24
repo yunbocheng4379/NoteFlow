@@ -4,10 +4,34 @@ from sqlalchemy import or_
 
 from app.db.engine import get_db
 from app.db.models.note_style import NoteStyle
+from app.db.models.note_style_versions import NoteStyleVersion
 
 
-def _to_dict(s: NoteStyle) -> dict:
+def _fmt(value):
+    return value.isoformat() if hasattr(value, "isoformat") and value else value
+
+
+def _version_dict(version: NoteStyleVersion) -> dict:
     return {
+        "version_id": version.id,
+        "version_no": version.version_no,
+        "name": version.name,
+        "value": version.value,
+        "description": version.description,
+        "prompt": version.prompt,
+        "icon": version.icon,
+        "version_status": version.status,
+        "ai_status": version.ai_status,
+        "ai_risk_level": version.ai_risk_level,
+        "ai_categories": version.ai_categories,
+        "ai_summary": version.ai_summary,
+        "ai_recommendations": version.ai_recommendations,
+        "submitted_at": _fmt(version.submitted_at),
+    }
+
+
+def _to_dict(s: NoteStyle, version: Optional[NoteStyleVersion] = None) -> dict:
+    payload = {
         "id": s.id,
         "name": s.name,
         "value": s.value,
@@ -15,10 +39,38 @@ def _to_dict(s: NoteStyle) -> dict:
         "prompt": s.prompt,
         "source": s.source,
         "user_id": s.user_id,
-        "is_public": s.is_public,
+        "is_public": bool(s.published_version_id) and not bool(s.is_deleted),
+        "moderation_status": s.moderation_status,
+        "published_version_id": s.published_version_id,
+        "pending_version_id": s.pending_version_id,
+        "review_reason": s.review_reason,
+        "reviewed_at": _fmt(s.reviewed_at),
         "icon": s.icon,
-        "created_at": s.created_at.isoformat() if s.created_at else None,
+        "created_at": _fmt(s.created_at),
     }
+    if version is not None:
+        payload.update(_version_dict(version))
+    return payload
+
+
+def _content_version(db, style: NoteStyle, *, public: bool = False) -> Optional[NoteStyleVersion]:
+    version_id = style.published_version_id if public else style.pending_version_id
+    if version_id:
+        version = db.query(NoteStyleVersion).filter(NoteStyleVersion.id == version_id).first()
+        if version:
+            return version
+    return None
+
+
+def _visible_dict(db, style: NoteStyle, user_id: Optional[int]) -> dict:
+    if style.source == "system":
+        return _to_dict(style)
+    is_owner = style.user_id == user_id
+    if is_owner:
+        version = _content_version(db, style, public=False)
+        return _to_dict(style, version=version)
+    version = _content_version(db, style, public=True)
+    return _to_dict(style, version=version)
 
 
 def get_styles(
@@ -36,14 +88,17 @@ def get_styles(
         elif category == "user":
             q = q.filter(NoteStyle.source == "user", NoteStyle.user_id == user_id)
         elif category == "public":
-            q = q.filter(NoteStyle.is_public == True, NoteStyle.source == "user")
+            q = q.filter(
+                NoteStyle.source == "user",
+                NoteStyle.published_version_id.isnot(None),
+            )
         else:
             # "all" — system + this user's custom + public
             q = q.filter(
                 or_(
                     NoteStyle.source == "system",
                     NoteStyle.user_id == user_id,
-                    NoteStyle.is_public == True,
+                    NoteStyle.published_version_id.isnot(None),
                 )
             )
 
@@ -54,16 +109,51 @@ def get_styles(
             )
 
         styles = q.order_by(NoteStyle.source.asc(), NoteStyle.id.asc()).all()
-        return [_to_dict(s) for s in styles]
+        return [_visible_dict(db, s, user_id) for s in styles]
     finally:
         db.close()
 
 
-def get_style_by_value(value: str) -> Optional[dict]:
+def get_style_by_value(value: str, user_id: Optional[int] = None) -> Optional[dict]:
     db = next(get_db())
     try:
-        s = db.query(NoteStyle).filter_by(value=value, is_deleted=False).first()
-        return _to_dict(s) if s else None
+        system = (
+            db.query(NoteStyle)
+            .filter(NoteStyle.value == value, NoteStyle.source == "system", NoteStyle.is_deleted.is_(False))
+            .first()
+        )
+        if system:
+            return _to_dict(system)
+
+        if user_id is not None:
+            own = (
+                db.query(NoteStyle)
+                .filter(
+                    NoteStyle.value == value,
+                    NoteStyle.source == "user",
+                    NoteStyle.user_id == user_id,
+                    NoteStyle.is_deleted.is_(False),
+                )
+                .first()
+            )
+            if own:
+                return _visible_dict(db, own, user_id)
+
+        published = (
+            db.query(NoteStyle, NoteStyleVersion)
+            .join(NoteStyleVersion, NoteStyleVersion.id == NoteStyle.published_version_id)
+            .filter(
+                NoteStyleVersion.value == value,
+                NoteStyleVersion.status == "PUBLISHED",
+                NoteStyle.source == "user",
+                NoteStyle.is_deleted.is_(False),
+            )
+            .order_by(NoteStyleVersion.id.desc())
+            .first()
+        )
+        if published:
+            return _to_dict(published[0], version=published[1])
+        return None
     finally:
         db.close()
 
@@ -88,11 +178,27 @@ def create_style(
             is_public=is_public,
             icon=icon,
             source="user",
+            moderation_status="DRAFT",
         )
         db.add(s)
         db.commit()
         db.refresh(s)
-        return _to_dict(s)
+        version = NoteStyleVersion(
+            style_id=s.id,
+            version_no=1,
+            name=name,
+            value=value,
+            description=description,
+            prompt=prompt,
+            icon=icon,
+            status="DRAFT",
+        )
+        db.add(version)
+        db.flush()
+        s.pending_version_id = version.id
+        db.commit()
+        db.refresh(s)
+        return _visible_dict(db, s, user_id)
     finally:
         db.close()
 
@@ -118,12 +224,60 @@ def update_style(style_id: int, user_id: int, is_admin: bool = False, **kwargs) 
         s = _get_manageable_style(db, style_id, user_id=user_id, is_admin=is_admin)
         if not s:
             return None
+        if s.source == "system":
+            for k, v in kwargs.items():
+                if hasattr(s, k) and v is not None:
+                    setattr(s, k, v)
+            db.commit()
+            db.refresh(s)
+            return _to_dict(s)
+
+        content_fields = {"name", "description", "prompt", "icon"}
+        changed = any(kwargs.get(field) is not None for field in content_fields)
         for k, v in kwargs.items():
-            if hasattr(s, k) and v is not None:
+            if k in content_fields and v is not None:
                 setattr(s, k, v)
+
+        version = _content_version(db, s, public=False)
+        if changed:
+            if s.moderation_status == "PUBLISHED" and s.published_version_id:
+                next_no = (db.query(NoteStyleVersion.version_no)
+                            .filter(NoteStyleVersion.style_id == s.id)
+                            .order_by(NoteStyleVersion.version_no.desc()).first() or (0,))[0] + 1
+                version = NoteStyleVersion(
+                    style_id=s.id,
+                    version_no=next_no,
+                    name=s.name,
+                    value=s.value,
+                    description=s.description,
+                    prompt=s.prompt,
+                    icon=s.icon,
+                    status="PENDING_REVIEW",
+                )
+                db.add(version)
+                db.flush()
+                s.pending_version_id = version.id
+                s.moderation_status = "PENDING_REVIEW"
+            else:
+                if version is None:
+                    next_no = (db.query(NoteStyleVersion.version_no)
+                               .filter(NoteStyleVersion.style_id == s.id)
+                               .order_by(NoteStyleVersion.version_no.desc()).first() or (0,))[0] + 1
+                    version = NoteStyleVersion(style_id=s.id, version_no=next_no, status="DRAFT", value=s.value,
+                                               name=s.name, description=s.description, prompt=s.prompt, icon=s.icon)
+                    db.add(version)
+                    db.flush()
+                    s.pending_version_id = version.id
+                version.name = s.name
+                version.value = s.value
+                version.description = s.description
+                version.prompt = s.prompt
+                version.icon = s.icon
+                if version.status == "REJECTED":
+                    version.status = "DRAFT"
         db.commit()
         db.refresh(s)
-        return _to_dict(s)
+        return _visible_dict(db, s, user_id)
     finally:
         db.close()
 
@@ -137,7 +291,11 @@ def delete_style(style_id: int, user_id: int, is_admin: bool = False) -> bool:
         if s.source == "system":
             s.is_deleted = True
         else:
-            db.delete(s)
+            s.is_deleted = True
+            s.is_public = False
+            s.published_version_id = None
+            s.pending_version_id = None
+            s.review_reason = None
         db.commit()
         return True
     finally:
@@ -150,10 +308,17 @@ def toggle_public(style_id: int, user_id: int, is_public: bool) -> Optional[dict
         s = db.query(NoteStyle).filter_by(id=style_id, user_id=user_id, source="user").first()
         if not s:
             return None
-        s.is_public = is_public
+        if is_public:
+            # 公开提交由 moderation service 负责，避免前端绕过审核。
+            return None
+        s.is_public = False
+        s.published_version_id = None
+        s.pending_version_id = None
+        s.moderation_status = "DRAFT"
+        s.review_reason = None
         db.commit()
         db.refresh(s)
-        return _to_dict(s)
+        return _visible_dict(db, s, user_id)
     finally:
         db.close()
 

@@ -2,10 +2,13 @@
 
 import { useTaskStore, type AudioMeta } from "@/store/taskStore"
 import { useEffect, useState, useRef } from "react"
-import { Play } from "lucide-react"
+import { Download, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area.tsx"
+import { Button } from "@/components/ui/button.tsx"
 import { isEmbeddable } from "@/pages/HomePage/components/EmbeddedVideoPlayer.tsx"
+import { exportTranscript } from "@/services/export"
+import { toast } from "react-hot-toast"
 
 interface Segment {
   start: number
@@ -16,6 +19,7 @@ interface Segment {
 
 interface Task {
   transcript?: {
+    full_text?: string
     segments?: Segment[]
   }
   audioMeta?: AudioMeta
@@ -42,6 +46,7 @@ const TranscriptViewer = ({ onSeek }: TranscriptViewerProps) => {
   const currentTaskId = useTaskStore((state) => state.currentTaskId)
   const [task, setTask] = useState<Task | null>(null)
   const [activeSegment, setActiveSegment] = useState<number | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
   const segmentRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
@@ -77,9 +82,37 @@ const TranscriptViewer = ({ onSeek }: TranscriptViewerProps) => {
     })
   }
 
+  const handleExport = async () => {
+    if (!currentTaskId || !task?.transcript?.segments?.length) return
+
+    setIsExporting(true)
+    try {
+      await exportTranscript(currentTaskId, task.audioMeta?.title || currentTaskId)
+      toast.success("转写文本已导出")
+    } catch {
+      toast.error("转写文本导出失败")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
       <div className="transcript-viewer flex h-full w-full flex-col  rounded-md border bg-white p-4 shadow-sm">
-        <h2 className="mb-4 text-lg font-medium">转写结果</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">转写结果</h2>
+          {task?.transcript?.segments?.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={isExporting}
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? "导出中..." : "导出文本"}
+            </Button>
+          )}
+        </div>
         {!task?.transcript?.segments?.length ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">暂无转写内容</div>
         ) : (

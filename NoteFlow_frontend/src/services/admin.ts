@@ -247,6 +247,7 @@ export type NotificationCategory =
   | 'cookie_failure'
   | 'pool_exhausted'
   | 'smtp_health'
+  | 'note_style_review'
 
 export type NotificationStatus = 'pending' | 'handled' | 'closed' | 'ignored'
 

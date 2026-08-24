@@ -32,8 +32,8 @@ const LOGO_MAP = {
   Zhipu,
 }
 
-const inferLogoName = (modelName?: string, providerId?: string) => {
-  const text = `${providerId || ''} ${modelName || ''}`.toLowerCase()
+const inferLogoName = (modelName?: string, providerId?: string, providerName?: string) => {
+  const text = `${providerId || ''} ${providerName || ''} ${modelName || ''}`.toLowerCase()
   if (text.includes('deepseek')) return 'DeepSeek'
   if (
     text.includes('openai') ||
@@ -66,26 +66,29 @@ const normalizeLogoName = (logoName?: string) => {
 export function getModelProviderLogoName(
   providerId?: string,
   modelName?: string,
-  providers: IProvider[] = []
+  providers: IProvider[] = [],
+  providerName?: string,
 ) {
   const provider = providers.find(p => p.id === providerId)
-  return normalizeLogoName(provider?.logo || inferLogoName(modelName, providerId))
+  return normalizeLogoName(provider?.logo || inferLogoName(modelName, providerId, providerName))
 }
 
 export function ModelProviderLogo({
   providerId,
+  providerName,
   modelName,
   providers = [],
   size = 18,
   className,
 }: {
   providerId?: string
+  providerName?: string
   modelName?: string
   providers?: IProvider[]
   size?: number
   className?: string
 }) {
-  const logoName = getModelProviderLogoName(providerId, modelName, providers)
+  const logoName = getModelProviderLogoName(providerId, modelName, providers, providerName)
   const Icon = LOGO_MAP[logoName as keyof typeof LOGO_MAP] as
     | (React.ComponentType<{ size?: number }> & {
         Color?: React.ComponentType<{ size?: number }>
@@ -114,12 +117,14 @@ export function ModelProviderLogo({
 
 export function ModelOptionLabel({
   providerId,
+  providerName,
   modelName,
   providers = [],
   size = 18,
   className,
 }: {
   providerId?: string
+  providerName?: string
   modelName: string
   providers?: IProvider[]
   size?: number
@@ -129,6 +134,7 @@ export function ModelOptionLabel({
     <span className={cn('flex min-w-0 items-center gap-2', className)}>
       <ModelProviderLogo
         providerId={providerId}
+        providerName={providerName}
         modelName={modelName}
         providers={providers}
         size={size}

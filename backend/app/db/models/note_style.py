@@ -16,6 +16,18 @@ class NoteStyle(Base):
     is_deleted = Column(Boolean, nullable=False, default=False, comment="系统内置风格是否已被管理员删除")
     user_id = Column(Integer, nullable=True, index=True, comment="创建该风格的用户 ID；source=system 时为 NULL")
     is_public = Column(Boolean, nullable=False, default=False, comment="是否公开到广场：True=所有用户可见并使用，False=仅创建者可见")
+    moderation_status = Column(
+        String(24),
+        nullable=False,
+        default="DRAFT",
+        server_default="DRAFT",
+        index=True,
+        comment="公开审核状态：DRAFT/PENDING_REVIEW/REJECTED/PUBLISHED/UNPUBLISHED",
+    )
+    published_version_id = Column(Integer, nullable=True, comment="当前公开版本 ID；未上架时为空")
+    pending_version_id = Column(Integer, nullable=True, comment="当前待审核版本 ID")
+    review_reason = Column(Text, nullable=True, comment="最近一次驳回或下架原因")
+    reviewed_at = Column(DateTime, nullable=True, comment="最近一次审核处理时间")
     icon = Column(String(32), nullable=True, comment="图标 key，对应前端预置图标集中的键名；为空时前端使用首字母头像兜底展示")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="最近更新时间")

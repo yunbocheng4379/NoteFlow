@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from .routers import note, provider, model, config, chat, auth, note_style, profile, export_note, share, feedback, billing, billing_notify, admin, admin_cookies, admin_notifications, admin_pricing, platform, update_logs, admin_update_logs, note_collection, flashcard, knowledge_base, assistant, cloud_drive, video_search, analytics, admin_analytics
+from .routers import note, provider, model, config, chat, auth, note_style, profile, notifications, admin_note_style, admin_content_moderation, export_note, share, feedback, billing, billing_notify, admin, admin_cookies, admin_notifications, admin_pricing, platform, update_logs, admin_update_logs, note_collection, flashcard, knowledge_base, assistant, cloud_drive, video_search, analytics, admin_analytics
 
 
 def create_app(lifespan) -> FastAPI:
@@ -12,6 +12,9 @@ def create_app(lifespan) -> FastAPI:
     app.include_router(chat.router, prefix="/api")
     app.include_router(auth.router, prefix="/api")
     app.include_router(note_style.router, prefix="/api")
+    app.include_router(notifications.router, prefix="/api")
+    app.include_router(admin_note_style.router, prefix="/api")
+    app.include_router(admin_content_moderation.router, prefix="/api")
     app.include_router(profile.router, prefix="/api")
     app.include_router(export_note.router, prefix="/api")
     app.include_router(share.router, prefix="/api")

@@ -10,6 +10,7 @@ import {
   Zap,
   BarChart3,
   LineChart,
+  ShieldAlert,
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
 import { useUserStore } from '@/store/userStore'
@@ -63,6 +64,12 @@ const Menu = () => {
             name: '系统通知',
             icon: <Bell />,
             path: '/settings/notifications',
+          },
+          {
+            id: 'note-styles',
+            name: '笔记风格管理',
+            icon: <ShieldAlert />,
+            path: '/settings/note-styles',
           },
           {
             id: 'pricing',

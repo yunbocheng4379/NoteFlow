@@ -42,6 +42,7 @@ interface KnowledgeBaseStore {
   conversations: KbConversation[]
   activeConversationId: number | null
   messages: KbMessage[]
+  messagesLoading: boolean
   loaded: boolean
   processingConversationIds: Record<number, true>
   streamingDrafts: Record<number, KbStreamingDraft>
@@ -69,6 +70,7 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
   conversations: [],
   activeConversationId: null,
   messages: [],
+  messagesLoading: false,
   loaded: false,
   processingConversationIds: {},
   streamingDrafts: {},
@@ -90,6 +92,7 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
         conversations: sortConversations([conv, ...state.conversations]),
         activeConversationId: conv.id,
         messages: [],
+        messagesLoading: false,
       }))
       return conv.id
     } catch (error) {
@@ -99,11 +102,14 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
   },
 
   selectConversation: async (id: number) => {
+    if (get().activeConversationId === id && !get().messagesLoading) return
+
     // 选中会话即视为“已读”，如果之前被标记为未读则同步取消。
     const prev = get().conversations.find(c => c.id === id)
     set(state => ({
       activeConversationId: id,
       messages: [],
+      messagesLoading: true,
       conversations: prev?.is_unread
         ? state.conversations.map(c => (c.id === id ? { ...c, is_unread: false } : c))
         : state.conversations,
@@ -127,9 +133,11 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
                 },
               ]
             : messages,
+        messagesLoading: false,
       })
     } catch (error) {
       console.error('加载知识库会话消息失败', error)
+      if (get().activeConversationId === id) set({ messagesLoading: false })
     }
     if (prev?.is_unread && get().activeConversationId === id) {
       try {
@@ -147,6 +155,7 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
         conversations: state.conversations.filter(c => c.id !== id),
         activeConversationId: state.activeConversationId === id ? null : state.activeConversationId,
         messages: state.activeConversationId === id ? [] : state.messages,
+        messagesLoading: state.activeConversationId === id ? false : state.messagesLoading,
         processingConversationIds: Object.fromEntries(
           Object.entries(state.processingConversationIds).filter(([conversationId]) => conversationId !== String(id))
         ),
@@ -357,5 +366,5 @@ export const useKnowledgeBaseStore = create<KnowledgeBaseStore>()((set, get) => 
     }
   },
 
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => set({ messages: [], messagesLoading: false }),
 }))

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, Globe, Lock, Trash2, Pencil, Eye } from 'lucide-react'
+import { Search, Plus, Globe, Lock, Trash2, Pencil, Eye, Clock3, XCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
@@ -121,6 +121,22 @@ function avatarColor(name: string) {
   return AVATAR_COLORS[code % AVATAR_COLORS.length]
 }
 
+function showReviewPendingToast() {
+  toast.custom(
+    (t) => (
+      <div
+        className={`flex max-w-[380px] items-center gap-3 rounded-xl border border-amber-200 border-l-4 border-l-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 shadow-lg transition-opacity ${
+          t.visible ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        <Clock3 className="h-5 w-5 shrink-0 text-amber-500" />
+        <span>已提交审核，等待管理员审核</span>
+      </div>
+    ),
+    { duration: 3000 },
+  )
+}
+
 // ── Icon Picker ──────────────────────────────────────────────────────────────
 
 interface IconPickerProps {
@@ -189,7 +205,7 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
     value: initial?.value ?? '',
     description: initial?.description ?? '',
     prompt: initial?.prompt ?? '',
-    is_public: initial?.is_public ?? false,
+    is_public: initial?.is_public || initial?.moderation_status === 'PENDING_REVIEW' || initial?.moderation_status === 'PUBLISHED',
     icon: (initial?.icon ?? null) as string | null,
   })
   const [saving, setSaving] = useState(false)
@@ -225,7 +241,7 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
         }
         result = await noteStyleApi.create(payload)
       }
-      toast.success(isEdit ? '已更新' : '已创建')
+      toast.success(form.is_public ? '已提交审核，审核通过后将公开展示' : (isEdit ? '已更新' : '已创建'))
       onSaved(result)
     } catch {
       // request interceptor shows error
@@ -424,6 +440,7 @@ function StyleCard({
   const isOwner = style.source === 'user' && style.user_id === currentUserId
   const isSystemStyle = style.source === 'system'
   const canManageSystemStyle = isSystemStyle && isAdmin
+  const isPending = style.moderation_status === 'PENDING_REVIEW'
 
   return (
     <div
@@ -462,6 +479,21 @@ function StyleCard({
                 className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/20"
               >
                 公开
+              </Badge>
+            )}
+            {style.source === 'user' && style.moderation_status === 'PENDING_REVIEW' && (
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5 py-0 h-4 bg-amber-50 text-amber-700 border-amber-200">
+                <Clock3 size={10} /> 待审核
+              </Badge>
+            )}
+            {style.source === 'user' && style.moderation_status === 'REJECTED' && (
+              <Badge variant="secondary" className="gap-1 text-[10px] px-1.5 py-0 h-4 bg-red-50 text-red-700 border-red-200">
+                <XCircle size={10} /> 已驳回
+              </Badge>
+            )}
+            {style.source === 'user' && style.moderation_status === 'UNPUBLISHED' && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-neutral-100 text-neutral-600 border-neutral-200">
+                已下架
               </Badge>
             )}
           </div>
@@ -526,10 +558,13 @@ function StyleCard({
         <div className="mt-3 flex items-center gap-2 pt-3 border-t border-neutral-100">
           <button
             className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-primary transition-colors"
-            onClick={() => onTogglePublic(style.id, !style.is_public)}
-            title={style.is_public ? '设为私有' : '公开分享'}
+            onClick={() => !isPending && onTogglePublic(style.id, !style.is_public)}
+            disabled={isPending}
+            title={isPending ? '等待管理员审核' : (style.is_public ? '设为私有' : '公开分享')}
           >
-            {style.is_public ? (
+            {isPending ? (
+              <><Clock3 size={12} /> 等待审核</>
+            ) : style.is_public ? (
               <><Lock size={12} /> 设为私有</>
             ) : (
               <><Globe size={12} /> 公开分享</>
@@ -623,7 +658,8 @@ export default function NoteStylePage() {
 
   const handleTogglePublic = async (id: number, val: boolean) => {
     await noteStyleApi.togglePublic(id, val)
-    toast.success(val ? '已公开' : '已设为私有')
+    if (val) showReviewPendingToast()
+    else toast.success('已设为私有')
     fetchStyles()
   }
 

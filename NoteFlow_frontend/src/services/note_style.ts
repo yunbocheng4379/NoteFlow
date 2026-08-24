@@ -9,6 +9,18 @@ export interface NoteStyle {
   source: 'system' | 'user'
   user_id: number | null
   is_public: boolean
+  moderation_status: 'DRAFT' | 'PENDING_REVIEW' | 'REJECTED' | 'PUBLISHED' | 'UNPUBLISHED'
+  published_version_id: number | null
+  pending_version_id: number | null
+  review_reason: string | null
+  reviewed_at: string | null
+  version_id?: number
+  version_no?: number
+  version_status?: string
+  ai_status?: string | null
+  ai_risk_level?: string | null
+  ai_categories?: string | string[] | null
+  ai_summary?: string | null
   icon: string | null
   created_at: string | null
 }
@@ -47,4 +59,7 @@ export const noteStyleApi = {
     request.patch<any, NoteStyle>(`/note_styles/${id}/public`, null, {
       params: { is_public },
     }),
+
+  submit: (id: number) =>
+    request.post<any, NoteStyle>(`/note_styles/${id}/submit`),
 }

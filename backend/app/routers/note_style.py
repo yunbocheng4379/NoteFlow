@@ -13,6 +13,7 @@ from app.db.note_style_dao import (
     delete_style,
     toggle_public,
 )
+from app.services.note_style_moderation_service import NoteStyleModerationError, NoteStyleModerationService
 from app.utils.response import ResponseWrapper as R
 
 router = APIRouter()
@@ -47,7 +48,7 @@ def list_styles(
 
 @router.get("/note_styles/value/{value}")
 def get_style_value(value: str, current_user: User = Depends(get_current_user)):
-    style = get_style_by_value(value)
+    style = get_style_by_value(value, user_id=current_user.id)
     return R.success(data=style)
 
 
@@ -62,9 +63,14 @@ def create_note_style(
         prompt=data.prompt,
         user_id=current_user.id,
         description=data.description,
-        is_public=data.is_public,
+        is_public=False,
         icon=data.icon,
     )
+    if data.is_public:
+        try:
+            style = NoteStyleModerationService.submit(style_id=style["id"], user_id=current_user.id)
+        except NoteStyleModerationError as exc:
+            return R.error(msg=str(exc), code=400)
     return R.success(data=style)
 
 
@@ -77,15 +83,21 @@ def update_note_style(
     updated = update_style(
         style_id=style_id,
         user_id=current_user.id,
-        is_admin=bool(current_user.is_admin),
+        is_admin=False,
         name=data.name,
         description=data.description,
         prompt=data.prompt,
-        is_public=data.is_public,
         icon=data.icon,
     )
     if updated is None:
         return R.error(msg="样式不存在或无权操作", code=404)
+    try:
+        if data.is_public is True:
+            updated = NoteStyleModerationService.submit(style_id=style_id, user_id=current_user.id)
+        elif data.is_public is False and updated.get("is_public"):
+            updated = toggle_public(style_id=style_id, user_id=current_user.id, is_public=False)
+    except NoteStyleModerationError as exc:
+        return R.error(msg=str(exc), code=400)
     return R.success(data=updated)
 
 
@@ -97,7 +109,7 @@ def delete_note_style(
     ok = delete_style(
         style_id=style_id,
         user_id=current_user.id,
-        is_admin=bool(current_user.is_admin),
+        is_admin=False,
     )
     if not ok:
         return R.error(msg="样式不存在或无权操作", code=404)
@@ -110,7 +122,21 @@ def patch_public(
     is_public: bool,
     current_user: User = Depends(get_current_user),
 ):
-    updated = toggle_public(style_id=style_id, user_id=current_user.id, is_public=is_public)
+    try:
+        if is_public:
+            updated = NoteStyleModerationService.submit(style_id=style_id, user_id=current_user.id)
+        else:
+            updated = toggle_public(style_id=style_id, user_id=current_user.id, is_public=False)
+    except NoteStyleModerationError as exc:
+        return R.error(msg=str(exc), code=400)
     if updated is None:
         return R.error(msg="样式不存在或无权操作", code=404)
     return R.success(data=updated)
+
+
+@router.post("/note_styles/{style_id}/submit")
+def submit_note_style(style_id: int, current_user: User = Depends(get_current_user)):
+    try:
+        return R.success(data=NoteStyleModerationService.submit(style_id=style_id, user_id=current_user.id))
+    except NoteStyleModerationError as exc:
+        return R.error(msg=str(exc), code=400)

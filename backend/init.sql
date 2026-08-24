@@ -114,6 +114,11 @@ CREATE TABLE IF NOT EXISTS `note_styles` (
   `source` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user' COMMENT '来源类型：system=系统内置（随版本预置，不可删除）；user=用户自定义',
   `user_id` int DEFAULT NULL COMMENT '创建该风格的用户 ID；source=system 时为 NULL',
   `is_public` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否公开到广场：1=所有用户可见并使用，0=仅创建者可见',
+  `moderation_status` varchar(24) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT' COMMENT '公开审核状态',
+  `published_version_id` int DEFAULT NULL COMMENT '当前公开版本 ID',
+  `pending_version_id` int DEFAULT NULL COMMENT '当前待审核版本 ID',
+  `review_reason` text COLLATE utf8mb4_unicode_ci COMMENT '最近一次驳回或下架原因',
+  `reviewed_at` datetime DEFAULT NULL COMMENT '最近一次审核处理时间',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近更新时间',
   `icon` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '图标 key，对应前端预置图标集的键名；为空时前端使用首字母头像兜底展示',
@@ -121,6 +126,84 @@ CREATE TABLE IF NOT EXISTS `note_styles` (
   KEY `ix_note_styles_user_id` (`user_id`),
   KEY `ix_note_styles_value` (`value`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `system_settings` (
+  `key` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` text COLLATE utf8mb4_unicode_ci,
+  `updated_by` int DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统级管理员配置';
+
+CREATE TABLE IF NOT EXISTS `note_style_versions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `style_id` int NOT NULL,
+  `version_no` int NOT NULL,
+  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `prompt` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `icon` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` varchar(24) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT',
+  `ai_status` varchar(24) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_risk_level` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_categories` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_summary` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_recommendations` varchar(2000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_provider` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_checked_at` datetime DEFAULT NULL,
+  `submitted_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_note_style_version_no` (`style_id`,`version_no`),
+  KEY `ix_note_style_versions_style_id` (`style_id`),
+  KEY `ix_note_style_versions_value` (`value`),
+  KEY `ix_note_style_versions_status_created` (`status`,`created_at`),
+  CONSTRAINT `fk_note_style_versions_style` FOREIGN KEY (`style_id`) REFERENCES `note_styles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='笔记风格提交版本快照';
+
+CREATE TABLE IF NOT EXISTS `note_style_reviews` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `style_id` int NOT NULL,
+  `version_id` int NOT NULL,
+  `action` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `from_status` varchar(24) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `to_status` varchar(24) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reviewer_id` int DEFAULT NULL,
+  `reason` text COLLATE utf8mb4_unicode_ci,
+  `ai_status` varchar(24) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_risk_level` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_categories` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_summary` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ai_recommendations` varchar(2000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `ix_note_style_reviews_style_created` (`style_id`,`created_at`),
+  KEY `ix_note_style_reviews_version_id` (`version_id`),
+  CONSTRAINT `fk_note_style_reviews_style` FOREIGN KEY (`style_id`) REFERENCES `note_styles` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_note_style_reviews_version` FOREIGN KEY (`version_id`) REFERENCES `note_style_versions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_note_style_reviews_reviewer` FOREIGN KEY (`reviewer_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='笔记风格审核流水';
+
+CREATE TABLE IF NOT EXISTS `user_notifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `category` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_type` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `source_id` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `link` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `severity` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'info',
+  `is_read` tinyint(1) NOT NULL DEFAULT '0',
+  `read_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_notification_source` (`user_id`,`category`,`source_type`,`source_id`),
+  KEY `ix_user_notifications_user_read_created` (`user_id`,`is_read`,`created_at`),
+  CONSTRAINT `fk_user_notifications_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户站内通知';
 
 CREATE TABLE IF NOT EXISTS `platforms` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键 ID',

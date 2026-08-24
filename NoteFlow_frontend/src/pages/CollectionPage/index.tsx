@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   BookOpenText,
@@ -13,6 +13,11 @@ import {
 import toast from 'react-hot-toast'
 import { useCollectionStore } from '@/store/collectionStore'
 import { useUserStore } from '@/store/userStore'
+import { addCollectionItems } from '@/services/collection'
+import {
+  consumeCollectionCreateState,
+  type CollectionCreateNavigationState,
+} from './createCollectionFlow'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,7 +41,9 @@ function formatShortDate(dateStr?: string | null) {
 
 const CollectionPage = () => {
   const navigate = useNavigate()
-  const { collections, loading, loaded, loadCollections, createCollection } = useCollectionStore()
+  const location = useLocation()
+  const { collections, loading, loaded, loadCollections, createCollection, patchCollection } =
+    useCollectionStore()
   const activeSubscription = useUserStore(s => s.activeSubscription)
   const isPro = !!activeSubscription
   const [search, setSearch] = useState('')
@@ -44,10 +51,22 @@ const CollectionPage = () => {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [pendingTaskIds, setPendingTaskIds] = useState<string[]>([])
 
   useEffect(() => {
     if (isPro) loadCollections(true)
   }, [isPro, loadCollections])
+
+  useEffect(() => {
+    const consumed = consumeCollectionCreateState(
+      location.state as CollectionCreateNavigationState | null,
+    )
+    if (!consumed.shouldOpen) return
+
+    setPendingTaskIds(consumed.taskIds)
+    setCreateOpen(true)
+    navigate('/collections', { replace: true, state: null })
+  }, [location.state, navigate])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return collections
@@ -73,9 +92,22 @@ const CollectionPage = () => {
         name: name.trim(),
         description: description.trim() || undefined,
       })
-      toast.success('合集创建成功')
+
+      if (pendingTaskIds.length > 0) {
+        try {
+          const result = await addCollectionItems(created.id, pendingTaskIds)
+          patchCollection(created.id, { note_count: result.note_count })
+          toast.success(`合集创建成功，已加入 ${pendingTaskIds.length} 篇笔记`)
+        } catch {
+          toast.error('合集已创建，但笔记加入失败，请在合集详情中重试')
+        }
+      } else {
+        toast.success('合集创建成功')
+      }
+
       setCreateOpen(false)
       resetForm()
+      setPendingTaskIds([])
       navigate(`/collections/${created.id}`)
     } catch {
       // request 拦截器已 toast 错误
@@ -345,7 +377,10 @@ const CollectionPage = () => {
         open={createOpen}
         onOpenChange={open => {
           setCreateOpen(open)
-          if (!open) resetForm()
+          if (!open) {
+            resetForm()
+            setPendingTaskIds([])
+          }
         }}
       >
         <DialogContent className="sm:max-w-[420px]">

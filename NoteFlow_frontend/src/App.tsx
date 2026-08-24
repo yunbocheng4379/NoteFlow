@@ -82,6 +82,8 @@ const CollectionShareViewPage = lazy(() => import('@/pages/ShareViewPage/Collect
 const FeedbackPage = lazy(() => import('@/pages/FeedbackPage'))
 const CookiePoolPage = lazy(() => import('@/pages/SettingPage/CookiePool'))
 const NotificationsPage = lazy(() => import('@/pages/SettingPage/Notifications'))
+const UserNotificationsPage = lazy(() => import('@/pages/NotificationsPage'))
+const NoteStyleModerationPage = lazy(() => import('@/pages/SettingPage/NoteStyleModeration'))
 const PricingPage = lazy(() => import('@/pages/SettingPage/Pricing'))
 const RechargeOperationsPage = lazy(() => import('@/pages/SettingPage/RechargeOperations'))
 const AnalyticsPage = lazy(() => import('@/pages/SettingPage/Analytics'))
@@ -200,6 +202,7 @@ function App() {
               <Route path="billing" element={<BillingPage />} />
               <Route path="referral" element={<ReferralPage />} />
               <Route path="update-logs" element={<UpdateLogPage />} />
+              <Route path="notifications" element={<UserNotificationsPage />} />
               <Route path="about" element={<AboutPage />} />
               <Route
                 path="settings"
@@ -221,6 +224,7 @@ function App() {
                 <Route path="feedback" element={<FeedbackPage />} />
                 <Route path="cookie-pool" element={<CookiePoolPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="note-styles" element={<NoteStyleModerationPage />} />
                 <Route path="pricing" element={<PricingPage />} />
                 <Route path="recharge-operations" element={<RechargeOperationsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />

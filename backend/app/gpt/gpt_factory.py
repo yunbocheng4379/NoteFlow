@@ -8,6 +8,6 @@ from app.models.model_config import ModelConfig
 
 class GPTFactory:
     @staticmethod
-    def from_config(config: ModelConfig) -> GPT:
+    def from_config(config: ModelConfig, user_id: int | None = None) -> GPT:
         client = OpenAICompatibleProvider(api_key=config.api_key, base_url=config.base_url).get_client
-        return UniversalGPT(client=client, model=config.model_name)
+        return UniversalGPT(client=client, model=config.model_name, user_id=user_id)

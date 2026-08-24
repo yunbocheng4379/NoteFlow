@@ -52,7 +52,8 @@ import { detectPlatform, noteFormats, videoPlatforms } from '@/constant/note.ts'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { cn } from '@/lib/utils'
-import { ModelOptionLabel, ModelProviderLogo } from '@/components/ModelProviderLogo'
+import { ModelSelect } from '@/components/ModelSelect'
+import { getModelKey } from '@/components/modelSelect.utils'
 import CloudDrivePanel from './CloudDrivePanel'
 import { v4 as uuidv4 } from 'uuid'
 import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
@@ -64,6 +65,7 @@ const formSchema = z
     platform: z.string().nonempty('请选择平台'),
     quality: z.enum(['fast', 'medium', 'slow']),
     model_name: z.string().nonempty('请选择模型'),
+    provider_id: z.string().optional(),
     format: z.array(z.string()).default([]),
     style: z.string().nonempty('请选择笔记生成风格'),
     extras: z.string().optional(),
@@ -415,9 +417,6 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   const navigate = useNavigate()
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [modelDropOpen, setModelDropOpen] = useState(false)
-  const [modelDropRect, setModelDropRect] = useState<DOMRect | null>(null)
-  const modelTriggerRef = useRef<HTMLButtonElement>(null)
   // 表单可滚动内容区：下拉打开时锁定，阻止滚轮/键盘/惯性把表单向下推
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
@@ -462,6 +461,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       video_url: prefill?.video_url || '',
       quality: 'medium',
       model_name: modelList[0]?.model_name || '',
+      provider_id: modelList[0]?.provider_id || '',
       style: 'minimal',
       video_interval: 6,
       grid_size: [2, 2],
@@ -474,12 +474,16 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   const platform = useWatch({ control: form.control, name: 'platform' })
   const videoUrl = useWatch({ control: form.control, name: 'video_url' })
   const modelName = useWatch({ control: form.control, name: 'model_name' })
+  const providerId = useWatch({ control: form.control, name: 'provider_id' })
   const videoUnderstandingEnabled = useWatch({ control: form.control, name: 'video_understanding' })
   const videoInterval = useWatch({ control: form.control, name: 'video_interval' })
   const gridSize = useWatch({ control: form.control, name: 'grid_size' })
   const formatValue = useWatch({ control: form.control, name: 'format' })
-  const selectedModelSupportsVision =
-    modelList.find(m => m.model_name === modelName)?.supports_vision ?? false
+  const selectedModel =
+    modelList.find(
+      model => model.provider_id === providerId && model.model_name === modelName,
+    ) ?? modelList.find(model => model.model_name === modelName)
+  const selectedModelSupportsVision = selectedModel?.supports_vision ?? false
 
   const isLocal = platform === 'local'
   const detectedPlatform = useMemo(() => detectPlatform(videoUrl || ''), [videoUrl])
@@ -626,6 +630,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
   useEffect(() => {
     if (modelList.length > 0 && !form.getValues('model_name')) {
       form.setValue('model_name', modelList[0].model_name, { shouldValidate: false })
+      form.setValue('provider_id', modelList[0].provider_id, { shouldValidate: false })
     }
   }, [modelList.length])
 
@@ -637,6 +642,11 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       platform: formData.platform || 'bilibili',
       video_url: formData.video_url || '',
       model_name: formData.model_name || modelList[0]?.model_name || '',
+      provider_id:
+        formData.provider_id ||
+        modelList.find(model => model.model_name === formData.model_name)?.provider_id ||
+        modelList[0]?.provider_id ||
+        '',
       style: formData.style || 'minimal',
       quality: formData.quality || 'medium',
       extras: formData.extras || '',
@@ -646,80 +656,6 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       format: formData.format ?? [],
     })
   }, [mode, currentTaskId, modelList.length, currentTask?.formData])
-
-  // Close model dropdown on outside click
-  useEffect(() => {
-    if (!modelDropOpen) return
-    const handler = (e: MouseEvent) => {
-      if (
-        modelTriggerRef.current?.contains(e.target as Node) ||
-        document.getElementById('model-drop-panel')?.contains(e.target as Node)
-      )
-        return
-      setModelDropOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [modelDropOpen])
-
-  // 打开模型下拉后：
-  // ① 监听可滚动祖先 + 窗口尺寸变化，让下拉面板跟随触发器滚动
-  // ② 锁定背后的表单可滚动区，阻止滚轮 / 键盘 / 惯性把它向下推
-  useEffect(() => {
-    if (!modelDropOpen) return
-    const update = () => {
-      if (modelTriggerRef.current) setModelDropRect(modelTriggerRef.current.getBoundingClientRect())
-    }
-
-    const scrollAncestors: Element[] = []
-    let el: Element | null = modelTriggerRef.current?.parentElement ?? null
-    while (el && el !== document.documentElement.parentElement) {
-      const overflowY = getComputedStyle(el).overflowY
-      if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
-        scrollAncestors.push(el)
-      }
-      el = el.parentElement
-    }
-
-    // 锁定背后的表单滚动容器
-    const scrollArea = scrollAreaRef.current
-    const savedScrollTop = scrollArea?.scrollTop ?? 0
-    const prevOverscrollBehavior = scrollArea?.style.overscrollBehavior ?? ''
-    const prevOverscrollBehaviorY = scrollArea?.style.overscrollBehaviorY ?? ''
-    const panel = () => document.getElementById('model-drop-panel')
-    if (scrollArea) {
-      scrollArea.style.overscrollBehavior = 'contain'
-      scrollArea.style.overscrollBehaviorY = 'contain'
-    }
-    const lockScroll = (e: Event) => {
-      const target = e.target as Node | null
-      if (target && panel()?.contains(target)) return
-      e.preventDefault()
-    }
-    const enforceTop = () => {
-      if (scrollArea && scrollArea.scrollTop !== savedScrollTop) {
-        scrollArea.scrollTop = savedScrollTop
-      }
-    }
-    if (scrollArea) {
-      scrollArea.addEventListener('wheel', lockScroll, { passive: false })
-      scrollArea.addEventListener('scroll', enforceTop, { passive: true })
-    }
-
-    scrollAncestors.forEach(sa => sa.addEventListener('scroll', update, { passive: true }))
-    window.addEventListener('resize', update)
-    return () => {
-      scrollAncestors.forEach(sa => sa.removeEventListener('scroll', update))
-      window.removeEventListener('resize', update)
-      if (scrollArea) {
-        scrollArea.removeEventListener('wheel', lockScroll)
-        scrollArea.removeEventListener('scroll', enforceTop)
-        scrollArea.style.overscrollBehavior = prevOverscrollBehavior
-        scrollArea.style.overscrollBehaviorY = prevOverscrollBehaviorY
-        scrollArea.scrollTop = savedScrollTop
-      }
-    }
-  }, [modelDropOpen, scrollAreaRef])
 
   // When video_understanding is disabled, remove screenshot from format
   useEffect(() => {
@@ -849,6 +785,14 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       toast.error('单批最多支持 30 个视频，请减少选择数量')
       return
     }
+    const selectedModel =
+      modelList.find(
+        model => model.provider_id === values.provider_id && model.model_name === values.model_name,
+      ) ?? modelList.find(model => model.model_name === values.model_name)
+    if (!selectedModel) {
+      toast.error('请选择模型')
+      return
+    }
     setBatchSubmitting(true)
     trackFeatureSubmit('note_generate_batch', { count: selected.length })
     try {
@@ -856,7 +800,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
         items: selected.map(v => ({ video_url: v.video_url, platform: v.platform })),
         quality: values.quality,
         model_name: values.model_name,
-        provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
+        provider_id: selectedModel.provider_id,
         format: values.format,
         style: values.style,
         extras: values.extras,
@@ -878,6 +822,7 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
               platform: source?.platform,
               quality: values.quality,
               model_name: values.model_name,
+              provider_id: selectedModel.provider_id,
             },
             source
               ? {
@@ -923,13 +868,22 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
 
     const isRegenerate = mode === 'regenerate' && !!currentTaskId
     const taskId = isRegenerate ? currentTaskId : uuidv4()
+    const selectedModel =
+      modelList.find(
+        model => model.provider_id === values.provider_id && model.model_name === values.model_name,
+      ) ?? modelList.find(model => model.model_name === values.model_name)
+    if (!selectedModel) {
+      submitStartedRef.current = false
+      toast.error('请选择模型')
+      return
+    }
     trackFeatureSubmit('note_generate', {
       mode: isRegenerate ? 'regenerate' : 'create',
       platform: values.platform,
     })
     const payload = {
       ...values,
-      provider_id: modelList.find(m => m.model_name === values.model_name)!.provider_id,
+      provider_id: selectedModel.provider_id,
       task_id: taskId,
       collection_id: values.collection_id ? Number(values.collection_id) : undefined,
     }
@@ -1302,95 +1256,26 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                       请先添加模型
                     </Button>
                   ) : (
-                    <div className="relative">
-                      <button
-                        ref={modelTriggerRef}
-                        type="button"
-                        onClick={() => {
-                          if (modelDropOpen) {
-                            setModelDropOpen(false)
-                          } else {
-                            if (modelTriggerRef.current)
-                              setModelDropRect(modelTriggerRef.current.getBoundingClientRect())
-                            setModelDropOpen(true)
-                          }
-                        }}
-                        className="flex h-9 w-full items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 hover:border-neutral-300 focus:outline-none"
-                      >
-                        {field.value ? (
-                          <>
-                            <ModelProviderLogo
-                              providerId={
-                                modelList.find(m => m.model_name === field.value)?.provider_id
-                              }
-                              modelName={field.value}
-                              providers={providers}
-                              size={24}
-                              className="rounded-lg"
-                            />
-                            <span className="flex-1 truncate text-left text-sm text-neutral-800">
-                              {field.value}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-sm text-neutral-400">请选择模型</span>
-                        )}
-                        <ChevronDown
-                          className={cn(
-                            'ml-auto h-4 w-4 shrink-0 text-neutral-400 transition-transform',
-                            modelDropOpen && 'rotate-180'
-                          )}
-                        />
-                      </button>
-
-                      {modelDropOpen &&
-                        modelDropRect &&
-                        createPortal(
-                          <div
-                            id="model-drop-panel"
-                            data-dialog-ignore="true"
-                            style={{
-                              position: 'fixed',
-                              top: modelDropRect.bottom + 4,
-                              left: modelDropRect.left,
-                              width: modelDropRect.width,
-                              zIndex: 9999,
-                              pointerEvents: 'auto',
-                            }}
-                            className="max-h-60 overflow-y-auto rounded-xl border border-neutral-200 bg-white shadow-lg"
-                          >
-                            {modelList.map(m => {
-                              const selected = field.value === m.model_name
-                              return (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => {
-                                    field.onChange(m.model_name)
-                                    setModelDropOpen(false)
-                                  }}
-                                  className={cn(
-                                    'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-neutral-50',
-                                    selected && 'bg-primary/5'
-                                  )}
-                                >
-                                  <ModelOptionLabel
-                                    providerId={m.provider_id}
-                                    modelName={m.model_name}
-                                    providers={providers}
-                                    size={22}
-                                    className="flex-1 text-sm font-medium text-neutral-800"
-                                  />
-                                  {selected && (
-                                    <Check className="text-primary ml-auto h-4 w-4 shrink-0" />
-                                  )}
-                                </button>
-                              )
-                            })}
-                          </div>,
-                          document.body
-                        )}
-                    </div>
+                    <ModelSelect
+                      models={modelList}
+                      providers={providers}
+                      value={
+                        selectedModel
+                          ? getModelKey(selectedModel.provider_id, selectedModel.model_name)
+                          : ''
+                      }
+                      onValueChange={value => {
+                        const nextModel = modelList.find(
+                          model => getModelKey(model.provider_id, model.model_name) === value,
+                        )
+                        if (!nextModel) return
+                        field.onChange(nextModel.model_name)
+                        form.setValue('provider_id', nextModel.provider_id, {
+                          shouldValidate: false,
+                        })
+                      }}
+                      placeholder="请选择模型"
+                    />
                   )}
                   <FormMessage />
                 </FormItem>

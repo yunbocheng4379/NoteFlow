@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Loader2, Folder } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -12,7 +13,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useCollectionStore } from '@/store/collectionStore'
+import { useUserStore } from '@/store/userStore'
 import { addCollectionItems } from '@/services/collection'
+import { buildCollectionCreateNavigation } from '@/pages/CollectionPage/createCollectionFlow'
 
 interface AddToCollectionDialogProps {
   taskIds: string[]
@@ -23,12 +26,15 @@ interface AddToCollectionDialogProps {
 
 /** 把一篇或多篇笔记加入某个已有合集，供任务列表页「加入合集」/「批量加入合集」操作使用 */
 const AddToCollectionDialog = ({ taskIds, open, onOpenChange, onAdded }: AddToCollectionDialogProps) => {
+  const navigate = useNavigate()
   const { collections, loading, loadCollections, patchCollection } = useCollectionStore()
+  const activeSubscription = useUserStore(s => s.activeSubscription)
+  const isPro = !!activeSubscription
   const [submittingId, setSubmittingId] = useState<number | null>(null)
 
   useEffect(() => {
-    if (open) loadCollections()
-  }, [open, loadCollections])
+    if (open && isPro) loadCollections()
+  }, [open, isPro, loadCollections])
 
   const handleAdd = async (collectionId: number) => {
     if (taskIds.length === 0) return
@@ -46,16 +52,31 @@ const AddToCollectionDialog = ({ taskIds, open, onOpenChange, onAdded }: AddToCo
     }
   }
 
+  const handleCreateCollection = () => {
+    onOpenChange(false)
+    if (!isPro) {
+      navigate('/upgrade')
+      return
+    }
+    navigate('/collections', buildCollectionCreateNavigation(taskIds))
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle>加入合集</DialogTitle>
-          <DialogDescription>选择要加入的合集。</DialogDescription>
+          <DialogDescription>
+            {isPro ? '选择要加入的合集。' : '笔记合集是 Pro 会员功能，升级会员后即可创建并加入。'}
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-72">
-          {loading ? (
+          {!isPro ? (
+            <div className="flex h-24 items-center justify-center px-4 text-center text-sm text-neutral-400">
+              笔记合集是 Pro 会员功能，升级会员后即可创建并加入笔记。
+            </div>
+          ) : loading ? (
             <div className="flex h-24 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
             </div>
@@ -82,11 +103,22 @@ const AddToCollectionDialog = ({ taskIds, open, onOpenChange, onAdded }: AddToCo
           )}
         </ScrollArea>
 
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            取消
-          </Button>
-        </DialogFooter>
+        {!isPro || loading || collections.length > 0 ? (
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              取消
+            </Button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              取消
+            </Button>
+            <Button size="sm" onClick={handleCreateCollection}>
+              {isPro ? '去创建' : '去充值'}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

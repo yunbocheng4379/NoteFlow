@@ -17,10 +17,11 @@ from typing import List
 
 
 class UniversalGPT(GPT):
-    def __init__(self, client, model: str, temperature: float = 0.7):
+    def __init__(self, client, model: str, temperature: float = 0.7, user_id: int | None = None):
         self.client = client
         self.model = model
         self.temperature = temperature
+        self.user_id = user_id
         self.screenshot = False
         self.link = False
         self.max_request_bytes = int(os.getenv("OPENAI_MAX_REQUEST_BYTES", str(45 * 1024 * 1024)))
@@ -51,6 +52,7 @@ class UniversalGPT(GPT):
             _format=kwargs.get('_format'),
             style=kwargs.get('style'),
             extras=kwargs.get('extras'),
+            user_id=self.user_id,
         )
 
         video_img_urls = kwargs.get('video_img_urls', [])

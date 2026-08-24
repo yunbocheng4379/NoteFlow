@@ -58,19 +58,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { ModelSelect } from '@/components/ModelSelect'
+import { getModelKey } from '@/components/modelSelect.utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import AddNotesToCollectionDialog from '@/components/AddNotesToCollectionDialog'
 import ShareCollectionDialog from '@/components/ShareCollectionDialog'
 import FlashcardGenerateDialog from '@/components/FlashcardGenerateDialog'
 import { useTaskStore } from '@/store/taskStore'
-import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '')
 
@@ -180,7 +174,7 @@ const CollectionDetailPage = () => {
   const [flashcardOpen, setFlashcardOpen] = useState(false)
 
   const [mergeOpen, setMergeOpen] = useState(false)
-  const [mergeModelName, setMergeModelName] = useState('')
+  const [mergeModelKey, setMergeModelKey] = useState('')
   const [merging, setMerging] = useState(false)
 
   const [mergeJobs, setMergeJobs] = useState<MergeJob[]>([])
@@ -394,13 +388,15 @@ const CollectionDetailPage = () => {
       toast.error('请至少选择 2 篇笔记再进行融合')
       return
     }
-    if (!mergeModelName && modelList.length > 0) setMergeModelName(modelList[0].model_name)
+    if (!mergeModelKey && modelList.length > 0) {
+      setMergeModelKey(getModelKey(modelList[0].provider_id, modelList[0].model_name))
+    }
     setMergeOpen(true)
   }
 
   const handleMerge = async () => {
     if (!collectionId) return
-    const selected = modelList.find(m => m.model_name === mergeModelName)
+    const selected = modelList.find(m => getModelKey(m.provider_id, m.model_name) === mergeModelKey)
     if (!selected) {
       toast.error('请选择融合使用的模型')
       return
@@ -876,22 +872,13 @@ const CollectionDetailPage = () => {
             <label className="mb-1 block text-sm font-medium text-neutral-700">
               融合使用的模型
             </label>
-            <Select value={mergeModelName} onValueChange={setMergeModelName}>
-              <SelectTrigger className="w-full shadow-none">
-                <SelectValue placeholder="请选择模型" />
-              </SelectTrigger>
-              <SelectContent>
-                {modelList.map(m => (
-                  <SelectItem key={m.id} value={m.model_name}>
-                    <ModelOptionLabel
-                      providerId={m.provider_id}
-                      modelName={m.model_name}
-                      providers={providers}
-                    />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ModelSelect
+              models={modelList}
+              providers={providers}
+              value={mergeModelKey}
+              onValueChange={setMergeModelKey}
+              triggerClassName="shadow-none"
+            />
           </div>
           <p className="mt-1.5 text-xs text-neutral-400">
             融合笔记会调用 AI 模型，按所选模型价格消耗电力，失败将自动退回。
@@ -900,7 +887,7 @@ const CollectionDetailPage = () => {
             <Button variant="outline" size="sm" onClick={() => setMergeOpen(false)}>
               取消
             </Button>
-            <Button size="sm" disabled={merging || !mergeModelName} onClick={handleMerge}>
+            <Button size="sm" disabled={merging || !mergeModelKey} onClick={handleMerge}>
               {merging ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (

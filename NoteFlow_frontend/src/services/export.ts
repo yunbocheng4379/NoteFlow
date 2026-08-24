@@ -50,3 +50,25 @@ export const exportNote = async (params: {
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
+
+export const exportTranscript = async (taskId: string, title: string): Promise<void> => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
+  const token = getToken()
+
+  const response = await axios.get(`${baseURL}/export/transcript/${taskId}`, {
+    responseType: 'blob',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    timeout: 60000,
+  })
+
+  const blob = new Blob([response.data], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const safeTitle = (title || taskId).replace(/[\\/:*?"<>|]/g, '_').trim() || taskId
+  a.download = `${safeTitle}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

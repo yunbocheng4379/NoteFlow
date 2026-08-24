@@ -17,6 +17,7 @@ import {
   Folder,
   BookOpen,
   Compass,
+  Bell,
 } from 'lucide-react'
 import logo from '@/assets/icon.svg'
 import { useUserStore } from '@/store/userStore'
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { icon: BookOpen, label: '知识库', to: '/knowledge-base', pro: true },
   { icon: Palette, label: '笔记风格', to: '/note-style' },
   { icon: Megaphone, label: '更新日志', to: '/update-logs' },
+  { icon: Bell, label: '我的通知', to: '/notifications' },
   { icon: Zap, label: '升级 Pro', to: '/upgrade' },
   { icon: ReceiptText, label: '账单与额度', to: '/billing' },
   { icon: Gift, label: '我的推荐码', to: '/referral' },

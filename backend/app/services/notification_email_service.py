@@ -72,7 +72,7 @@ class NotificationEmailService:
         return "".join(rendered)
 
     @staticmethod
-    def _wrap_body(*, heading: str, items: list[dict]) -> str:
+    def _wrap_body(*, heading: str, items: list[dict], link_path: str = "/settings/notifications") -> str:
         frontend_url = html.escape(
             os.getenv("FRONTEND_URL", "http://127.0.0.1:3015"), quote=True
         )
@@ -80,7 +80,7 @@ class NotificationEmailService:
         <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:680px;margin:0 auto;color:#243447;">
           <h2 style="color:#167a6e;">{html.escape(heading)}</h2>
           {NotificationEmailService._render_items(items)}
-          <p style="margin-top:20px;"><a href="{frontend_url}/settings/notifications" style="color:#167a6e;">打开系统通知处理页面</a></p>
+          <p style="margin-top:20px;"><a href="{frontend_url}{html.escape(link_path, quote=True)}" style="color:#167a6e;">打开处理页面</a></p>
           <p style="color:#999;font-size:12px;">来自 NoteFlow AI 系统通知</p>
         </div>
         """
@@ -150,7 +150,11 @@ class NotificationEmailService:
             batch_type="instant",
         )
         notification_email_dao.add_batch_items(batch_id=batch["id"], notifications=[notification])
-        recipients = notification_email_dao.list_eligible_admins()
+        # 笔记风格审核是用户公开内容治理事件，按产品约定默认发送到所有已绑定邮箱的管理员；
+        # 其它系统通知继续遵循管理员的待处理邮件开关。
+        recipients = notification_email_dao.list_eligible_admins(
+            require_pending_preference=notification.get("category") != "note_style_review"
+        )
         if not recipients:
             notification_email_dao.update_batch_status(batch_id=batch["id"], status="skipped")
             return {"batch_id": batch["id"], "notifications": 1, "recipients": 0, "attempted": 0, "sent": 0, "failed": 0}
@@ -161,6 +165,7 @@ class NotificationEmailService:
             body=NotificationEmailService._wrap_body(
                 heading=notification.get("title") or "新的待处理系统通知",
                 items=[notification],
+                link_path="/settings/note-styles" if notification.get("category") == "note_style_review" else "/settings/notifications",
             ),
             recipients=recipients,
         )

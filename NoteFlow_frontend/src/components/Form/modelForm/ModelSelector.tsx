@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useModelStore } from '@/store/modelStore'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -11,7 +10,8 @@ import {
 import { Button } from '@/components/ui/button'
 import toast from 'react-hot-toast'
 import { useProviderStore } from '@/store/providerStore'
-import { ModelOptionLabel } from '@/components/ModelProviderLogo'
+import { ModelSelect } from '@/components/ModelSelect'
+import { getModelKey } from '@/components/modelSelect.utils'
 
 interface ModelSelectorProps {
   providerId: string
@@ -26,7 +26,6 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
     useModelStore()
   const providers = useProviderStore(s => s.provider)
   const fetchProviderList = useProviderStore(s => s.fetchProviderList)
-  const [search, setSearch] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [tier, setTier] = useState<'normal' | 'pro'>('normal')
   const [supportsReasoning, setSupportsReasoning] = useState<'yes' | 'no'>('no')
@@ -34,11 +33,10 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
 
   const effectiveApiKey = isMasked(apiKey) ? undefined : apiKey
 
-  const filteredModels = models.filter(model => {
-    const keywords = search.trim().toLowerCase().split(/\s+/)
-    const target = model.id.toLowerCase()
-    return keywords.every(kw => target.includes(kw))
-  })
+  const modelOptions = models.map(model => ({
+    provider_id: providerId,
+    model_name: model.id,
+  }))
 
   useEffect(() => {
     if (providerId) {
@@ -78,30 +76,18 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
         </Button>
       </div>
 
-      <Select value={selectedModel} onValueChange={setSelectedModel}>
-        <SelectTrigger className="w-[300px]">
-          <SelectValue placeholder="请选择模型" />
-        </SelectTrigger>
-        <SelectContent>
-          <div className="p-2">
-            <Input
-              placeholder="搜索模型..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="h-8"
-            />
-          </div>
-          {filteredModels.map((model, index) => (
-            <SelectItem key={`${model.id}-${index}`} value={model.id}>
-              <ModelOptionLabel
-                providerId={providerId}
-                modelName={model.id}
-                providers={providers}
-              />
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <ModelSelect
+        models={modelOptions}
+        providers={providers}
+        value={selectedModel ? getModelKey(providerId, selectedModel) : ''}
+        onValueChange={value => {
+          const model = modelOptions.find(
+            option => getModelKey(option.provider_id, option.model_name) === value,
+          )
+          setSelectedModel(model?.model_name ?? '')
+        }}
+        triggerClassName="w-[300px]"
+      />
 
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-sm">模型等级</span>

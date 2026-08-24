@@ -55,6 +55,7 @@ import { askKbStream, getKbIndexStatus, type KbSource } from '@/services/knowled
 import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 import logo from '@/assets/icon.svg'
 import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
+import { getKnowledgeBasePanelState } from './viewState'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace('/api', '')
 
@@ -188,6 +189,7 @@ export default function KnowledgeBasePage() {
   const conversations = useKnowledgeBaseStore(s => s.conversations)
   const activeConversationId = useKnowledgeBaseStore(s => s.activeConversationId)
   const messages = useKnowledgeBaseStore(s => s.messages)
+  const messagesLoading = useKnowledgeBaseStore(s => s.messagesLoading)
   const loadConversations = useKnowledgeBaseStore(s => s.loadConversations)
   const newConversation = useKnowledgeBaseStore(s => s.newConversation)
   const selectConversation = useKnowledgeBaseStore(s => s.selectConversation)
@@ -470,6 +472,12 @@ export default function KnowledgeBasePage() {
     [userAvatarSrc]
   )
 
+  const panelState = getKnowledgeBasePanelState({
+    messageCount: messages.length,
+    questionLoading: loading,
+    messagesLoading,
+  })
+
   if (!isPro) {
     return (
       <div className="flex h-full w-full min-w-0 flex-1 flex-col bg-[#fbfcfc]">
@@ -725,7 +733,7 @@ export default function KnowledgeBasePage() {
         {/* 右侧主问答区 */}
         <div className="flex min-w-0 flex-1 flex-col items-center">
           <div className={`flex min-h-0 flex-1 flex-col px-5 ${CHAT_PANEL_WIDTH}`}>
-            {messages.length === 0 && !loading ? (
+            {panelState === 'empty' ? (
               <div className="flex flex-1 flex-col items-center justify-center gap-5 px-5 py-6">
                 <KnowledgeBrainIcon />
                 <div className="text-center">
@@ -746,6 +754,10 @@ export default function KnowledgeBasePage() {
                     </button>
                   ))}
                 </div>
+              </div>
+            ) : panelState === 'loading' ? (
+              <div className="flex flex-1 items-center justify-center text-neutral-400">
+                <LoaderCircle className="h-5 w-5 animate-spin" aria-label="加载会话" />
               </div>
             ) : (
               <div className="noteflow-kb-bubble-list min-h-0 flex-1 overflow-y-auto py-4">
