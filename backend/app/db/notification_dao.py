@@ -1,17 +1,21 @@
 """
 通知 DAO. 应用层不允许物理删除; 只允许状态流转.
 """
+import re
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
 from app.db.engine import get_db
+from app.db.models.note_style import NoteStyle
 from app.db.models.notifications import (
     Notification,
+    NOTIFICATION_CATEGORY_NOTE_STYLE_REVIEW,
     NOTIFICATION_STATUSES,
     NOTIFICATION_CATEGORIES,
 )
+from app.db.models.users import User
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -42,6 +46,38 @@ def _to_dict(n: Notification) -> dict:
         "created_at": _fmt(n.created_at),
         "updated_at": _fmt(n.updated_at),
     }
+
+
+def _with_note_style_publisher(db: Session, notification: Notification, payload: dict) -> dict:
+    """修正历史笔记风格审核通知中以用户 ID 展示的发布者名称。"""
+    if (
+        notification.category != NOTIFICATION_CATEGORY_NOTE_STYLE_REVIEW
+        or notification.source_type != "note_style"
+    ):
+        return payload
+
+    source_parts = (notification.source_id or "").split(":")
+    if len(source_parts) < 3 or source_parts[2] not in {"submit", "resubmit"}:
+        return payload
+    try:
+        style_id = int(source_parts[0])
+    except (TypeError, ValueError):
+        return payload
+
+    user_id = db.query(NoteStyle.user_id).filter(NoteStyle.id == style_id).scalar()
+    if not user_id:
+        return payload
+    username = db.query(User.username).filter(User.id == user_id).scalar()
+    if not username:
+        return payload
+
+    payload["content"] = re.sub(
+        r"用户\s+\d+",
+        f"用户 {username}",
+        payload.get("content", ""),
+        count=1,
+    )
+    return payload
 
 
 def find_by_dedup_key(dedup_key: str) -> Optional[Notification]:
@@ -179,7 +215,11 @@ def list_filter(
             .limit(page_size)
             .all()
         )
-        return [_to_dict(r) for r in rows], total
+        items = [
+            _with_note_style_publisher(db, r, _to_dict(r))
+            for r in rows
+        ]
+        return items, total
     finally:
         db.close()
 

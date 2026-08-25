@@ -5,7 +5,6 @@ import toast from 'react-hot-toast'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -66,44 +65,43 @@ const AddToCollectionDialog = ({ taskIds, open, onOpenChange, onAdded }: AddToCo
       <DialogContent className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle>加入合集</DialogTitle>
-          <DialogDescription>
-            {isPro ? '选择要加入的合集。' : '笔记合集是 Pro 会员功能，升级会员后即可创建并加入。'}
-          </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-72">
-          {!isPro ? (
-            <div className="flex h-24 items-center justify-center px-4 text-center text-sm text-neutral-400">
-              笔记合集是 Pro 会员功能，升级会员后即可创建并加入笔记。
-            </div>
-          ) : loading ? (
-            <div className="flex h-24 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-            </div>
-          ) : collections.length === 0 ? (
-            <div className="flex h-24 items-center justify-center text-sm text-neutral-400">
-              还没有合集，先去「笔记合集」创建一个
-            </div>
-          ) : (
-            <div className="divide-y divide-neutral-100">
-              {collections.map((c) => (
-                <button
-                  key={c.id}
-                  disabled={submittingId !== null}
-                  onClick={() => handleAdd(c.id)}
-                  className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  <Folder className="h-4 w-4 shrink-0 text-neutral-400" />
-                  <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name}</span>
-                  <span className="text-xs text-neutral-400">{c.note_count} 篇</span>
-                  {submittingId === c.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
-                </button>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+        {!isPro ? (
+          <div className="flex h-24 items-center justify-center px-4 text-center text-sm text-neutral-400">
+            笔记合集是 Pro 会员功能，升级会员后即可创建并加入笔记。
+          </div>
+        ) : (
+          <ScrollArea className="max-h-72">
+            {loading ? (
+              <div className="flex h-24 items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
+              </div>
+            ) : collections.length === 0 ? (
+              <div className="flex h-24 items-center justify-center text-sm text-neutral-400">
+                还没有合集，先去「笔记合集」创建一个
+              </div>
+            ) : (
+              <div className="divide-y divide-neutral-100">
+                {collections.map((c) => (
+                  <button
+                    key={c.id}
+                    disabled={submittingId !== null}
+                    onClick={() => handleAdd(c.id)}
+                    className="flex w-full items-center gap-2.5 px-1 py-2.5 text-left hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    <Folder className="h-4 w-4 shrink-0 text-neutral-400" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{c.name}</span>
+                    <span className="text-xs text-neutral-400">{c.note_count} 篇</span>
+                    {submittingId === c.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        )}
 
-        {!isPro || loading || collections.length > 0 ? (
+        {isPro && (loading || collections.length > 0) ? (
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               取消

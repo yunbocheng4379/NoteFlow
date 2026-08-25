@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, Plus, Globe, Lock, Trash2, Pencil, Eye, Clock3, XCircle } from 'lucide-react'
+import { Search, Plus, Globe, Lock, Trash2, Pencil, Eye, Clock3, XCircle, Shuffle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,12 @@ const PROMPT_ICONS: { key: string; label: string }[] = [
   { key: 'task',       label: '任务' },
   { key: 'tutorial',   label: '教程' },
 ]
+const RANDOM_ICON = '__random__'
+
+function resolveIcon(icon: string | null | undefined) {
+  if (icon !== RANDOM_ICON) return icon ?? undefined
+  return PROMPT_ICONS[Math.floor(Math.random() * PROMPT_ICONS.length)]?.key
+}
 
 function styleIconUrl(key: string) {
   return `/prompt_icon/icons/${key}.png`
@@ -122,7 +128,7 @@ function avatarColor(name: string) {
 }
 
 function showReviewPendingToast() {
-  toast.custom(
+  return toast.custom(
     (t) => (
       <div
         className={`flex max-w-[380px] items-center gap-3 rounded-xl border border-amber-200 border-l-4 border-l-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 shadow-lg transition-opacity ${
@@ -149,21 +155,23 @@ function IconPicker({ value, onChange }: IconPickerProps) {
     <div className="space-y-1">
       <label className="text-[13px] font-medium text-gray-600">
         风格图标
-        <span className="ml-1 text-[11px] text-gray-400 font-normal">(可选，不选则使用首字母头像)</span>
+        <span className="ml-1 text-[11px] text-gray-400 font-normal">(默认随机分配，也可手动选择)</span>
       </label>
       <div className="grid grid-cols-5 gap-2">
-        {/* none option */}
+        {/* random option: resolve to a concrete icon only when saving */}
         <button
           type="button"
-          onClick={() => onChange(null)}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-[11px] transition-colors ${
-            !value
-              ? 'border-primary bg-primary/10 text-primary'
+          aria-label="随机选择风格图标"
+          title="保存时从 9 个风格图标中随机选择一个"
+          onClick={() => onChange(RANDOM_ICON)}
+          className={`flex flex-col items-center gap-1 rounded-lg border p-2 text-[11px] transition-colors ${
+            value === RANDOM_ICON
+              ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/40'
               : 'border-neutral-200 text-gray-400 hover:border-neutral-300'
           }`}
         >
-          <span className="text-base font-semibold text-gray-400">A</span>
-          <span>默认</span>
+          <Shuffle className="h-8 w-8 p-1 text-primary" />
+          <span>随机</span>
         </button>
         {PROMPT_ICONS.map((ic) => (
           <button
@@ -206,7 +214,7 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
     description: initial?.description ?? '',
     prompt: initial?.prompt ?? '',
     is_public: initial?.is_public || initial?.moderation_status === 'PENDING_REVIEW' || initial?.moderation_status === 'PUBLISHED',
-    icon: (initial?.icon ?? null) as string | null,
+    icon: (initial?.icon ?? RANDOM_ICON) as string,
   })
   const [saving, setSaving] = useState(false)
 
@@ -221,6 +229,7 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
 
     setSaving(true)
     try {
+      const selectedIcon = resolveIcon(form.icon)
       let result: NoteStyle
       if (isEdit && initial?.id) {
         result = await noteStyleApi.update(initial.id, {
@@ -228,7 +237,7 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
           description: form.description || undefined,
           prompt: form.prompt,
           is_public: form.is_public,
-          icon: form.icon ?? undefined,
+          icon: selectedIcon,
         })
       } else {
         const payload: CreateStyleParams = {
@@ -237,7 +246,7 @@ function StyleModal({ initial, onClose, onSaved }: StyleModalProps) {
           prompt: form.prompt,
           description: form.description || undefined,
           is_public: form.is_public,
-          icon: form.icon ?? undefined,
+          icon: selectedIcon,
         }
         result = await noteStyleApi.create(payload)
       }
@@ -439,6 +448,7 @@ function StyleCard({
 }: StyleCardProps) {
   const isOwner = style.source === 'user' && style.user_id === currentUserId
   const isSystemStyle = style.source === 'system'
+  const canViewDetails = isSystemStyle || (style.source === 'user' && style.is_public)
   const canManageSystemStyle = isSystemStyle && isAdmin
   const isPending = style.moderation_status === 'PENDING_REVIEW'
 
@@ -506,8 +516,8 @@ function StyleCard({
         </div>
       </div>
 
-      {/* Built-in style actions: visible only when hovering/focusing the card. */}
-      {isSystemStyle && (
+      {/* Built-in and public style details: visible only when hovering/focusing the card. */}
+      {canViewDetails && (
         <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           <button
             type="button"
@@ -657,10 +667,14 @@ export default function NoteStylePage() {
   }
 
   const handleTogglePublic = async (id: number, val: boolean) => {
-    await noteStyleApi.togglePublic(id, val)
-    if (val) showReviewPendingToast()
-    else toast.success('已设为私有')
-    fetchStyles()
+    const pendingToastId = val ? showReviewPendingToast() : undefined
+    try {
+      await noteStyleApi.togglePublic(id, val)
+      if (!val) toast.success('已设为私有')
+      fetchStyles()
+    } catch {
+      if (pendingToastId) toast.dismiss(pendingToastId)
+    }
   }
 
   const handleSaved = () => {

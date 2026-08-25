@@ -202,9 +202,11 @@ class NoteStyleModerationService:
             db.refresh(style)
             result_style = _visible_dict(db, style, user_id)
             source_id = f"{style.id}:{version.id}:{action}"
+            publisher = db.query(User.username).filter(User.id == style.user_id).scalar()
+            publisher_name = publisher or f"用户 {style.user_id}"
             NoteStyleModerationService._safe_admin_notification(
                 title="有新的笔记风格待审核",
-                content=f"用户 {style.user_id} 提交了笔记风格《{version.name}》第 {version.version_no} 版，请及时审核。AI 初筛：{result['status']}。",
+                content=f"用户 {publisher_name} 提交了笔记风格《{version.name}》第 {version.version_no} 版，请及时审核。AI 初筛：{result['status']}。",
                 source_id=source_id,
                 severity=NOTIFICATION_SEVERITY_WARNING if result["status"] in {"risk", "failed"} else NOTIFICATION_SEVERITY_INFO,
             )
