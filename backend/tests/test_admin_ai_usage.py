@@ -101,3 +101,41 @@ def test_admin_ai_usage_export_is_csv_and_contains_no_full_key():
         db.query(User).filter(User.id == user.id).delete()
         db.commit()
         db.close()
+
+
+def test_failure_rate_uses_final_attempt_per_trace():
+    user, token = _make_user(1)
+    trace_id = f"retry-{uuid.uuid4().hex}"
+    db = SessionLocal()
+    for status, attempt in (("failed", 1), ("success", 2)):
+        db.add(AIUsageLog(
+            request_id=uuid.uuid4().hex,
+            trace_id=trace_id,
+            user_id=user.id,
+            scene="workbench_chat",
+            operation="ask",
+            provider_name="OpenAI",
+            model_name="gpt-4o",
+            status=status,
+            request_mode="sync",
+            attempt_no=attempt,
+            started_at=datetime.now(),
+            total_tokens=10,
+            token_source="provider",
+        ))
+    db.commit()
+    db.close()
+    try:
+        response = client.get(
+            "/api/admin/ai-usage/overview",
+            params={"start_date": datetime.now().date().isoformat(), "end_date": datetime.now().date().isoformat(), "user_id": user.id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.json()["data"]["calls"] >= 1
+        assert response.json()["data"]["failed_calls"] == 0
+    finally:
+        db = SessionLocal()
+        db.query(AIUsageLog).filter(AIUsageLog.trace_id == trace_id).delete()
+        db.query(User).filter(User.id == user.id).delete()
+        db.commit()
+        db.close()

@@ -4,7 +4,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from sqlalchemy import and_, case, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.db.models.ai_usage import AIModelPricing, AIUsageLog
 
@@ -55,6 +55,17 @@ def _sum(column):
     return func.coalesce(func.sum(column), 0)
 
 
+def _latest_attempt_id():
+    latest = aliased(AIUsageLog)
+    return select(func.max(latest.id)).where(latest.trace_id == AIUsageLog.trace_id).correlate(AIUsageLog).scalar_subquery()
+
+
+def _failed_final_trace():
+    return func.count(func.distinct(case(
+        (and_(AIUsageLog.id == _latest_attempt_id(), AIUsageLog.status.in_(["failed", "timeout"])), AIUsageLog.trace_id)
+    )))
+
+
 def overview(db: Session, where: list[Any]) -> dict[str, Any]:
     row = db.execute(
         select(
@@ -64,7 +75,7 @@ def overview(db: Session, where: list[Any]) -> dict[str, Any]:
             _sum(AIUsageLog.output_tokens),
             _sum(AIUsageLog.total_tokens),
             _sum(AIUsageLog.estimated_cost),
-            func.sum(case((AIUsageLog.status.in_(["failed", "timeout"]), 1), else_=0)),
+            _failed_final_trace(),
             _sum(AIUsageLog.latency_ms),
             func.sum(case((AIUsageLog.estimated_cost.is_(None), 1), else_=0)),
         ).where(*where)
@@ -90,7 +101,7 @@ def trend(db: Session, where: list[Any]) -> list[dict[str, Any]]:
         select(day, func.count(func.distinct(AIUsageLog.trace_id)), _sum(AIUsageLog.input_tokens),
                _sum(AIUsageLog.output_tokens), _sum(AIUsageLog.total_tokens),
                _sum(AIUsageLog.estimated_cost),
-               func.sum(case((AIUsageLog.status.in_(["failed", "timeout"]), 1), else_=0)))
+               _failed_final_trace())
         .where(*where).group_by(day).order_by(day)
     ).all()
     return [
@@ -105,7 +116,7 @@ def grouped(db: Session, where: list[Any], group_columns: tuple[Any, ...], names
     rows = db.execute(
         select(*group_columns, func.count(func.distinct(AIUsageLog.trace_id)), _sum(AIUsageLog.input_tokens),
                _sum(AIUsageLog.output_tokens), _sum(AIUsageLog.total_tokens), _sum(AIUsageLog.estimated_cost),
-               func.sum(case((AIUsageLog.status.in_(["failed", "timeout"]), 1), else_=0)))
+               _failed_final_trace())
         .where(*where).group_by(*group_columns).order_by(_sum(AIUsageLog.total_tokens).desc())
     ).all()
     result = []
