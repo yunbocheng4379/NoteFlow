@@ -95,6 +95,11 @@ def init_db():
 
     _backfill_note_style_versions()
 
+    # 兼容旧任务：抖音/快手历史记录可能只保存了平台和视频 ID，启动时补齐
+    # 可跳转的详情页链接，确保历史记录与新任务使用同一条数据链路。
+    from app.db.video_task_dao import backfill_original_video_urls
+    backfill_original_video_urls()
+
 
 def _backfill_note_style_versions():
     """为升级前的用户风格创建首个快照，确保旧公开数据可继续使用。"""

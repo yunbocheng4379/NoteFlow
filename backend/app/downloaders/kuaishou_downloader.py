@@ -50,7 +50,8 @@ class KuaiShouDownloader(Downloader, ABC):
                 platform="kuaishou",
                 video_id=video_id,
                 raw_info={
-                    'tags': ','.join(tag['name'] for tag in video_raw_info.get('tags', []) if tag.get('name'))
+                    'tags': ','.join(tag['name'] for tag in video_raw_info.get('tags', []) if tag.get('name')),
+                    'webpage_url': video_url,
                 },
                 video_path=None
             )
@@ -65,7 +66,8 @@ class KuaiShouDownloader(Downloader, ABC):
                 platform="kuaishou",
                 video_id=video_id,
                 raw_info={
-                    'tags': ','.join(tag['name'] for tag in video_raw_info.get('tags', []) if tag.get('name'))
+                    'tags': ','.join(tag['name'] for tag in video_raw_info.get('tags', []) if tag.get('name')),
+                    'webpage_url': video_url,
                 },
                 video_path=mp4_path
             )
@@ -95,7 +97,8 @@ class KuaiShouDownloader(Downloader, ABC):
             platform="kuaishou",
             video_id=video_id,
             raw_info={
-                'tags': ','.join(tag['name'] for tag in video_raw_info.get('tags', []) if tag.get('name'))
+                'tags': ','.join(tag['name'] for tag in video_raw_info.get('tags', []) if tag.get('name')),
+                'webpage_url': video_url,
             },
             video_path=mp4_path
         )

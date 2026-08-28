@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react'
 import type { AudioMeta } from '@/store/taskStore'
+import { getOriginalVideoUrl } from './videoUrl'
 
 interface VideoBannerProps {
   audioMeta?: AudioMeta
@@ -27,7 +28,12 @@ export default function VideoBanner({ audioMeta, videoUrl }: VideoBannerProps) {
   const title = audioMeta.title
   const uploader = audioMeta.raw_info?.uploader || ''
   const platform = platformLabel[audioMeta.platform] || audioMeta.platform || ''
-  const originalUrl = videoUrl || audioMeta.raw_info?.webpage_url || ''
+  const originalUrl = getOriginalVideoUrl(
+    videoUrl,
+    audioMeta.raw_info,
+    audioMeta.platform,
+    audioMeta.video_id,
+  )
 
   return (
     <div className="relative mb-4 overflow-hidden rounded-lg">

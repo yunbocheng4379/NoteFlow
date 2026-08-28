@@ -31,6 +31,7 @@ def test_kuaishou_skip_download_returns_duration_in_seconds(monkeypatch, tmp_pat
     )
 
     assert result.duration == 15
+    assert result.raw_info["webpage_url"] == "https://www.kuaishou.com/short-video/3x6u642nk5hja6q"
 
 
 def test_extract_photo_id_supports_standard_and_share_urls():

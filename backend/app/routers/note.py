@@ -24,7 +24,7 @@ from app.services.kb_permissions import require_pro
 from app.services.task_serial_executor import task_serial_executor
 from app.utils.error_messages import translate_download_error
 from app.utils.response import ResponseWrapper as R
-from app.utils.url_parser import extract_video_id
+from app.utils.url_parser import get_original_video_url, get_task_video_id
 from app.validators.video_url_validator import is_supported_video_url
 from app.enmus.platform_status import PlatformDisabledError
 from fastapi.responses import StreamingResponse
@@ -292,7 +292,7 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks,
                     },
                 )
 
-        video_id = extract_video_id(data.video_url, data.platform)
+        video_id = get_task_video_id(data.video_url, data.platform)
 
         # 平台禁用检查
         from app.enmus.platform_status import check_platform_enabled
@@ -548,11 +548,12 @@ def list_tasks(current_user: User = Depends(get_current_user)):
         # derive status: if result file exists, it's SUCCESS (handles legacy rows with no status column)
         status = row.status or ("SUCCESS" if os.path.exists(result_path) else "PENDING")
 
+        original_video_url = get_original_video_url(row.video_url, row.platform, row.video_id)
         results.append({
             "task_id": task_id,
             "video_id": row.video_id,
             "platform": row.platform,
-            "video_url": row.video_url or "",
+            "video_url": original_video_url,
             "model_name": row.model_name or "",
             "credits_used": row.credits_used if row.credits_used is not None else 20,
             "created_at": row.created_at.isoformat() if row.created_at else "",
@@ -730,7 +731,7 @@ def generate_notes_batch(data: GenerateNotesBatchRequest, background_tasks: Back
 
             try:
                 check_platform_enabled(item.platform)
-                video_id = extract_video_id(item.video_url, item.platform)
+                video_id = get_task_video_id(item.video_url, item.platform)
                 task_id = str(uuid.uuid4())
 
                 downloader = NoteGenerator(user_id=current_user.id)._get_downloader(item.platform)
@@ -755,12 +756,11 @@ def generate_notes_batch(data: GenerateNotesBatchRequest, background_tasks: Back
 
                 NoteGenerator(user_id=current_user.id)._update_status(task_id, TaskStatus.PENDING)
 
-                if video_id:
-                    insert_video_task(
-                        video_id=video_id, platform=item.platform, task_id=task_id,
-                        user_id=current_user.id, video_url=item.video_url,
-                        model_name=data.model_name, credits_used=required, batch_id=batch_id,
-                    )
+                insert_video_task(
+                    video_id=video_id, platform=item.platform, task_id=task_id,
+                    user_id=current_user.id, video_url=item.video_url,
+                    model_name=data.model_name, credits_used=required, batch_id=batch_id,
+                )
 
                 background_tasks.add_task(
                     run_note_task, task_id, item.video_url, item.platform, data.quality,

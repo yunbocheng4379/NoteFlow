@@ -2,7 +2,8 @@ from datetime import datetime
 from typing import List, Optional
 
 from app.db.models.video_tasks import VideoTask
-from app.db.engine import get_db
+from app.db.engine import SessionLocal, get_db
+from app.utils.url_parser import get_original_video_url
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -153,3 +154,30 @@ def delete_task_by_video(video_id: str, platform: str, user_id: Optional[int] = 
                 remove_task_from_all_collections(task_id)
         except Exception as e:
             logger.warning(f"清理合集关联失败 (video_id={video_id}, platform={platform}): {e}")
+
+
+def backfill_original_video_urls() -> int:
+    """Restore stable detail URLs for legacy Douyin/Kuaishou task rows."""
+    db = SessionLocal()
+    updated = 0
+    try:
+        rows = (
+            db.query(VideoTask)
+            .filter(VideoTask.platform.in_(["douyin", "kuaishou"]))
+            .filter((VideoTask.video_url.is_(None)) | (VideoTask.video_url == ""))
+            .all()
+        )
+        for task in rows:
+            original_url = get_original_video_url("", task.platform, task.video_id)
+            if not original_url:
+                continue
+            task.video_url = original_url
+            updated += 1
+        if updated:
+            db.commit()
+        return updated
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()

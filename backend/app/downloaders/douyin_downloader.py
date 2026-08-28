@@ -333,6 +333,7 @@ class DouyinDownloader(Downloader):
                     video_id=aweme['aweme_id'],
                     raw_info={
                         'tags': caption + ''.join(tags),
+                        'webpage_url': video_url,
                     },
                     video_path=None
                 )
@@ -357,6 +358,7 @@ class DouyinDownloader(Downloader):
                 video_id=aweme['aweme_id'],
                 raw_info={
                     'tags': caption + ''.join(tags),
+                    'webpage_url': video_url,
                 },
                 video_path=None  # ❗音频下载不包含视频路径
             )
