@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -18,6 +19,10 @@ from app.db.models.ai_usage import AIModelPricing, AIUsageLog
 from app.services.ai_usage_pricing import calculate_cost
 
 logger = logging.getLogger(__name__)
+
+
+def _audit_enabled() -> bool:
+    return os.getenv("AI_USAGE_AUDIT_ENABLED", "true").strip().lower() not in {"0", "false", "no", "off"}
 
 
 class AIUsageContext(TypedDict, total=False):
@@ -215,6 +220,8 @@ class AIUsageRecorder:
     ) -> tuple[str, datetime, int | None]:
         request_id = uuid.uuid4().hex
         started_at = datetime.now()
+        if not _audit_enabled():
+            return request_id, started_at, None
         trace_id = context.get("trace_id") or uuid.uuid4().hex
         prompt = sanitize_payload(request_messages)
         row = AIUsageLog(
