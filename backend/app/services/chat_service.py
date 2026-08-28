@@ -1,4 +1,5 @@
 import json
+import uuid
 from typing import Optional, Iterator
 
 from typing import Optional
@@ -6,6 +7,7 @@ from typing import Optional
 from app.gpt.gpt_factory import GPTFactory
 from app.models.model_config import ModelConfig
 from app.services.provider import ProviderService
+from app.services.ai_usage_service import AIUsageRecorder
 from app.services.vector_store import VectorStoreManager
 from app.services.chat_tools import TOOLS, execute_tool
 from app.utils.logger import get_logger
@@ -111,18 +113,44 @@ def chat(
         provider=provider["type"],
         name=provider["name"],
     )
-    gpt = GPTFactory.from_config(config)
+    gpt = GPTFactory.from_config(
+        config,
+        user_id=user_id,
+        provider_id=provider_id,
+        usage_context={
+            "scene": "workbench_chat",
+            "operation": "ask",
+            "resource_type": "video_task",
+            "resource_id": task_id,
+        },
+    )
 
     logger.info(f"Chat: task_id={task_id}, model={model_name}")
 
     # 4. Tool calling 循环（最多 3 轮）
     max_rounds = 3
+    trace_id = f"chat-{task_id}-{uuid.uuid4().hex}"
     for round_i in range(max_rounds):
-        response = gpt.client.chat.completions.create(
-            model=gpt.model,
-            messages=messages,
-            tools=TOOLS,
-            temperature=0.7,
+        usage_context = dict(getattr(gpt, "usage_context", {
+            "user_id": user_id,
+            "scene": "workbench_chat",
+            "operation": "ask",
+            "resource_type": "video_task",
+            "resource_id": task_id,
+            "provider_id": provider_id,
+            "provider_name": provider.get("name", ""),
+            "model_name": model_name,
+        }))
+        usage_context.update({"trace_id": trace_id, "attempt_no": round_i + 1, "request_mode": "tool"})
+        response = AIUsageRecorder().record_sync(
+            usage_context,
+            messages,
+            lambda: gpt.client.chat.completions.create(
+                model=gpt.model,
+                messages=messages,
+                tools=TOOLS,
+                temperature=0.7,
+            ),
         )
 
         msg = response.choices[0].message
@@ -152,10 +180,25 @@ def chat(
             })
 
     # 超过最大轮次，做最后一次不带 tools 的调用
-    response = gpt.client.chat.completions.create(
-        model=gpt.model,
-        messages=messages,
-        temperature=0.7,
+    usage_context = dict(getattr(gpt, "usage_context", {
+        "user_id": user_id,
+        "scene": "workbench_chat",
+        "operation": "ask",
+        "resource_type": "video_task",
+        "resource_id": task_id,
+        "provider_id": provider_id,
+        "provider_name": provider.get("name", ""),
+        "model_name": model_name,
+    }))
+    usage_context.update({"trace_id": trace_id, "attempt_no": max_rounds + 1})
+    response = AIUsageRecorder().record_sync(
+        usage_context,
+        messages,
+        lambda: gpt.client.chat.completions.create(
+            model=gpt.model,
+            messages=messages,
+            temperature=0.7,
+        ),
     )
 
     return {"answer": response.choices[0].message.content or "", "sources": sources}
@@ -204,7 +247,17 @@ def chat_stream(
         provider=provider["type"],
         name=provider["name"],
     )
-    gpt = GPTFactory.from_config(config)
+    gpt = GPTFactory.from_config(
+        config,
+        user_id=user_id,
+        provider_id=provider_id,
+        usage_context={
+            "scene": "workbench_chat",
+            "operation": "ask_stream",
+            "resource_type": "video_task",
+            "resource_id": task_id,
+        },
+    )
 
     logger.info(f"ChatStream: task_id={task_id}, model={model_name}")
 
@@ -223,7 +276,26 @@ def chat_stream(
         kwargs = dict(model=gpt.model, messages=stream_messages, temperature=0.7, stream=True)
         if with_tools:
             kwargs["tools"] = TOOLS
-        completion = gpt.client.chat.completions.create(**kwargs)
+        usage_context = dict(getattr(gpt, "usage_context", {
+            "user_id": user_id,
+            "scene": "workbench_chat",
+            "operation": "ask_stream",
+            "resource_type": "video_task",
+            "resource_id": task_id,
+            "provider_id": provider_id,
+            "provider_name": provider.get("name", ""),
+            "model_name": model_name,
+        }))
+        usage_context.update({
+            "trace_id": f"chat-stream-{task_id}-{uuid.uuid4().hex}",
+            "attempt_no": 1,
+            "request_mode": "tool" if with_tools else "stream",
+        })
+        completion = AIUsageRecorder().record_stream_sync(
+            usage_context,
+            stream_messages,
+            lambda: gpt.client.chat.completions.create(**kwargs),
+        )
 
         content_parts: list[str] = []
         # tool_calls 按 index 累积：{index: {"id","name","arguments"}}

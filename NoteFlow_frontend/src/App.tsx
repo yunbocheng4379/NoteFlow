@@ -87,6 +87,7 @@ const NoteStyleModerationPage = lazy(() => import('@/pages/SettingPage/NoteStyle
 const PricingPage = lazy(() => import('@/pages/SettingPage/Pricing'))
 const RechargeOperationsPage = lazy(() => import('@/pages/SettingPage/RechargeOperations'))
 const AnalyticsPage = lazy(() => import('@/pages/SettingPage/Analytics'))
+const AiUsagePage = lazy(() => import('@/pages/SettingPage/AiUsagePage'))
 const UpgradePage = lazy(() => import('@/pages/UpgradePage'))
 const BillingPage = lazy(() => import('@/pages/BillingPage'))
 const ReferralPage = lazy(() => import('@/pages/ReferralPage'))
@@ -228,6 +229,7 @@ function App() {
                 <Route path="pricing" element={<PricingPage />} />
                 <Route path="recharge-operations" element={<RechargeOperationsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
+                <Route path="ai-usage" element={<AiUsagePage />} />
                 <Route path="update-logs-admin" element={<UpdateLogsAdminPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

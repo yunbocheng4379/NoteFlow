@@ -9,6 +9,7 @@ from app.gpt.gpt_factory import GPTFactory
 from app.models.model_config import ModelConfig
 from app.services.kb_note_lookup import load_note_title
 from app.services.provider import ProviderService
+from app.services.ai_usage_service import AIUsageRecorder
 from app.services.vector_store import VectorStoreManager
 from app.utils.logger import get_logger
 
@@ -192,7 +193,17 @@ def ask_stream(
         provider=provider["type"],
         name=provider["name"],
     )
-    gpt = GPTFactory.from_config(config)
+    gpt = GPTFactory.from_config(
+        config,
+        user_id=user_id,
+        provider_id=provider_id,
+        usage_context={
+            "scene": "knowledge_base_chat",
+            "operation": "ask_stream",
+            "resource_type": "conversation",
+            "resource_id": str(conversation_id),
+        },
+    )
 
     history = kb_dao.list_messages(conversation_id, limit=MAX_HISTORY_MESSAGES)
     messages = [{"role": "system", "content": SYSTEM_PROMPT.format(context=context)}]
@@ -208,7 +219,21 @@ def ask_stream(
     logger.info(f"KB ask_stream: conversation_id={conversation_id}, model={model_name}, reasoning_mode={reasoning_mode}")
 
     try:
-        completion = gpt.client.chat.completions.create(**kwargs)
+        usage_context = getattr(gpt, "usage_context", {
+            "user_id": user_id,
+            "scene": "knowledge_base_chat",
+            "operation": "ask_stream",
+            "resource_type": "conversation",
+            "resource_id": str(conversation_id),
+            "provider_id": provider_id,
+            "provider_name": provider.get("name", ""),
+            "model_name": model_name,
+        })
+        completion = AIUsageRecorder().record_stream_sync(
+            dict(usage_context),
+            messages,
+            lambda: gpt.client.chat.completions.create(**kwargs),
+        )
     except Exception as e:
         logger.error(f"KB ask_stream 调用 LLM 失败: {e}", exc_info=True)
         from app.utils.error_messages import translate_chat_error

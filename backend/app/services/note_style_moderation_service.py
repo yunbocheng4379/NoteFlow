@@ -176,6 +176,8 @@ class NoteStyleModerationService:
                 name=version.name,
                 description=version.description,
                 prompt=version.prompt,
+                user_id=user_id,
+                resource_id=str(style.id),
             )
             version.status = "PENDING_REVIEW"
             version.submitted_at = datetime.now()

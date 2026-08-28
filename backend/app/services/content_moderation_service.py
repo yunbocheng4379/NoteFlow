@@ -24,7 +24,14 @@ _LOCAL_RULES = {
 
 class ContentModerationService:
     @staticmethod
-    def screen(*, name: str, description: str | None, prompt: str) -> dict[str, Any]:
+    def screen(
+        *,
+        name: str,
+        description: str | None,
+        prompt: str,
+        user_id: int | None = None,
+        resource_id: str | None = None,
+    ) -> dict[str, Any]:
         text = "\n".join(part for part in (name, description or "", prompt) if part).strip()
         local_categories = sorted(
             category
@@ -88,6 +95,13 @@ class ContentModerationService:
                     },
                 ],
                 temperature=0,
+                usage_context={
+                    "user_id": user_id,
+                    "scene": "content_moderation",
+                    "operation": "screen_note_style",
+                    "resource_type": "note_style",
+                    "resource_id": resource_id or name[:128],
+                },
             )
             payload = ContentModerationService._parse_json_response(raw)
             result = ContentModerationService._normalize_response(payload)

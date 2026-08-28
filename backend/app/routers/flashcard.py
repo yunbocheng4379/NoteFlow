@@ -126,7 +126,19 @@ def generate_flashcards(data: GenerateFlashcardsRequest, current_user: User = De
             {"role": "system", "content": prompt},
             {"role": "user", "content": markdown},
         ]
-        raw = simple_completion(data.provider_id, data.model_name, messages, temperature=0.5)
+        raw = simple_completion(
+            data.provider_id,
+            data.model_name,
+            messages,
+            temperature=0.5,
+            usage_context={
+                "user_id": current_user.id,
+                "scene": "flashcard_generation",
+                "operation": "generate_flashcards",
+                "resource_type": "flashcard_set",
+                "resource_id": data.task_id,
+            },
+        )
         cards = _parse_cards_response(raw, data.card_count)
     except Exception as e:
         logger.error(f"生成闪记卡失败 (task_id={data.task_id}): {e}")

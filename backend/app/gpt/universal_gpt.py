@@ -14,14 +14,28 @@ from app.gpt.request_chunker import RequestChunker
 from app.models.transcriber_model import TranscriptSegment
 from datetime import timedelta
 from typing import List
+from app.services.ai_usage_service import AIUsageContext, AIUsageRecorder
 
 
 class UniversalGPT(GPT):
-    def __init__(self, client, model: str, temperature: float = 0.7, user_id: int | None = None):
+    def __init__(
+        self,
+        client,
+        model: str,
+        temperature: float = 0.7,
+        user_id: int | None = None,
+        usage_context: AIUsageContext | None = None,
+    ):
         self.client = client
         self.model = model
         self.temperature = temperature
         self.user_id = user_id
+        self.usage_context: AIUsageContext = usage_context or {
+            "user_id": user_id,
+            "scene": "note_generation",
+            "operation": "summarize",
+            "model_name": model,
+        }
         self.screenshot = False
         self.link = False
         self.max_request_bytes = int(os.getenv("OPENAI_MAX_REQUEST_BYTES", str(45 * 1024 * 1024)))
@@ -220,7 +234,18 @@ class UniversalGPT(GPT):
         last_exc = None
         for attempt in range(self._max_retry_attempts):
             try:
-                return self._do_create(messages)
+                context = dict(self.usage_context)
+                context.update({
+                    "trace_id": hashlib.sha256(
+                        f"{self.user_id}:{self.model}:{time.time_ns()}".encode()
+                    ).hexdigest()[:32],
+                    "attempt_no": attempt + 1,
+                })
+                return AIUsageRecorder().record_sync(
+                    context,
+                    messages,
+                    lambda: self._do_create(messages),
+                )
             except Exception as exc:
                 last_exc = exc
                 if attempt == self._max_retry_attempts - 1 or not self._is_retryable_error(exc):

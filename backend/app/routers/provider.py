@@ -108,6 +108,7 @@ def gpt_connect_test(data: TestRequest, current_user: User = Depends(get_current
         ModelService().connect_test(
             data.id,
             model=data.model,
+            user_id=current_user.id,
             api_key=data.api_key,
             base_url=data.base_url,
         )

@@ -26,7 +26,6 @@ class AssistantAskRequest(BaseModel):
 
 @router.post("/assistant/ask_stream")
 def ask_assistant_stream(data: AssistantAskRequest, current_user: User = Depends(get_current_user)):
-    del current_user
     question = data.question.strip()
     if not question:
         return R.error(msg="请输入问题后再发送")
@@ -34,7 +33,7 @@ def ask_assistant_stream(data: AssistantAskRequest, current_user: User = Depends
     history = [{"role": item.role, "content": item.content} for item in data.history]
 
     def event_generator():
-        for event in product_assistant_stream(question, history):
+        for event in product_assistant_stream(question, history, user_id=current_user.id):
             yield encode_sse_event(event)
 
     return StreamingResponse(

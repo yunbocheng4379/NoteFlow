@@ -7,6 +7,8 @@ from app.gpt.utils import fix_markdown
 from app.models.gpt_model import GPTSource
 from app.models.transcriber_model import TranscriptSegment
 from datetime import timedelta
+from app.services.ai_usage_pricing import fingerprint_secret, mask_secret
+from app.services.ai_usage_service import AIUsageRecorder
 
 
 class QwenGPT(GPT):
@@ -51,10 +53,21 @@ class QwenGPT(GPT):
         self.screenshot = source.screenshot
         source.segment = self.ensure_segments_type(source.segment)
         messages = self.create_messages(source.segment, source.title,source.tags)
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.7
+        response = AIUsageRecorder().record_sync(
+            {
+                "scene": "note_generation",
+                "operation": "legacy_summarize",
+                "provider_name": "Qwen",
+                "model_name": self.model,
+                "key_fingerprint": fingerprint_secret(self.api_key),
+                "key_masked": mask_secret(self.api_key),
+            },
+            messages,
+            lambda: self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+            ),
         )
         return response.choices[0].message.content.strip()
 

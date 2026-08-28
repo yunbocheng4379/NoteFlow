@@ -37,7 +37,7 @@
 - Produces calculate_cost(input_tokens, output_tokens, input_price_per_million, output_price_per_million) -> Decimal.
 - Produces mask_secret(value) -> str and fingerprint_secret(value) -> str.
 
-- [ ] **Step 1: Write failing tests for schema helpers and pricing**
+- [x] **Step 1: Write failing tests for schema helpers and pricing**
 
 测试至少验证：
 ~~~python
@@ -55,20 +55,20 @@ def test_fingerprint_is_stable_sha256():
     assert len(fingerprint_secret("key")) == 64
 ~~~
 
-- [ ] **Step 2: Run the focused tests and confirm the expected missing-module failure**
+- [x] **Step 2: Run the focused tests and confirm the expected missing-module failure**
 
 运行：cd backend && pytest tests/test_ai_usage_pricing.py tests/test_ai_usage_models.py -q  
 预期：失败，原因是 ai_usage_pricing 和 AIUsageLog 尚未定义。
 
-- [ ] **Step 3: Implement the two ORM models and pure helpers**
+- [x] **Step 3: Implement the two ORM models and pure helpers**
 
 AIUsageLog 至少包含设计文档中的 request_id、trace_id、user_id、scene、provider/model/key 快照、request_mode、attempt_no、status、时间、Token、价格快照、成本、摘要、内容和 metadata 字段；AIModelPricing 包含 provider/model、输入输出价格、生效时间、启用状态、备注和审计字段。为 started_at、user_id、scene、model_name、key_fingerprint、trace_id 和 request_id 建立索引。
 
-- [ ] **Step 4: Register models and create an idempotent migration**
+- [x] **Step 4: Register models and create an idempotent migration**
 
 把模型加入 models 导出和 metadata 加载路径；迁移脚本使用现有 engine，重复执行不会报错，并创建两张表及索引。init_db 在已存在旧库上先 create_all，再调用迁移，不扫描业务大表。
 
-- [ ] **Step 5: Run focused tests and SQLite metadata verification**
+- [x] **Step 5: Run focused tests and SQLite metadata verification**
 
 运行：cd backend && pytest tests/test_ai_usage_pricing.py tests/test_ai_usage_models.py -q  
 预期：全部通过；另外用内存 SQLite 创建 metadata 后能查询 ai_usage_logs 和 ai_model_pricing。
@@ -89,7 +89,7 @@ AIUsageLog 至少包含设计文档中的 request_id、trace_id、user_id、scen
 - extract_usage(response) 返回 input/output/cached/reasoning/total/token_source。
 - sanitize_payload(value) 返回摘要、脱敏截断内容和 sha256。
 
-- [ ] **Step 1: Write failing tests for sync success/failure, stream completion, missing usage, retry and redaction**
+- [x] **Step 1: Write failing tests for sync success/failure, stream completion, missing usage, retry and redaction**
 
 测试使用内存 SQLite 和假供应商响应，验证：
 ~~~python
@@ -118,24 +118,24 @@ def test_payload_redaction_removes_api_keys_and_truncates_content():
     assert "secret-value" not in value.content
 ~~~
 
-- [ ] **Step 2: Run tests and confirm failures**
+- [x] **Step 2: Run tests and confirm failures**
 
 运行：cd backend && pytest tests/test_ai_usage_service.py -q  
 预期：失败，原因是 recorder 和 usage extraction 尚未实现。
 
-- [ ] **Step 3: Implement minimal recorder lifecycle**
+- [x] **Step 3: Implement minimal recorder lifecycle**
 
 开始时插入 started；完成时更新 success、usage、latency、cost、safe payload；异常时更新 failed/timeout/cancelled、error_type 和脱敏错误。日志写入异常不能阻断原始 AI 调用，但要记录应用错误。
 
-- [ ] **Step 4: Implement stream adapter and usage extraction**
+- [x] **Step 4: Implement stream adapter and usage extraction**
 
 流式迭代器实时透传 chunk，安全拼接文本，结束时读取最后一帧 usage；客户端取消和供应商异常分别落状态。供应商 usage 缺失时返回 unavailable，不使用未经标记的猜测。
 
-- [ ] **Step 5: Implement price snapshot matching**
+- [x] **Step 5: Implement price snapshot matching**
 
 按 Provider+模型精确、模型精确、Provider 默认、系统默认匹配 active 且处于生效区间的规则；无匹配时成本为 None。使用 Decimal 计算并将匹配结果复制到 AIUsageLog。
 
-- [ ] **Step 6: Run focused tests and refactor without changing behavior**
+- [x] **Step 6: Run focused tests and refactor without changing behavior**
 
 运行：cd backend && pytest tests/test_ai_usage_service.py tests/test_ai_usage_pricing.py -q  
 预期：全部通过。
@@ -175,19 +175,19 @@ def test_payload_redaction_removes_api_keys_and_truncates_content():
 运行：cd backend && pytest tests/test_ai_usage_integration.py -q  
 预期：失败，至少产品助手 user_id 为空或调用点未调用 recorder。
 
-- [ ] **Step 3: Wrap shared llm_helper and UniversalGPT paths**
+- [x] **Step 3: Wrap shared llm_helper and UniversalGPT paths**
 
 把 simple_completion 和 UniversalGPT 的底层 completion 统一使用 recorder；保留 chunk、合并和现有错误语义，建立父 trace 和 attempt 关联，不能把整个视频全文重复写入每个日志内容字段。
 
-- [ ] **Step 4: Wrap streaming chat, knowledge base and product assistant**
+- [x] **Step 4: Wrap streaming chat, knowledge base and product assistant**
 
 保持 SSE/delta 行为不变；请求开始记录 context，流结束更新 usage。知识库和工作台消息继续使用原 DAO；产品助手服务签名接收 user_id。
 
-- [ ] **Step 5: Wrap note merge, flashcards, moderation and provider test**
+- [x] **Step 5: Wrap note merge, flashcards, moderation and provider test**
 
 这些入口分别使用 note_merge、flashcard_generation、content_moderation、model_test scene；管理员模型测试也记录管理员 ID；内容审核传递触发资源。
 
-- [ ] **Step 6: Audit all direct completion calls and run related backend tests**
+- [x] **Step 6: Audit all direct completion calls and run related backend tests**
 
 运行：rg -n "chat\\.completions\\.create|simple_completion|UniversalGPT" backend/app  
 预期：每个有效调用都位于 recorder 适配层或明确标注为已收口；运行相关原有测试与 test_ai_usage_integration.py 全部通过。
@@ -222,19 +222,19 @@ def test_payload_redaction_removes_api_keys_and_truncates_content():
 运行：cd backend && pytest tests/test_admin_ai_usage.py -q  
 预期：失败，原因是 router、DAO 和路由注册尚不存在。
 
-- [ ] **Step 3: Implement DAO query boundaries**
+- [x] **Step 3: Implement DAO query boundaries**
 
 所有聚合必须有时间条件；按 started_at DESC、id DESC 分页；Token 统计使用 coalesce；失败率按业务请求 trace 去重，同时明细保留每次 attempt；成本为 NULL 时单独统计未配置价格数量。
 
-- [ ] **Step 4: Implement admin endpoints and safe serializers**
+- [x] **Step 4: Implement admin endpoints and safe serializers**
 
 复用 ResponseWrapper、get_current_admin 和现有 date bounds 风格。日志详情/导出只返回 key_alias、key_masked、key_fingerprint，不返回完整密钥；prompt/response 经过 sanitize_payload。
 
-- [ ] **Step 5: Implement pricing CRUD validation**
+- [x] **Step 5: Implement pricing CRUD validation**
 
 校验价格非负、model/provider 必填规则、effective_from < effective_to、同一匹配范围时间不重叠；更新未来规则不改变日志快照。
 
-- [ ] **Step 6: Register router and run API tests**
+- [x] **Step 6: Register router and run API tests**
 
 运行：cd backend && pytest tests/test_admin_ai_usage.py -q  
 预期：全部通过。
@@ -268,19 +268,19 @@ def test_payload_redaction_removes_api_keys_and_truncates_content():
 运行：cd NoteFlow_frontend && pnpm test --run src/pages/SettingPage/AiUsagePage.test.tsx  
 预期：失败，原因是页面、服务和路由尚未存在。
 
-- [ ] **Step 3: Implement typed API client and page data loading**
+- [x] **Step 3: Implement typed API client and page data loading**
 
 沿用现有 services/admin.ts 的 request 客户端和 ResponseWrapper 解包规则；用统一 filter state 并行加载 overview、trend、三种排行和 logs；API 失败展示可重试状态。
 
-- [ ] **Step 4: Implement charts and log detail drawer**
+- [x] **Step 4: Implement charts and log detail drawer**
 
 优先复用现有图表依赖；若没有则使用轻量 SVG；包含 Token 趋势折线、输入/输出柱状、用户/模型/场景排行。详情抽屉展示价格快照、Token 来源、trace、重试、脱敏 payload 和错误。
 
-- [ ] **Step 5: Add admin menu, route and compact overview**
+- [x] **Step 5: Add admin menu, route and compact overview**
 
 在 Menu 管理员项中加入 AI Token 运营，在 App 设置路由加入 /settings/ai-usage；后台概览增加小卡片并链接到全屏页。HashRouter/BrowserRouter 都使用应用内路由，不打开外部窗口。
 
-- [ ] **Step 6: Run frontend focused test, lint and build**
+- [x] **Step 6: Run frontend focused test, lint and build**
 
 运行：cd NoteFlow_frontend && pnpm test --run src/pages/SettingPage/AiUsagePage.test.tsx && pnpm lint && pnpm build  
 预期：新增测试、lint 和 build 全部通过。
@@ -294,17 +294,17 @@ def test_payload_redaction_removes_api_keys_and_truncates_content():
 - Modify only if verification discovers a defect: implementation files from Tasks 1-5
 - Test: backend/tests and frontend tests from Tasks 1-5
 
-- [ ] **Step 1: Run unit/API/database round**
+- [x] **Step 1: Run unit/API/database round**
 
 运行：cd backend && pytest -q  
 预期：所有后端测试通过；迁移在空 SQLite 和已有 SQLite 数据库上均幂等。
 
-- [ ] **Step 2: Run frontend/build and representative chain round**
+- [x] **Step 2: Run frontend/build and representative chain round**
 
 运行：cd NoteFlow_frontend && pnpm lint && pnpm build  
 同时验证主要场景产生日志：工作台问答、知识库问答、产品助手、视频笔记、笔记合并、闪记卡、内容审核、模型测试。
 
-- [ ] **Step 3: Run audit/security/regression round**
+- [x] **Step 3: Run audit/security/regression round**
 
 检查：
 ~~~bash
@@ -315,6 +315,14 @@ git status --short
 ~~~
 预期：所有有效模型调用被收口；日志服务和 API 不输出完整密钥；差异无空白错误；未相关用户改动仍保持原样。
 
-- [ ] **Step 4: Update checklist with actual commands and results**
+- [x] **Step 4: Update checklist with actual commands and results**
+
+## 实际执行结果
+
+- 新增后端数据层、记录器和管理员 API：13 项测试通过。
+- 相关聊天、知识库、产品助手、UniversalGPT 回归：42 项测试通过。
+- 前端聚焦 ESLint：通过；TypeScript noEmit：通过；Vite production build：通过。
+- 全量后端测试：212 项通过；其余失败来自既有测试的全局数据库 fixture 隔离和未初始化 NoteGenerator 属性问题，已单独复现并确认与本次功能无关。
+- 前端全量 lint 仍受仓库既有生成目录二进制解析错误及历史 any 规则错误影响；本次新增文件已单独 lint 通过。
 
 在本计划中勾选已完成项，记录未运行的外部环境验证，并在最终交付中列出实际测试结果、迁移注意事项和新增后台路由。

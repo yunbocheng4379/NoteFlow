@@ -157,6 +157,9 @@ class ModelService:
             api_key=effective_api_key,
             base_url=effective_base_url,
             model=model,
+            user_id=user_id,
+            provider_id=provider["id"],
+            provider_name=provider.get("name", ""),
         )
         if ok:
             return True

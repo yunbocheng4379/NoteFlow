@@ -45,6 +45,11 @@ def init_db():
     engine = get_engine()
     Base.metadata.create_all(bind=engine)
 
+    # The AI audit tables are also created explicitly so an old installation
+    # receives them even when the application imported only a subset of models.
+    from app.db.models.ai_usage import AIModelPricing, AIUsageLog
+    Base.metadata.create_all(bind=engine, tables=[AIUsageLog.__table__, AIModelPricing.__table__])
+
     # Base.metadata.create_all 不会给已有表补列；对已经存在的数据库执行轻量级、
     # 幂等的补列，避免模型升级后旧库在查询时出现 Unknown column。
     with engine.begin() as conn:

@@ -252,7 +252,20 @@ def _run_merge_task(task_id: str, collection_id: int, user_id: int, source_task_
             {"role": "system", "content": MERGE_NOTES_PROMPT},
             {"role": "user", "content": combined},
         ]
-        merged_markdown = simple_completion(provider_id, model_name, messages, temperature=0.3)
+        merged_markdown = simple_completion(
+            provider_id,
+            model_name,
+            messages,
+            temperature=0.3,
+            usage_context={
+                "user_id": user_id,
+                "scene": "note_merge",
+                "operation": "merge_notes",
+                "resource_type": "note_collection",
+                "resource_id": str(collection_id),
+                "trace_id": task_id,
+            },
+        )
 
         merged_title = f"融合笔记：{' + '.join(titles[:3])}" + ("等" if len(titles) > 3 else "")
 

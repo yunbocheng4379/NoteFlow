@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
 import { useUserStore } from '@/store/userStore'
+import AiUsageWidget from '@/pages/SettingPage/components/AiUsageWidget'
 
 const Menu = () => {
   const user = useUserStore((s) => s.user)
@@ -106,6 +107,7 @@ const Menu = () => {
             return <MenuBar key={item.id} menuItem={item} />
           })}
       </div>
+      {isAdmin && <AiUsageWidget />}
     </div>
   )
 }

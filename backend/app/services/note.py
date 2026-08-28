@@ -124,6 +124,7 @@ class NoteGenerator:
         :param grid_size: 生成缩略图时的网格大小，如 [3, 3]
         :return: NoteResult 对象，包含 markdown 文本、转写结果和音频元信息
         """
+        self._current_task_id = task_id
         if grid_size is None:
             grid_size = []
 
@@ -297,7 +298,17 @@ class NoteGenerator:
             provider=provider["type"],
             name=provider["name"],
         )
-        return GPTFactory().from_config(config, user_id=self.user_id)
+        return GPTFactory().from_config(
+            config,
+            user_id=self.user_id,
+            provider_id=provider_id,
+            usage_context={
+                "scene": "note_generation",
+                "operation": "generate_note",
+                "resource_type": "video_task",
+                "resource_id": getattr(self, "_current_task_id", None),
+            },
+        )
 
     def _get_downloader(self, platform: str) -> Downloader:
         downloader_cls = SUPPORT_PLATFORM_MAP.get(platform)

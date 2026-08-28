@@ -24,6 +24,7 @@ from app.db.models.notification_email import (
     NotificationEmailBatchItem,
     NotificationEmailDelivery,
 )
+from app.db.models.ai_usage import AIModelPricing, AIUsageLog
 
 __all__ = [
     "User",
@@ -44,4 +45,6 @@ __all__ = [
     "NotificationEmailBatch",
     "NotificationEmailBatchItem",
     "NotificationEmailDelivery",
+    "AIUsageLog",
+    "AIModelPricing",
 ]

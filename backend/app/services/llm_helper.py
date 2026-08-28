@@ -5,10 +5,18 @@
 """
 from app.gpt.gpt_factory import GPTFactory
 from app.models.model_config import ModelConfig
+from app.services.ai_usage_pricing import fingerprint_secret, mask_secret
+from app.services.ai_usage_service import AIUsageContext, AIUsageRecorder
 from app.services.provider import ProviderService
 
 
-def simple_completion(provider_id: str, model_name: str, messages: list[dict], temperature: float = 0.7) -> str:
+def simple_completion(
+    provider_id: str,
+    model_name: str,
+    messages: list[dict],
+    temperature: float = 0.7,
+    usage_context: AIUsageContext | None = None,
+) -> str:
     """执行一次不带工具调用的 chat completion，返回纯文本内容。"""
     provider = ProviderService.get_provider_by_id(provider_id)
     if not provider:
@@ -22,16 +30,31 @@ def simple_completion(provider_id: str, model_name: str, messages: list[dict], t
         name=provider["name"],
     )
     gpt = GPTFactory.from_config(config)
-    try:
-        response = gpt.client.chat.completions.create(
-            model=gpt.model,
-            messages=messages,
-            temperature=temperature,
-        )
-    except Exception as exc:
-        # GPT-5/o 系列等模型可能只接受默认 temperature；复用视频管线的兼容策略。
-        raw = str(exc).lower()
-        if "temperature" not in raw or ("does not support" not in raw and "unsupported_value" not in raw):
-            raise
-        response = gpt.client.chat.completions.create(model=gpt.model, messages=messages)
+    context: AIUsageContext = {
+        "scene": "model_direct",
+        "operation": "simple_completion",
+        "provider_id": provider_id,
+        "provider_name": provider.get("name", ""),
+        "model_name": model_name,
+        "key_fingerprint": fingerprint_secret(provider.get("api_key")),
+        "key_masked": mask_secret(provider.get("api_key")),
+    }
+    if usage_context:
+        context.update(usage_context)
+
+    def call():
+        try:
+            return gpt.client.chat.completions.create(
+                model=gpt.model,
+                messages=messages,
+                temperature=temperature,
+            )
+        except Exception as exc:
+            # GPT-5/o 系列等模型可能只接受默认 temperature；复用视频管线的兼容策略。
+            raw = str(exc).lower()
+            if "temperature" not in raw or ("does not support" not in raw and "unsupported_value" not in raw):
+                raise
+            return gpt.client.chat.completions.create(model=gpt.model, messages=messages)
+
+    response = AIUsageRecorder().record_sync(context, messages, call)
     return response.choices[0].message.content or ""

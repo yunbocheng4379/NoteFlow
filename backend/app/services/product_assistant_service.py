@@ -11,6 +11,7 @@ from app.models.model_config import ModelConfig
 from app.services.model import ModelService
 from app.services.product_assistant_store import ProductAssistantStore
 from app.services.provider import ProviderService
+from app.services.ai_usage_service import AIUsageRecorder
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -75,7 +76,7 @@ def _format_sources(chunks: list[dict[str, Any]]) -> list[dict[str, str]]:
     return sources
 
 
-def _get_default_gpt():
+def _get_default_gpt(user_id: int | None = None):
     models = ModelService.get_all_models(tier_filter=["normal"])
     if not models:
         raise ValueError("当前还没有配置可用的 AI 模型，请先到设置中完成配置。")
@@ -92,7 +93,16 @@ def _get_default_gpt():
         provider=provider["type"],
         name=provider["name"],
     )
-    return GPTFactory.from_config(config)
+    return GPTFactory.from_config(
+        config,
+        user_id=user_id,
+        provider_id=selected["provider_id"],
+        usage_context={
+            "scene": "product_assistant",
+            "operation": "ask_stream",
+            "resource_type": "assistant_session",
+        },
+    )
 
 
 def _create_stream(gpt, messages: list[dict[str, str]]):
@@ -119,16 +129,32 @@ def product_assistant_error_message(exc: Exception) -> str:
     return "AI 客服暂时无法回答，请稍后重试。"
 
 
-def product_assistant_stream(question: str, history: list[dict[str, str]]) -> Iterator[dict[str, Any]]:
+def product_assistant_stream(
+    question: str,
+    history: list[dict[str, str]],
+    user_id: int | None = None,
+) -> Iterator[dict[str, Any]]:
     try:
         store = ProductAssistantStore()
         store.ensure_index()
         chunks = store.query(question, n_results=5)
         yield {"type": "sources", "sources": _format_sources(chunks)}
 
-        gpt = _get_default_gpt()
+        gpt = _get_default_gpt(user_id)
         messages = build_product_assistant_messages(question, history, chunks)
-        completion = _create_stream(gpt, messages)
+        context = dict(getattr(gpt, "usage_context", {
+            "user_id": user_id,
+            "scene": "product_assistant",
+            "operation": "ask_stream",
+            "resource_type": "assistant_session",
+            "provider_name": "",
+            "model_name": getattr(gpt, "model", ""),
+        }))
+        completion = AIUsageRecorder().record_stream_sync(
+            context,
+            messages,
+            lambda: _create_stream(gpt, messages),
+        )
         for piece in completion:
             choices = getattr(piece, "choices", None) or []
             if not choices:
