@@ -1,12 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { aiUsageApi } from '@/services/aiUsage'
 
 const AI_USAGE_ROUTE = '/settings/ai-usage'
 
 export default function AiUsageWidget() {
-  const [summary, setSummary] = useState<{ total_tokens: number; estimated_cost: number; failure_rate: number } | null>(null)
-  useEffect(() => { const today = new Date().toISOString().slice(0, 10); aiUsageApi.overview({ start_date: today, end_date: today }).then(setSummary).catch(() => setSummary(null)) }, [])
+  const [summary, setSummary] = useState<{ total_tokens: number; estimated_cost: number; unpriced_attempts: number } | null>(null)
+  const refresh = useCallback(() => {
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    aiUsageApi.overview({ start_date: today, end_date: today }).then(setSummary).catch(() => setSummary(null))
+  }, [])
+  useEffect(() => {
+    refresh()
+    const timer = window.setInterval(refresh, 15000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [refresh])
+  const estimatedCost = summary?.unpriced_attempts && summary.estimated_cost === 0 ? '待配置' : summary ? `¥${summary.estimated_cost.toFixed(2)}` : '—'
   return (
     <Link
       to={AI_USAGE_ROUTE}
@@ -23,7 +37,7 @@ export default function AiUsageWidget() {
         <div className="px-2.5">
           <div className="text-[10px] font-medium text-[#83a39d]">预估成本</div>
           <div className="mt-1 text-lg font-semibold leading-none tracking-tight text-[#294b45]">
-            {summary ? `¥${summary.estimated_cost.toFixed(2)}` : '—'}
+            {estimatedCost}
           </div>
         </div>
       </div>

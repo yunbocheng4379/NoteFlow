@@ -207,11 +207,15 @@ const EmptyState: FC<EmptyStateProps> = ({ onMoreSettings }) => {
       addPendingTask(data.task_id, targetPlatform, payload, meta)
     } catch (e: unknown) {
       const reason = (e as { data?: { reason?: string } })?.data?.reason
+      const message =
+        (e as { msg?: string; data?: { msg?: string }; message?: string })?.msg ||
+        (e as { data?: { msg?: string } })?.data?.msg ||
+        (e as { message?: string })?.message
       if (reason === 'transcriber_model_not_ready') {
         toast.error('转写模型尚未下载，请先去「音频转写配置」页下载')
         navigate('/settings/transcriber')
       } else {
-        toast.error('提交任务失败，请稍后重试')
+        toast.error(message || '提交任务失败，请稍后重试')
       }
     } finally {
       setSubmitting(false)

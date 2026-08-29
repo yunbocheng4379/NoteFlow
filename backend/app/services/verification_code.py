@@ -12,7 +12,7 @@ Key 设计:
                                               不同 purpose 互不影响)
   verify_code_daily:{target}:{YYYYMMDD}   -> 计数器, TTL 到当天结束
 
-purpose: "login" | "bind"
+purpose: "login" | "bind" | "bind_email" | "verify_phone" | "verify_email" | "reset_password"
 target: 手机号或邮箱原始字符串 (调用方需自行 strip/normalize)
 """
 import random
@@ -60,6 +60,18 @@ else
 end
 """
 
+# 仅清理本次发送写入的验证码和对应 purpose 的冷却状态，避免慢请求误删后续请求的状态。
+_CLEAR_PENDING_CODE_SCRIPT = """
+local deleted = 0
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    deleted = redis.call('DEL', KEYS[1])
+end
+if redis.call('GET', KEYS[2]) == ARGV[2] then
+    redis.call('DEL', KEYS[2])
+end
+return deleted
+"""
+
 
 def _daily_key(target: str) -> str:
     today = datetime.now().strftime("%Y%m%d")
@@ -93,6 +105,19 @@ def generate_and_store(target: str, purpose: str) -> str:
     code = str(random.randint(0, 999999)).zfill(6)
     r.set(_code_key(purpose, target), code, ex=CODE_TTL_SECONDS)
     return code
+
+
+def clear_pending_code(target: str, purpose: str, code: str) -> None:
+    """发送失败时清理本次验证码和对应冷却状态，保留每日发送计数。"""
+    r = get_redis()
+    r.eval(
+        _CLEAR_PENDING_CODE_SCRIPT,
+        2,
+        _code_key(purpose, target),
+        _cooldown_key(target),
+        code,
+        purpose,
+    )
 
 
 def verify_and_consume(target: str, purpose: str, code: str) -> bool:

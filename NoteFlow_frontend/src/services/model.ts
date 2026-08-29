@@ -39,6 +39,8 @@ export async function addModel(
     tier?: 'normal' | 'pro'
     supports_reasoning?: boolean
     supports_vision?: boolean
+    input_price_per_million?: number
+    output_price_per_million?: number
   },
   opts?: CallOpts,
 ) {

@@ -79,7 +79,7 @@ const ExplorePage: FC = () => {
         toast.error('请先配置转写模型')
         navigate('/settings/transcriber')
       } else {
-        toast.error('提交失败，请稍后重试')
+        toast.error(e?.msg || e?.data?.msg || e?.message || '提交失败，请稍后重试')
       }
     }
   }

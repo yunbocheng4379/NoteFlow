@@ -16,12 +16,22 @@ import { getModelKey } from '@/components/modelSelect.utils'
 interface ModelSelectorProps {
   providerId: string
   apiKey?: string
+  enabledModels?: readonly EnabledModel[]
   onSaved?: () => void
+}
+
+interface EnabledModel {
+  model_name: string
+  tier?: 'normal' | 'pro'
+  supports_reasoning?: boolean
+  supports_vision?: boolean
+  input_price_per_million?: number | null
+  output_price_per_million?: number | null
 }
 
 const isMasked = (key?: string) => !key || key.includes('*')
 
-export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProps) {
+export function ModelSelector({ providerId, apiKey, enabledModels = [], onSaved }: ModelSelectorProps) {
   const { models, loading, selectedModel, loadModels, setSelectedModel, addNewModel } =
     useModelStore()
   const providers = useProviderStore(s => s.provider)
@@ -30,12 +40,16 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
   const [tier, setTier] = useState<'normal' | 'pro'>('normal')
   const [supportsReasoning, setSupportsReasoning] = useState<'yes' | 'no'>('no')
   const [supportsVision, setSupportsVision] = useState<'yes' | 'no'>('no')
+  const [inputPrice, setInputPrice] = useState('')
+  const [outputPrice, setOutputPrice] = useState('')
 
   const effectiveApiKey = isMasked(apiKey) ? undefined : apiKey
+  const savedModel = enabledModels.find(model => model.model_name === selectedModel)
 
   const modelOptions = models.map(model => ({
     provider_id: providerId,
     model_name: model.id,
+    configured: enabledModels.some(enabledModel => enabledModel.model_name === model.id),
   }))
 
   useEffect(() => {
@@ -45,6 +59,16 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
     }
   }, [providerId])
 
+  // 编辑已启用模型时回填已保存的等级、能力和 Token 价格；新模型保持空价格，避免误填。
+  useEffect(() => {
+    if (!selectedModel) return
+    setTier(savedModel?.tier ?? 'normal')
+    setSupportsReasoning(savedModel?.supports_reasoning ? 'yes' : 'no')
+    setSupportsVision(savedModel?.supports_vision ? 'yes' : 'no')
+    setInputPrice(savedModel?.input_price_per_million == null ? '' : String(savedModel.input_price_per_million))
+    setOutputPrice(savedModel?.output_price_per_million == null ? '' : String(savedModel.output_price_per_million))
+  }, [savedModel, selectedModel])
+
   const handleSubmit = async () => {
     if (!selectedModel) {
       toast.error('请选择一个模型')
@@ -52,7 +76,13 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
     }
     try {
       setSubmitting(true)
-      await addNewModel(providerId, selectedModel, tier, supportsReasoning === 'yes', supportsVision === 'yes')
+      const parsedInputPrice = inputPrice.trim() ? Number(inputPrice) : undefined
+      const parsedOutputPrice = outputPrice.trim() ? Number(outputPrice) : undefined
+      if ((parsedInputPrice !== undefined && (!Number.isFinite(parsedInputPrice) || parsedInputPrice < 0)) || (parsedOutputPrice !== undefined && (!Number.isFinite(parsedOutputPrice) || parsedOutputPrice < 0))) {
+        toast.error('Token 价格必须是大于等于 0 的数字')
+        return
+      }
+      await addNewModel(providerId, selectedModel, tier, supportsReasoning === 'yes', supportsVision === 'yes', parsedInputPrice, parsedOutputPrice)
       toast.success('保存模型成功 🎉')
       onSaved?.()
     } catch (error: any) {
@@ -132,6 +162,16 @@ export function ModelSelector({ providerId, apiKey, onSaved }: ModelSelectorProp
             <SelectItem value="yes">支持</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground text-sm">输入 Token 价格</span>
+        <input type="number" min="0" step="0.000001" value={inputPrice} onChange={event => setInputPrice(event.target.value)} placeholder="¥ / 百万 Token" className="h-10 w-[160px] rounded-md border border-input bg-background px-3 text-sm" />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground text-sm">输出 Token 价格</span>
+        <input type="number" min="0" step="0.000001" value={outputPrice} onChange={event => setOutputPrice(event.target.value)} placeholder="¥ / 百万 Token" className="h-10 w-[160px] rounded-md border border-input bg-background px-3 text-sm" />
       </div>
 
       <Button onClick={handleSubmit} disabled={submitting || !selectedModel}>

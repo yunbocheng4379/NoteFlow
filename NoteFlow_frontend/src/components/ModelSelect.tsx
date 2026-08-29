@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check } from 'lucide-react'
 import { ModelOptionLabel } from '@/components/ModelProviderLogo'
 import { Input } from '@/components/ui/input'
 import {
@@ -105,13 +106,30 @@ export function ModelSelect({
           filteredModels.map(model => {
             const modelKey = getModelKey(model.provider_id, model.model_name)
             return (
-              <SelectItem key={modelKey} value={modelKey}>
-                <ModelOptionLabel
-                  providerId={model.provider_id}
-                  providerName={model.provider_name}
-                  modelName={model.model_name}
-                  providers={providers}
-                />
+              <SelectItem
+                key={modelKey}
+                value={modelKey}
+                className={cn(model.configured && 'pr-24')}
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate">
+                    <ModelOptionLabel
+                      providerId={model.provider_id}
+                      providerName={model.provider_name}
+                      modelName={model.model_name}
+                      providers={providers}
+                    />
+                  </span>
+                  {model.configured && (
+                    <span
+                      className="mr-1 inline-flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-[#167a6e]"
+                      title="已在系统中配置"
+                    >
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>已配置</span>
+                    </span>
+                  )}
+                </span>
               </SelectItem>
             )
           })

@@ -11,6 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.db.init_db  # noqa: F401
+from app.routers import auth as auth_router
 from app.db.engine import SessionLocal
 from app.db.models.users import User
 from app.db.redis_client import get_redis
@@ -118,6 +119,23 @@ def test_send_code_login_success_when_target_exists(test_user):
     body = resp.json()
     # SMTP 未配置时发送会失败, 但接口不应 500, 应返回 SEND_CODE_FAILED 或 success
     assert body["code"] in (0, 50001)
+
+
+def test_send_code_phone_failure_clears_pending_code_and_cooldown(test_user, monkeypatch):
+    """短信供应商发送失败后，用户可以立即重试，且验证码不会继续可用。"""
+    monkeypatch.setattr(auth_router, "send_verification_sms", lambda phone, code: False)
+
+    resp = client.post("/api/auth/send-code", json={
+        "target": test_user.phone,
+        "target_type": "phone",
+        "purpose": "login",
+    })
+    body = resp.json()
+    assert body["code"] == 50001
+
+    redis_client = get_redis()
+    assert redis_client.get(f"verify_code:login:{test_user.phone}") is None
+    assert redis_client.get(f"verify_code_cooldown:{test_user.phone}") is None
 
 
 def test_send_code_login_account_disabled(test_user, db):

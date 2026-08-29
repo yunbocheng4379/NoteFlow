@@ -16,6 +16,13 @@ declare module 'axios' {
 
 const baseURL = import.meta.env.VITE_API_BASE_URL;
 
+// 同一个请求错误可能因重复请求/重复渲染被上报多次；使用稳定 id 让 react-hot-toast
+// 更新已有提示，而不是继续堆叠相同的错误信息。
+const showRequestError = (message: string) => {
+  const text = message.trim() || '请求失败，请稍后再试'
+  toast.error(text, { id: `request-error:${text}` })
+}
+
 const request: AxiosInstance = axios.create({
   baseURL: baseURL || '/api',
   timeout: 10000,
@@ -46,7 +53,7 @@ request.interceptors.response.use(
       return res.data;
     } else {
       if (!response.config?.suppressToast) {
-        toast.error(res.msg || '操作失败，请稍后再试');
+        showRequestError(res.msg || '操作失败，请稍后再试');
       }
       return Promise.reject(res);
     }
@@ -66,10 +73,10 @@ request.interceptors.response.use(
     }
 
     if (res) {
-      if (!suppress) toast.error(res.msg || '服务器错误，请稍后再试');
+      if (!suppress) showRequestError(res.msg || '服务器错误，请稍后再试');
       return Promise.reject(res);
     } else {
-      if (!suppress) toast.error('请求失败，请检查网络连接或稍后再试')
+      if (!suppress) showRequestError('请求失败，请检查网络连接或稍后再试')
       return Promise.reject({ code: -1, msg: '请求失败，请检查网络连接', data: null } as IResponse);
     }
   }

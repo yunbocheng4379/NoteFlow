@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy import Column, DateTime, Integer, Numeric, String, func
 
 from app.db.engine import Base
 
@@ -17,4 +17,8 @@ class Model(Base):
                                  comment="是否原生支持深度思考(reasoning)：1=支持，0=不支持；仅管理员可勾选")
     supports_vision = Column(Integer, nullable=False, default=0, server_default="0",
                               comment="是否支持视觉/多模态输入(vision)：1=支持，0=不支持；仅管理员可勾选")
+    input_price_per_million = Column(Numeric(18, 8), nullable=True,
+                                     comment="输入 Token 价格，单位：每百万 Token 的 CNY")
+    output_price_per_million = Column(Numeric(18, 8), nullable=True,
+                                      comment="输出 Token 价格，单位：每百万 Token 的 CNY")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")

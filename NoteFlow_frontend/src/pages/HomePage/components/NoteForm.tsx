@@ -917,10 +917,11 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
       updateTaskContent(taskId, { submissionPending: false })
     } catch (e: any) {
       trackFeatureResult('note_generate', false, { mode: isRegenerate ? 'regenerate' : 'create' })
+      const message = e?.msg || e?.data?.msg || e?.message
       updateTaskContent(taskId, {
         status: 'FAILED',
         submissionPending: false,
-        errorMessage: e?.data?.msg || e?.message || '提交任务失败，请稍后重试',
+        errorMessage: message || '提交任务失败，请稍后重试',
       })
       if (e?.data?.reason === 'transcriber_model_not_ready') {
         const downloading = e?.data?.downloading
@@ -933,11 +934,12 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
         return
       }
       // 平台禁用错误
-      const msg = e?.data?.msg || e?.message
+      const msg = message
       if (msg && (msg.includes('已暂停服务') || msg.includes('已禁用'))) {
         toast.error(msg)
         return
       }
+      toast.error(msg || '提交任务失败，请稍后重试')
       console.error('提交任务失败：', e)
     }
   }

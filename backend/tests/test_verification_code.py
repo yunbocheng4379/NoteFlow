@@ -4,6 +4,7 @@ import pytest
 
 from app.db.redis_client import get_redis
 from app.services.verification_code import (
+    clear_pending_code,
     generate_and_store,
     verify_and_consume,
     RateLimitedError,
@@ -62,6 +63,21 @@ def test_cooldown_blocks_second_send_within_60s():
     generate_and_store(target, "login")
     with pytest.raises(RateLimitedError):
         generate_and_store(target, "login")
+
+
+def test_clear_pending_code_allows_retry_and_keeps_daily_limit_counter():
+    target = "test_target_7@example.com"
+    code = generate_and_store(target, "login")
+
+    clear_pending_code(target, "login", code)
+
+    assert get_redis().get(f"verify_code:login:{target}") is None
+    assert get_redis().get(f"verify_code_cooldown:{target}") is None
+    # 每日计数仍然保留，发送失败不能成为绕过每日防刷限制的手段。
+    assert get_redis().get(f"verify_code_daily:{target}:" + time.strftime("%Y%m%d")) == "1"
+
+    retry_code = generate_and_store(target, "login")
+    assert len(retry_code) == 6
 
 
 def test_daily_limit_blocks_after_ten_sends():

@@ -12,10 +12,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, AsyncIterator, Callable, TypedDict
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.engine import SessionLocal
 from app.db.models.ai_usage import AIModelPricing, AIUsageLog
+from app.db.models.models import Model
 from app.services.ai_usage_pricing import calculate_cost
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,18 @@ class AIUsageContext(TypedDict, total=False):
     key_masked: str | None
     attempt_no: int
     parent_log_id: int | None
+
+
+def _normalize_price_key(value: Any) -> str:
+    """Normalize names coming from custom-provider forms before price matching."""
+    return " ".join(str(value or "").strip().casefold().split())
+
+
+@dataclass(frozen=True)
+class ModelPriceQuote:
+    input_price_per_million: Any
+    output_price_per_million: Any
+    currency: str = "CNY"
 
 
 @dataclass(frozen=True)
@@ -305,36 +319,143 @@ class AIUsageRecorder:
 
     @staticmethod
     def _apply_price_snapshot(db: Any, row: AIUsageLog, context: AIUsageContext, at: datetime) -> None:
-        provider_id = context.get("provider_id")
-        model_name = context.get("model_name", "")
-        rows = db.scalars(
-            select(AIModelPricing).where(
-                AIModelPricing.is_active.is_(True),
-                AIModelPricing.effective_from <= at,
-                (AIModelPricing.effective_to.is_(None) | (AIModelPricing.effective_to > at)),
-            )
-        ).all()
-        candidates: list[tuple[int, AIModelPricing]] = []
-        for pricing in rows:
-            exact_model = pricing.model_name == model_name
-            default_model = pricing.model_name in ("", "*")
-            exact_provider = pricing.provider_id == provider_id if provider_id else pricing.provider_id is None
-            no_provider = pricing.provider_id is None
-            rank = None
-            if exact_provider and exact_model:
-                rank = 0
-            elif no_provider and exact_model:
-                rank = 1
-            elif exact_provider and default_model:
-                rank = 2
-            elif no_provider and default_model:
-                rank = 3
-            if rank is not None:
-                candidates.append((rank, pricing))
-        if not candidates:
+        pricing = resolve_model_pricing(
+            db,
+            provider_id=context.get("provider_id"),
+            provider_name=context.get("provider_name", ""),
+            model_name=context.get("model_name", ""),
+            at=at,
+        )
+        if pricing is None:
             return
-        candidates.sort(key=lambda item: (item[0], item[1].effective_from), reverse=False)
-        pricing = sorted(candidates, key=lambda item: (item[0], -item[1].effective_from.timestamp()))[0][1]
         row.input_price_per_million = pricing.input_price_per_million
         row.output_price_per_million = pricing.output_price_per_million
         row.currency = pricing.currency
+
+
+def resolve_model_pricing(
+    db: Any,
+    *,
+    provider_id: str | None,
+    provider_name: str | None,
+    model_name: str | None,
+    at: datetime,
+) -> ModelPriceQuote | None:
+    """Return the best effective price for one provider/model invocation.
+
+    Custom providers can be recreated or imported with a different UUID, so the
+    provider display name is a deliberate fallback after an exact provider ID.
+    Model/provider comparisons are case-insensitive and whitespace-tolerant.
+    """
+    normalized_provider_id = _normalize_price_key(provider_id)
+    normalized_provider_name = _normalize_price_key(provider_name)
+    normalized_model_name = _normalize_price_key(model_name)
+
+    # The model configuration is the primary source of truth. It follows the
+    # model/provider record being used and is easier for administrators to
+    # maintain than a second pricing page.
+    model_query = select(Model).where(Model.model_name == str(model_name or "").strip())
+    if provider_id:
+        model_query = model_query.where(Model.provider_id == provider_id)
+    else:
+        model_query = model_query.where(Model.provider_id.is_(None))
+    try:
+        configured_model = db.scalars(model_query.limit(1)).first()
+    except SQLAlchemyError:
+        # Keep the audit path usable while an older installation is starting
+        # up before the model-price migration has run.
+        db.rollback()
+        configured_model = None
+    if configured_model is not None and (
+        configured_model.input_price_per_million is not None
+        and configured_model.output_price_per_million is not None
+    ):
+        return ModelPriceQuote(
+            input_price_per_million=configured_model.input_price_per_million,
+            output_price_per_million=configured_model.output_price_per_million,
+        )
+
+    rows = db.scalars(
+        select(AIModelPricing).where(
+            AIModelPricing.is_active.is_(True),
+            AIModelPricing.effective_from <= at,
+            (AIModelPricing.effective_to.is_(None) | (AIModelPricing.effective_to > at)),
+        )
+    ).all()
+    candidates: list[tuple[int, AIModelPricing]] = []
+    for pricing in rows:
+        pricing_model = _normalize_price_key(pricing.model_name)
+        pricing_provider_id = _normalize_price_key(pricing.provider_id)
+        pricing_provider_name = _normalize_price_key(pricing.provider_name)
+        exact_model = pricing_model == normalized_model_name
+        default_model = pricing_model in ("", "*")
+        exact_provider_id = bool(normalized_provider_id) and pricing_provider_id == normalized_provider_id
+        exact_provider_name = bool(normalized_provider_name) and pricing_provider_name == normalized_provider_name
+        no_provider = pricing.provider_id is None
+        rank = None
+        if exact_provider_id and exact_model:
+            rank = 0
+        elif exact_provider_name and exact_model:
+            rank = 1
+        elif no_provider and exact_model:
+            rank = 2
+        elif exact_provider_id and default_model:
+            rank = 3
+        elif exact_provider_name and default_model:
+            rank = 4
+        elif no_provider and default_model:
+            rank = 5
+        if rank is not None:
+            candidates.append((rank, pricing))
+    if not candidates:
+        return None
+    pricing = sorted(candidates, key=lambda item: (item[0], -item[1].effective_from.timestamp()))[0][1]
+    return ModelPriceQuote(
+        input_price_per_million=pricing.input_price_per_million,
+        output_price_per_million=pricing.output_price_per_million,
+        currency=pricing.currency,
+    )
+
+
+def reprice_unpriced_logs(db: Any, where: list[Any] | None = None) -> int:
+    """Backfill costs after an administrator adds or changes a token price.
+
+    Prices are snapshots on usage rows, but old rows created before a price rule
+    existed should become reportable as soon as that rule is configured.
+    """
+    query = select(AIUsageLog).where(
+        AIUsageLog.estimated_cost.is_(None),
+        or_(
+            AIUsageLog.input_tokens.is_not(None),
+            AIUsageLog.output_tokens.is_not(None),
+            AIUsageLog.total_tokens.is_not(None),
+        ),
+    )
+    if where:
+        query = query.where(*where)
+
+    changed = 0
+    for row in db.scalars(query).all():
+        pricing = resolve_model_pricing(
+            db,
+            provider_id=row.provider_id,
+            provider_name=row.provider_name,
+            model_name=row.model_name,
+            at=row.started_at,
+        )
+        if pricing is None:
+            continue
+        row.input_price_per_million = pricing.input_price_per_million
+        row.output_price_per_million = pricing.output_price_per_million
+        row.currency = pricing.currency
+        row.estimated_cost = calculate_cost(
+            row.input_tokens,
+            row.output_tokens,
+            pricing.input_price_per_million,
+            pricing.output_price_per_million,
+        )
+        changed += 1
+
+    if changed:
+        db.commit()
+    return changed

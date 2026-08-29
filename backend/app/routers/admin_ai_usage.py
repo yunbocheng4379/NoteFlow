@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_admin
@@ -17,30 +17,32 @@ from app.db import ai_usage_dao
 from app.db.engine import get_db
 from app.db.models.ai_usage import AIModelPricing, AIUsageLog
 from app.db.models.users import User
+from app.services import ai_usage_service
 from app.utils.response import ResponseWrapper as R
 
 router = APIRouter(prefix="/admin/ai-usage", tags=["admin-ai-usage"])
 
 
-def _bounds(start_date: date | None, end_date: date | None):
+def _bounds(start_date: date | None, end_date: date | None, start_datetime: datetime | None = None, end_datetime: datetime | None = None):
     try:
-        return ai_usage_dao.date_bounds(start_date, end_date)
+        return ai_usage_dao.date_bounds(start_date, end_date, start_datetime=start_datetime, end_datetime=end_datetime)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-def _where(start_date: date | None, end_date: date | None, **filters: Any):
-    start_at, end_at, start, end = _bounds(start_date, end_date)
+def _where(start_date: date | None, end_date: date | None, start_datetime: datetime | None = None, end_datetime: datetime | None = None, **filters: Any):
+    start_at, end_at, start, end = _bounds(start_date, end_date, start_datetime, end_datetime)
     return start_at, end_at, start, end, ai_usage_dao.conditions(start_at, end_at, **filters)
 
 
-def _log_item(row: AIUsageLog) -> dict[str, Any]:
+def _log_item(row: AIUsageLog, user_name: str | None = None) -> dict[str, Any]:
     return {
         "id": row.id,
         "request_id": row.request_id,
         "trace_id": row.trace_id,
         "parent_log_id": row.parent_log_id,
         "user_id": row.user_id,
+        "user_name": user_name or row.user_snapshot,
         "user_snapshot": row.user_snapshot,
         "scene": row.scene,
         "operation": row.operation,
@@ -83,19 +85,27 @@ def _log_item(row: AIUsageLog) -> dict[str, Any]:
 def ai_usage_overview(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
+    start_datetime: datetime | None = Query(None),
+    end_datetime: datetime | None = Query(None),
     user_id: int | None = Query(None),
     scene: str | None = Query(None),
     provider_id: str | None = Query(None),
     model_name: str | None = Query(None),
     key_fingerprint: str | None = Query(None),
     status: str | None = Query(None),
+    user_name: str | None = Query(None),
+    keyword: str | None = Query(None),
     _: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     start_at, end_at, start, end, where = _where(
-        start_date, end_date, user_id=user_id, scene=scene, provider_id=provider_id,
-        model_name=model_name, key_fingerprint=key_fingerprint, status=status,
+        start_date, end_date, start_datetime, end_datetime, user_id=user_id, user_name=user_name, scene=scene,
+        provider_id=provider_id, model_name=model_name, key_fingerprint=key_fingerprint,
+        status=status, keyword=keyword,
     )
+    # A price rule may be added after the request was recorded. Fill those
+    # historical rows before aggregating so the dashboard updates immediately.
+    ai_usage_service.reprice_unpriced_logs(db, where)
     return R.success({
         **ai_usage_dao.overview(db, where),
         "start_date": start.isoformat(),
@@ -107,18 +117,23 @@ def ai_usage_overview(
 def ai_usage_trend(
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
+    start_datetime: datetime | None = Query(None),
+    end_datetime: datetime | None = Query(None),
     user_id: int | None = Query(None),
     scene: str | None = Query(None),
     provider_id: str | None = Query(None),
     model_name: str | None = Query(None),
     key_fingerprint: str | None = Query(None),
     status: str | None = Query(None),
+    user_name: str | None = Query(None),
+    keyword: str | None = Query(None),
     _: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     start_at, end_at, start, end, where = _where(
-        start_date, end_date, user_id=user_id, scene=scene, provider_id=provider_id,
-        model_name=model_name, key_fingerprint=key_fingerprint, status=status,
+        start_date, end_date, start_datetime, end_datetime, user_id=user_id, user_name=user_name, scene=scene,
+        provider_id=provider_id, model_name=model_name, key_fingerprint=key_fingerprint,
+        status=status, keyword=keyword,
     )
     values = {item["date"]: item for item in ai_usage_dao.trend(db, where)}
     result = []
@@ -136,12 +151,22 @@ def ai_usage_trend(
 @router.get("/by-user")
 def ai_usage_by_user(
     start_date: date | None = Query(None), end_date: date | None = Query(None),
+    start_datetime: datetime | None = Query(None), end_datetime: datetime | None = Query(None),
     page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
-    scene: str | None = Query(None), model_name: str | None = Query(None),
+    user_name: str | None = Query(None), scene: str | None = Query(None),
+    provider_id: str | None = Query(None), model_name: str | None = Query(None),
+    key_fingerprint: str | None = Query(None), status: str | None = Query(None),
+    keyword: str | None = Query(None),
     _: User = Depends(get_current_admin), db: Session = Depends(get_db),
 ):
-    _, _, _, _, where = _where(start_date, end_date, scene=scene, model_name=model_name)
-    values = ai_usage_dao.grouped(db, where, (AIUsageLog.user_id, AIUsageLog.user_snapshot), ("user_id", "user_snapshot"))
+    _, _, _, _, where = _where(
+        start_date, end_date, start_datetime, end_datetime, user_name=user_name, scene=scene, provider_id=provider_id,
+        model_name=model_name, key_fingerprint=key_fingerprint, status=status, keyword=keyword,
+    )
+    user_name_expr = func.coalesce(User.username, AIUsageLog.user_snapshot).label("user_name")
+    values = ai_usage_dao.grouped(
+        db, where, (user_name_expr,), ("user_name",), join_user=True,
+    )
     offset = (page - 1) * page_size
     return R.success({"items": values[offset:offset + page_size], "total": len(values), "page": page, "page_size": page_size})
 
@@ -149,10 +174,18 @@ def ai_usage_by_user(
 @router.get("/by-model")
 def ai_usage_by_model(
     start_date: date | None = Query(None), end_date: date | None = Query(None),
-    scene: str | None = Query(None), user_id: int | None = Query(None),
+    start_datetime: datetime | None = Query(None), end_datetime: datetime | None = Query(None),
+    user_id: int | None = Query(None), user_name: str | None = Query(None),
+    scene: str | None = Query(None), provider_id: str | None = Query(None),
+    model_name: str | None = Query(None), key_fingerprint: str | None = Query(None),
+    status: str | None = Query(None), keyword: str | None = Query(None),
     _: User = Depends(get_current_admin), db: Session = Depends(get_db),
 ):
-    _, _, _, _, where = _where(start_date, end_date, scene=scene, user_id=user_id)
+    _, _, _, _, where = _where(
+        start_date, end_date, start_datetime, end_datetime, user_id=user_id, user_name=user_name, scene=scene,
+        provider_id=provider_id, model_name=model_name, key_fingerprint=key_fingerprint,
+        status=status, keyword=keyword,
+    )
     return R.success(ai_usage_dao.grouped(
         db, where,
         (AIUsageLog.provider_name, AIUsageLog.model_name, AIUsageLog.key_masked),
@@ -163,28 +196,42 @@ def ai_usage_by_model(
 @router.get("/by-scene")
 def ai_usage_by_scene(
     start_date: date | None = Query(None), end_date: date | None = Query(None),
-    user_id: int | None = Query(None), model_name: str | None = Query(None),
+    start_datetime: datetime | None = Query(None), end_datetime: datetime | None = Query(None),
+    user_id: int | None = Query(None), user_name: str | None = Query(None),
+    scene: str | None = Query(None), provider_id: str | None = Query(None),
+    model_name: str | None = Query(None), key_fingerprint: str | None = Query(None),
+    status: str | None = Query(None), keyword: str | None = Query(None),
     _: User = Depends(get_current_admin), db: Session = Depends(get_db),
 ):
-    _, _, _, _, where = _where(start_date, end_date, user_id=user_id, model_name=model_name)
+    _, _, _, _, where = _where(
+        start_date, end_date, start_datetime, end_datetime, user_id=user_id, user_name=user_name, scene=scene,
+        provider_id=provider_id, model_name=model_name, key_fingerprint=key_fingerprint,
+        status=status, keyword=keyword,
+    )
     return R.success(ai_usage_dao.grouped(db, where, (AIUsageLog.scene,), ("scene",)))
 
 
 @router.get("/logs")
 def ai_usage_logs(
     start_date: date | None = Query(None), end_date: date | None = Query(None),
+    start_datetime: datetime | None = Query(None), end_datetime: datetime | None = Query(None),
     user_id: int | None = Query(None), scene: str | None = Query(None),
     provider_id: str | None = Query(None), model_name: str | None = Query(None),
     key_fingerprint: str | None = Query(None), status: str | None = Query(None),
-    keyword: str | None = Query(None), page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
+    user_name: str | None = Query(None), keyword: str | None = Query(None),
+    page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100),
     _: User = Depends(get_current_admin), db: Session = Depends(get_db),
 ):
     _, _, _, _, where = _where(
-        start_date, end_date, user_id=user_id, scene=scene, provider_id=provider_id,
-        model_name=model_name, key_fingerprint=key_fingerprint, status=status, keyword=keyword,
+        start_date, end_date, start_datetime, end_datetime, user_id=user_id, user_name=user_name, scene=scene,
+        provider_id=provider_id, model_name=model_name, key_fingerprint=key_fingerprint,
+        status=status, keyword=keyword,
     )
     rows, total = ai_usage_dao.list_logs(db, where, page, page_size)
-    return R.success({"items": [_log_item(row) for row in rows], "total": total, "page": page, "page_size": page_size})
+    return R.success({
+        "items": [_log_item(row, resolved_user_name) for row, resolved_user_name in rows],
+        "total": total, "page": page, "page_size": page_size,
+    })
 
 
 @router.get("/logs/{log_id}")
@@ -192,30 +239,74 @@ def ai_usage_log_detail(log_id: int, _: User = Depends(get_current_admin), db: S
     row = ai_usage_dao.find_log(db, log_id)
     if not row:
         raise HTTPException(status_code=404, detail="AI 调用日志不存在")
-    return R.success({"log": _log_item(row), "trace": [_log_item(item) for item in ai_usage_dao.find_trace(db, row.trace_id)]})
+    user_name = db.scalar(select(User.username).where(User.id == row.user_id)) if row.user_id else None
+    return R.success({
+        "log": _log_item(row, user_name),
+        "trace": [_log_item(item, trace_user_name) for item, trace_user_name in ai_usage_dao.find_trace(db, row.trace_id)],
+    })
+
+
+@router.get("/facets")
+def ai_usage_facets(
+    start_date: date | None = Query(None), end_date: date | None = Query(None),
+    start_datetime: datetime | None = Query(None), end_datetime: datetime | None = Query(None),
+    _: User = Depends(get_current_admin), db: Session = Depends(get_db),
+):
+    start_at, end_at, _, _ = _bounds(start_date, end_date, start_datetime, end_datetime)
+    time_where = [AIUsageLog.started_at >= start_at, AIUsageLog.started_at < end_at]
+    user_name = func.coalesce(User.username, AIUsageLog.user_snapshot).label("user_name")
+    users = db.execute(
+        select(user_name).select_from(AIUsageLog)
+        .outerjoin(User, User.id == AIUsageLog.user_id)
+        .where(*time_where, user_name.is_not(None), user_name != "")
+        .distinct().order_by(user_name)
+    ).scalars().all()
+    models = db.execute(
+        select(AIUsageLog.model_name, AIUsageLog.provider_name)
+        .where(*time_where, AIUsageLog.model_name != "")
+        .distinct().order_by(AIUsageLog.model_name, AIUsageLog.provider_name)
+    ).all()
+    scenes = db.scalars(
+        select(AIUsageLog.scene).where(*time_where).distinct().order_by(AIUsageLog.scene)
+    ).all()
+    statuses = db.scalars(
+        select(AIUsageLog.status).where(*time_where).distinct().order_by(AIUsageLog.status)
+    ).all()
+    return R.success({
+        "users": [str(item) for item in users],
+        "models": [
+            {"model_name": model_name, "provider_name": provider_name}
+            for model_name, provider_name in models
+        ],
+        "scenes": [str(item) for item in scenes],
+        "statuses": [str(item) for item in statuses],
+    })
 
 
 @router.get("/export")
 def ai_usage_export(
     start_date: date | None = Query(None), end_date: date | None = Query(None),
+    start_datetime: datetime | None = Query(None), end_datetime: datetime | None = Query(None),
     user_id: int | None = Query(None), scene: str | None = Query(None),
     provider_id: str | None = Query(None), model_name: str | None = Query(None),
-    key_fingerprint: str | None = Query(None), status: str | None = Query(None), keyword: str | None = Query(None),
+    key_fingerprint: str | None = Query(None), status: str | None = Query(None),
+    user_name: str | None = Query(None), keyword: str | None = Query(None),
     _: User = Depends(get_current_admin), db: Session = Depends(get_db),
 ):
     _, _, _, _, where = _where(
-        start_date, end_date, user_id=user_id, scene=scene, provider_id=provider_id,
-        model_name=model_name, key_fingerprint=key_fingerprint, status=status, keyword=keyword,
+        start_date, end_date, start_datetime, end_datetime, user_id=user_id, user_name=user_name, scene=scene,
+        provider_id=provider_id, model_name=model_name, key_fingerprint=key_fingerprint,
+        status=status, keyword=keyword,
     )
     rows, total = ai_usage_dao.list_logs(db, where, 1, 10_000)
     if total > 10_000:
         raise HTTPException(status_code=400, detail="导出结果超过 10000 条，请缩小筛选范围")
     output = io.StringIO()
     writer = csv.writer(output)
-    fields = ["id", "started_at", "user_id", "scene", "provider_name", "model_name", "key_masked", "status", "input_tokens", "output_tokens", "total_tokens", "estimated_cost", "currency", "error_message"]
+    fields = ["id", "started_at", "user_name", "scene", "provider_name", "model_name", "key_masked", "status", "input_tokens", "output_tokens", "total_tokens", "estimated_cost", "currency", "error_message"]
     writer.writerow(fields)
-    for row in rows:
-        item = _log_item(row)
+    for row, resolved_user_name in rows:
+        item = _log_item(row, resolved_user_name)
         writer.writerow([item.get(field, "") for field in fields])
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": "attachment; filename=ai_usage_logs.csv"})
 
@@ -266,6 +357,7 @@ def create_pricing(data: PricingCreate, current_admin: User = Depends(get_curren
     db.add(row)
     db.commit()
     db.refresh(row)
+    ai_usage_service.reprice_unpriced_logs(db)
     return R.success(_pricing_item(row))
 
 
@@ -282,4 +374,5 @@ def patch_pricing(pricing_id: int, data: PricingPatch, _: User = Depends(get_cur
         raise HTTPException(status_code=400, detail="同一 Provider/模型的价格生效时间存在重叠")
     db.commit()
     db.refresh(row)
+    ai_usage_service.reprice_unpriced_logs(db)
     return R.success(_pricing_item(row))

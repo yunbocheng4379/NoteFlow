@@ -22,6 +22,7 @@ from app.db.models.users import User
 from app.db.redis_client import get_redis
 from app.services.verification_code import (
     generate_and_store,
+    clear_pending_code,
     verify_and_consume,
     RateLimitedError,
     CodeExpiredError,
@@ -344,6 +345,7 @@ def send_code(
         sent = send_verification_code_email(target, code)
 
     if not sent:
+        clear_pending_code(target, body.purpose, code)
         return R.error(code=StatusCode.SEND_CODE_FAILED, msg="验证码发送失败，请稍后重试")
 
     return R.success({"sent": True})

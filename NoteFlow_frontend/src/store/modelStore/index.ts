@@ -26,6 +26,8 @@ interface IModelListItem {
   tier?: 'normal' | 'pro'
   supports_reasoning?: boolean
   supports_vision?: boolean
+  input_price_per_million?: number | null
+  output_price_per_million?: number | null
   created_at?: string
 }
 
@@ -44,6 +46,8 @@ interface ModelStore {
     tier?: 'normal' | 'pro',
     supportsReasoning?: boolean,
     supportsVision?: boolean,
+    inputPricePerMillion?: number,
+    outputPricePerMillion?: number,
   ) => Promise<void>
   deleteModel: (modelId: number) => Promise<void>
   updateModelTier: (modelId: number, tier: 'normal' | 'pro') => Promise<boolean>
@@ -116,6 +120,8 @@ export const useModelStore = create<ModelStore>()(
       tier: 'normal' | 'pro' = 'normal',
       supportsReasoning = false,
       supportsVision = false,
+      inputPricePerMillion,
+      outputPricePerMillion,
     ) => {
       await addModel(
         {
@@ -124,6 +130,8 @@ export const useModelStore = create<ModelStore>()(
           tier,
           supports_reasoning: supportsReasoning,
           supports_vision: supportsVision,
+          input_price_per_million: inputPricePerMillion,
+          output_price_per_million: outputPricePerMillion,
         },
         { silent: true },
       )

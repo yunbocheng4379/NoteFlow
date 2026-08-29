@@ -91,7 +91,7 @@ def _fetch_oembed_metadata(video_url: str, video_id: str) -> AudioDownloadResult
         cover_url=info.get("thumbnail_url"),
         platform="youtube",
         video_id=video_id,
-        raw_info={"author_name": info.get("author_name")},
+        raw_info={"author_name": info.get("author_name"), "webpage_url": video_url},
         video_path=None,
     )
 
@@ -221,7 +221,7 @@ class YoutubeDownloader(Downloader, ABC):
             cover_url=cover_url,
             platform="youtube",
             video_id=video_id,
-            raw_info={'tags': info.get('tags')},
+            raw_info={'tags': info.get('tags'), 'webpage_url': video_url},
             video_path=None,
         )
 

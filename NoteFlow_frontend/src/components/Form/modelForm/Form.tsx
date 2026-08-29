@@ -62,6 +62,8 @@ interface IEnabledModel {
   tier?: 'normal' | 'pro'
   supports_reasoning?: boolean
   supports_vision?: boolean
+  input_price_per_million?: number | null
+  output_price_per_million?: number | null
 }
 const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
   let { id } = useParams()
@@ -199,8 +201,8 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
       } else {
         toast.error('未获取到模型列表')
       }
-    } catch (error) {
-      toast.error('加载模型列表失败')
+    } catch {
+      // 请求拦截器已经展示后端返回的详细错误，避免再次弹出兜底提示。
     } finally {
       setModelLoading(false) // ✅ 结束 loading
     }
@@ -212,12 +214,17 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
       await updateProvider({ ...values, id: id! })
       toast.success('更新供应商成功')
     } else {
-       id = await addNewProvider({ ...values })
-
+      const providerId = await addNewProvider({
+        ...values,
+        id: '',
+        logo: 'custom',
+        enabled: 1,
+      })
       toast.success('新增供应商成功')
+      // 新增页没有路由参数；保存后切到带 ID 的编辑页，后续测试连通性和模型配置
+      // 都能使用已持久化的供应商 ID。
+      navigate(`/settings/model/${providerId}`, { replace: true })
     }
-    // 刷新页面
-
   }
 
   // 保存Model信息
@@ -317,7 +324,7 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
             <span>请确保已经保存供应商信息,以及通过测试连通性.</span>
           </div>
           {isAdmin && (
-            <ModelSelector providerId={id!} apiKey={providerForm.watch('apiKey')} onSaved={async () => {
+            <ModelSelector providerId={id!} apiKey={providerForm.watch('apiKey')} enabledModels={models} onSaved={async () => {
               const updated = await loadModelsById(id!)
               if (updated) setModels(updated)
             }} />

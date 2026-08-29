@@ -772,6 +772,7 @@ class NoteGenerator:
         self,
         primary_provider_id: Optional[str],
         primary_model_name: Optional[str],
+        tier_filter: Optional[list[str]] = None,
     ) -> list[tuple[str, str]]:
         """
         构造 fallback 候选列表：(provider_id, model_name)。
@@ -779,10 +780,14 @@ class NoteGenerator:
         顺序：
         1. 用户在表单中选中的 (provider_id, model_name)，排第一（仅当该 provider 仍 enabled 时）
         2. 其余 enabled 的 Provider，按数据库顺序；每个 Provider 取它第一个 model
-        3. 跳过没有任何 model 的 Provider，以及没有启用 / 不存在的 provider
+        3. 只从 tier_filter 允许的模型等级中选择
+        4. 跳过没有任何 model 的 Provider，以及没有启用 / 不存在的 provider
         """
         from app.db.provider_dao import get_enabled_providers
         from app.db.model_dao import get_models_by_provider
+
+        # fallback 也必须遵守用户模型等级权限；未显式传入时默认按普通用户处理。
+        allowed_tiers = tier_filter if tier_filter is not None else ["normal"]
 
         candidates: list[tuple[str, str]] = []
         seen_providers: set[str] = set()
@@ -791,9 +796,10 @@ class NoteGenerator:
 
         # 1. 主 Provider（必须 enabled 才考虑）
         if primary_provider_id and primary_provider_id in enabled_ids:
-            models = get_models_by_provider(primary_provider_id) or []
-            chosen_model = primary_model_name
-            if not chosen_model and models:
+            models = get_models_by_provider(primary_provider_id, tier_filter=allowed_tiers) or []
+            available_model_names = {model["model_name"] for model in models}
+            chosen_model = primary_model_name if primary_model_name in available_model_names else None
+            if not chosen_model and not primary_model_name and models:
                 chosen_model = models[0]["model_name"]
             if chosen_model:
                 candidates.append((primary_provider_id, chosen_model))
@@ -804,7 +810,7 @@ class NoteGenerator:
             pid = getattr(p, "id", None)
             if not pid or pid in seen_providers:
                 continue
-            models = get_models_by_provider(pid) or []
+            models = get_models_by_provider(pid, tier_filter=allowed_tiers) or []
             if not models:
                 continue
             candidates.append((pid, models[0]["model_name"]))
@@ -836,9 +842,12 @@ class NoteGenerator:
         """
         from app.services.llm_fallback import LLMFallbackableError
 
+        from app.services.model import get_model_tier_filter_for_user_id
+
         candidates = self._build_fallback_candidates(
             primary_provider_id=primary_provider_id,
             primary_model_name=primary_model_name,
+            tier_filter=get_model_tier_filter_for_user_id(getattr(self, "user_id", None)),
         )
         if not candidates:
             raise RuntimeError("没有可用的 AI 供应商，请先在「设置 → 模型管理」中启用至少一个供应商及其模型")

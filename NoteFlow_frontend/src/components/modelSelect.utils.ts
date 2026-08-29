@@ -2,6 +2,7 @@ export interface ModelSelectOption {
   provider_id: string
   model_name: string
   provider_name?: string
+  configured?: boolean
 }
 
 export const MODEL_KEY_SEPARATOR = '\u0000'

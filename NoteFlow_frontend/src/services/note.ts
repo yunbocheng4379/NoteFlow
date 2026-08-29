@@ -18,7 +18,8 @@ export const generateNote = async (data: {
 }) => {
   try {
     console.log('generateNote', data)
-    const response = await request.post('/generate_note', data)
+    // 生成失败由各调用方统一展示一次，避免请求拦截器的详细错误与页面兜底文案叠加。
+    const response = await request.post('/generate_note', data, { suppressToast: true })
 
     if (!response) {
       if (response.data.msg) {
@@ -96,10 +97,7 @@ export const get_task_status = async (task_id: string) => {
     return await request.get('/task_status/' + task_id)
   } catch (e) {
     console.error('❌ 请求出错', e)
-
-    // 错误提示
-    toast.error('笔记生成失败，请稍后重试')
-
+    // request 已负责展示详细错误或网络错误兜底，这里只继续抛出供调用方处理。
     throw e // 抛出错误以便调用方处理
   }
 }

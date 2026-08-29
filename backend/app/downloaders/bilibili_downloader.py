@@ -124,6 +124,7 @@ class BilibiliDownloader(Downloader, ABC):
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=not skip_download)
+            info.setdefault("webpage_url", video_url)
             video_id = info.get("id")
             title = info.get("title")
             duration = info.get("duration", 0)

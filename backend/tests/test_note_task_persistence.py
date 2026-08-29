@@ -53,6 +53,7 @@ def test_summarize_text_rejects_empty_markdown(monkeypatch, tmp_path):
     from app.services.note import NoteGenerator
 
     generator = object.__new__(NoteGenerator)
+    generator.user_id = None
     monkeypatch.setattr(generator, "_update_status", lambda *args, **kwargs: None)
 
     gpt = SimpleNamespace(summarize=lambda source: "   \n")
@@ -84,6 +85,7 @@ def test_summarize_with_fallback_tries_next_provider_when_markdown_is_empty(
     from app.services.note import NoteGenerator
 
     generator = object.__new__(NoteGenerator)
+    generator.user_id = None
     attempts = []
 
     monkeypatch.setattr(generator, "_update_status", lambda *args, **kwargs: None)
@@ -120,3 +122,76 @@ def test_summarize_with_fallback_tries_next_provider_when_markdown_is_empty(
 
     assert attempts == ["empty-provider", "ok-provider"]
     assert markdown == "# 正常笔记"
+
+
+def test_fallback_candidates_apply_user_model_tier_filter(monkeypatch):
+    from app.db import model_dao, provider_dao
+    from app.services.note import NoteGenerator
+
+    generator = object.__new__(NoteGenerator)
+    providers = [SimpleNamespace(id="primary"), SimpleNamespace(id="backup")]
+    calls = []
+
+    monkeypatch.setattr(provider_dao, "get_enabled_providers", lambda: providers)
+
+    def fake_get_models(provider_id, tier_filter=None):
+        calls.append((provider_id, tier_filter))
+        if tier_filter == ["normal"]:
+            return [{"model_name": f"{provider_id}-normal", "tier": "normal"}]
+        return [
+            {"model_name": f"{provider_id}-normal", "tier": "normal"},
+            {"model_name": f"{provider_id}-pro", "tier": "pro"},
+        ]
+
+    monkeypatch.setattr(model_dao, "get_models_by_provider", fake_get_models)
+
+    candidates = generator._build_fallback_candidates(
+        primary_provider_id="primary",
+        primary_model_name="primary-normal",
+        tier_filter=["normal"],
+    )
+
+    assert candidates == [("primary", "primary-normal"), ("backup", "backup-normal")]
+    assert calls == [("primary", ["normal"]), ("backup", ["normal"])]
+
+    calls.clear()
+    member_candidates = generator._build_fallback_candidates(
+        primary_provider_id="primary",
+        primary_model_name="primary-pro",
+        tier_filter=["normal", "pro"],
+    )
+
+    assert member_candidates == [("primary", "primary-pro"), ("backup", "backup-normal")]
+    assert calls == [("primary", ["normal", "pro"]), ("backup", ["normal", "pro"])]
+
+
+def test_model_tier_filter_allows_pro_only_for_active_subscription():
+    from app.services.model import get_model_tier_filter_for_user
+
+    assert get_model_tier_filter_for_user(SimpleNamespace(active_subscription_id=None)) == ["normal"]
+    assert get_model_tier_filter_for_user(SimpleNamespace(active_subscription_id=123)) == ["normal", "pro"]
+
+
+def test_model_access_rejects_pro_for_regular_user(monkeypatch):
+    from app.db import model_dao
+    from app.exceptions.provider import ProviderError
+    from app.services.model import ModelService
+
+    monkeypatch.setattr(
+        model_dao,
+        "get_model_by_provider_and_name",
+        lambda provider_id, model_name: {
+            "provider_id": provider_id,
+            "model_name": model_name,
+            "tier": "pro",
+        },
+    )
+
+    with pytest.raises(ProviderError, match="Pro 会员"):
+        ModelService.assert_model_accessible(
+            "provider", "pro-model", SimpleNamespace(active_subscription_id=None)
+        )
+
+    ModelService.assert_model_accessible(
+        "provider", "pro-model", SimpleNamespace(active_subscription_id=123)
+    )

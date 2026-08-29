@@ -1,12 +1,13 @@
 import logging
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_current_user, get_current_admin
 from app.db.models.users import User
-from app.services.model import ModelService
+from app.services.model import ModelService, get_model_tier_filter_for_user
 from app.utils.error_messages import translate_model_error
 from app.utils.response import ResponseWrapper as R
 
@@ -17,9 +18,7 @@ modelService = ModelService()
 
 def _tier_filter_for(user: User) -> list:
     """免费用户只能看 normal 模型，Pro 会员可看 normal + pro"""
-    if user.active_subscription_id:
-        return ["normal", "pro"]
-    return ["normal"]
+    return get_model_tier_filter_for_user(user)
 
 
 class CreateModelRequest(BaseModel):
@@ -28,6 +27,8 @@ class CreateModelRequest(BaseModel):
     tier: str = "normal"
     supports_reasoning: bool = False
     supports_vision: bool = False
+    input_price_per_million: Decimal | None = Field(default=None, ge=0)
+    output_price_per_million: Decimal | None = Field(default=None, ge=0)
 
 
 class UpdateModelTierRequest(BaseModel):
@@ -93,6 +94,8 @@ def create_model(data: CreateModelRequest, current_user: User = Depends(get_curr
         result = ModelService.add_new_model(
             data.provider_id, data.model_name, tier=data.tier,
             supports_reasoning=data.supports_reasoning, supports_vision=data.supports_vision,
+            input_price_per_million=data.input_price_per_million,
+            output_price_per_million=data.output_price_per_million,
             created_by=current_user.id
         )
         if result == "provider_not_found":

@@ -15,7 +15,7 @@ interface ProviderStore {
   getProviderList: () => IProvider[]
   fetchProviderList: () => Promise<void>
   loadProviderById: (id: string) => Promise<void>
-  addNewProvider: (provider: IProvider) => Promise<void>
+  addNewProvider: (provider: IProvider) => Promise<string>
   updateProvider: (provider: IProvider) => Promise<void>
 }
 
@@ -59,16 +59,13 @@ export const useProviderStore = create<ProviderStore>((set, get) => ({
       base_url: provider.baseUrl,
     }
     try {
-      const res = await addProvider(payload)
-      if (res.data.code === 0) {
-        const item = res.data.data
-        console.log('Provider ', item)
-
-        await get().fetchProviderList()
-        return  item
-      }
+      // request 已经解包 ResponseWrapper，新增接口直接返回供应商 ID。
+      const providerId = await addProvider(payload)
+      await get().fetchProviderList()
+      return providerId
     } catch (error) {
       console.error('Error fetching provider:', error)
+      throw error
     }
   },
   // 按 id 获取单个 provider

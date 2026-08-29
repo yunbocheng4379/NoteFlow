@@ -4,7 +4,10 @@ import request from '@/utils/request'
 export interface AiUsageFilters {
   start_date?: string
   end_date?: string
+  start_datetime?: string
+  end_datetime?: string
   user_id?: number
+  user_name?: string
   scene?: string
   provider_id?: string
   model_name?: string
@@ -40,6 +43,7 @@ export interface AiUsageTrendPoint {
 
 export interface AiUsageGroup {
   user_id?: number | null
+  user_name?: string | null
   user_snapshot?: string | null
   provider_name?: string
   model_name?: string
@@ -60,6 +64,7 @@ export interface AiUsageLog {
   trace_id: string
   parent_log_id: number | null
   user_id: number | null
+  user_name: string | null
   user_snapshot: string | null
   scene: string
   operation: string
@@ -102,6 +107,13 @@ export interface AiUsageLogPage {
   page_size: number
 }
 
+export interface AiUsageFacets {
+  users: string[]
+  models: Array<{ model_name: string; provider_name: string }>
+  scenes: string[]
+  statuses: string[]
+}
+
 export interface AiModelPricing {
   id: number
   provider_id: string | null
@@ -129,6 +141,7 @@ export const aiUsageApi = {
   byUser: (filters: AiUsageFilters, page = 1) => request.get<unknown, { items: AiUsageGroup[]; total: number }>('/admin/ai-usage/by-user', { params: withPage(filters, page, 8) }),
   byModel: (filters: AiUsageFilters) => request.get<unknown, AiUsageGroup[]>('/admin/ai-usage/by-model', { params: filters }),
   byScene: (filters: AiUsageFilters) => request.get<unknown, AiUsageGroup[]>('/admin/ai-usage/by-scene', { params: filters }),
+  facets: (filters: Pick<AiUsageFilters, 'start_datetime' | 'end_datetime'>) => request.get<unknown, AiUsageFacets>('/admin/ai-usage/facets', { params: filters }),
   logs: (filters: AiUsageFilters, page = 1, pageSize = 12) => request.get<unknown, AiUsageLogPage>('/admin/ai-usage/logs', { params: withPage(filters, page, pageSize) }),
   detail: (id: number) => request.get<unknown, { log: AiUsageLog; trace: AiUsageLog[] }>(`/admin/ai-usage/logs/${id}`),
   pricing: () => request.get<unknown, AiModelPricing[]>('/admin/ai-usage/pricing'),

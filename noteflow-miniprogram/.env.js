@@ -1,8 +1,16 @@
 // NoteFlow Mini Program - Environment Configuration
+//
+// WeChat DevTools can access the backend running on this machine when
+// "不校验合法域名" is enabled. Change API_ENV to "production" before release.
+const API_ENV = 'local';
+const API_BASES = {
+  local: 'http://127.0.0.1:8483',
+  production: 'https://www.noteflow.vip',
+};
+
 const ENV = {
-  // API base URL - change this for different environments
-  // Replace with the HTTPS backend domain registered in the WeChat console.
-  API_BASE: 'https://api.noteflow.app',
+  API_ENV,
+  API_BASE: API_BASES[API_ENV],
 
   // Request timeout in milliseconds
   REQUEST_TIMEOUT: 30000,

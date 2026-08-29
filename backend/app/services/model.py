@@ -16,6 +16,27 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+def get_model_tier_filter_for_user(user: "User") -> list[str]:
+    """返回用户可使用的模型等级；无有效订阅的用户只能使用普通模型。"""
+    return ["normal", "pro"] if user.active_subscription_id else ["normal"]
+
+
+def get_model_tier_filter_for_user_id(user_id: Optional[int]) -> list[str]:
+    """按用户 ID 返回模型等级过滤条件，查询失败时默认按普通用户处理。"""
+    if not user_id:
+        return ["normal"]
+
+    from app.db.engine import get_db
+    from app.db.models.users import User
+
+    db = next(get_db())
+    try:
+        user = db.query(User).filter(User.id == user_id).first()
+        return get_model_tier_filter_for_user(user) if user else ["normal"]
+    finally:
+        db.close()
+
+
 class ModelService:
 
     @staticmethod
@@ -81,6 +102,8 @@ class ModelService:
                 "tier": model.get("tier", "normal"),
                 "supports_reasoning": bool(model.get("supports_reasoning", False)),
                 "supports_vision": bool(model.get("supports_vision", False)),
+                "input_price_per_million": float(model["input_price_per_million"]) if model.get("input_price_per_million") is not None else None,
+                "output_price_per_million": float(model["output_price_per_million"]) if model.get("output_price_per_million") is not None else None,
                 "created_at": model.get("created_at", None),
             })
         return formatted
@@ -179,7 +202,8 @@ class ModelService:
 
     @staticmethod
     def add_new_model(provider_id: int, model_name: str, tier: str = "normal", supports_reasoning: bool = False,
-                      supports_vision: bool = False, created_by: Optional[int] = None) -> str:
+                      supports_vision: bool = False, input_price_per_million=None,
+                      output_price_per_million=None, created_by: Optional[int] = None) -> str:
         """新增或更新全局模型（仅管理员可调用）；created_by 记录操作的管理员 id
         模型已存在时视为「保存模型」的修改场景，直接更新其 tier / supports_reasoning / supports_vision，而不是报错拒绝
         返回 "ok" / "updated" / "provider_not_found" / "error"，供路由层区分提示文案"""
@@ -192,12 +216,16 @@ class ModelService:
             existing = get_model_by_provider_and_name(provider_id, model_name)
             if existing:
                 update_model(existing["id"], tier=tier, supports_reasoning=int(supports_reasoning),
-                             supports_vision=int(supports_vision))
+                             supports_vision=int(supports_vision),
+                             input_price_per_million=input_price_per_million,
+                             output_price_per_million=output_price_per_million)
                 print(f"模型 {model_name} 已存在于供应商ID {provider_id} 下，已更新等级/深度思考/视觉配置")
                 return "updated"
 
             insert_model(provider_id=provider_id, model_name=model_name, tier=tier,
                          supports_reasoning=int(supports_reasoning), supports_vision=int(supports_vision),
+                         input_price_per_million=input_price_per_million,
+                         output_price_per_million=output_price_per_million,
                          created_by=created_by)
             print(f"模型 {model_name} 已成功添加到供应商ID {provider_id}")
             return "ok"
@@ -224,10 +252,15 @@ class ModelService:
 
     @staticmethod
     def assert_model_accessible(provider_id: str, model_name: str, user: "User") -> None:
-        """校验当前用户是否有权限使用该模型；Pro 模型仅 Pro 会员可用"""
+        """校验模型已配置且当前用户有权限使用；普通用户只能使用 normal 模型。"""
         from app.db.model_dao import get_model_by_provider_and_name
         model = get_model_by_provider_and_name(provider_id, model_name)
-        if model and model.get("tier") == "pro" and not user.active_subscription_id:
+        if not model:
+            raise ProviderError(
+                code=ProviderErrorEnum.WRONG_PARAMETER.code,
+                message="该模型尚未配置或已不可用，请重新选择模型",
+            )
+        if model.get("tier") not in get_model_tier_filter_for_user(user):
             raise ProviderError(
                 code=ProviderErrorEnum.WRONG_PARAMETER.code,
                 message="该模型仅限 Pro 会员使用，请先升级 Pro",

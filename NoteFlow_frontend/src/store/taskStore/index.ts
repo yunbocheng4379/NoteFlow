@@ -397,6 +397,7 @@ export const useTaskStore = create<TaskStore>()(
             )
             return
           }
+          toast.error(e?.msg || e?.data?.msg || e?.message || '重试任务失败，请稍后重试')
           console.error('重试任务失败：', e)
           return
         }

@@ -93,6 +93,16 @@ def init_db():
         if "ai_recommendations" not in review_columns:
             conn.execute(text("ALTER TABLE note_style_reviews ADD COLUMN ai_recommendations VARCHAR(2000) NULL"))
 
+        model_columns = {column["name"] for column in inspect(conn).get_columns("models")}
+        if "input_price_per_million" not in model_columns:
+            conn.execute(text(
+                "ALTER TABLE models ADD COLUMN input_price_per_million DECIMAL(18, 8) NULL"
+            ))
+        if "output_price_per_million" not in model_columns:
+            conn.execute(text(
+                "ALTER TABLE models ADD COLUMN output_price_per_million DECIMAL(18, 8) NULL"
+            ))
+
     _backfill_note_style_versions()
 
     # 兼容旧任务：抖音/快手历史记录可能只保存了平台和视频 ID，启动时补齐

@@ -2,10 +2,11 @@
 阿里云短信 (SMS) 发送封装.
 =====================================
 配置来自环境变量:
-  ALIYUN_SMS_ACCESS_KEY_ID
-  ALIYUN_SMS_ACCESS_KEY_SECRET
+  ALIYUN_SMS_ACCESS_KEY_ID / ALIBABA_CLOUD_ACCESS_KEY_ID
+  ALIYUN_SMS_ACCESS_KEY_SECRET / ALIBABA_CLOUD_ACCESS_KEY_SECRET
   ALIYUN_SMS_SIGN_NAME       短信签名 (需在阿里云控制台审核通过)
   ALIYUN_SMS_TEMPLATE_CODE   短信模板 code, 模板内容需含 ${code} 变量
+  ALIYUN_SMS_ENDPOINT         默认 dysmsapi.aliyuncs.com
   ALIYUN_SMS_REGION          默认 cn-hangzhou
 
 设计取舍: 与 mailer.py 一致 —— 发送失败只记日志返回 False, 不抛异常;
@@ -30,18 +31,29 @@ def _mask_phone(phone: str) -> str:
 
 
 def _get_client() -> DysmsapiClient | None:
-    access_key_id = os.getenv("ALIYUN_SMS_ACCESS_KEY_ID")
-    access_key_secret = os.getenv("ALIYUN_SMS_ACCESS_KEY_SECRET")
+    # 优先使用项目专用变量，同时兼容阿里云官方示例使用的标准变量名。
+    access_key_id = os.getenv("ALIYUN_SMS_ACCESS_KEY_ID") or os.getenv(
+        "ALIBABA_CLOUD_ACCESS_KEY_ID"
+    )
+    access_key_secret = os.getenv("ALIYUN_SMS_ACCESS_KEY_SECRET") or os.getenv(
+        "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+    )
     if not access_key_id or not access_key_secret:
-        logger.warning("阿里云短信未配置 (ALIYUN_SMS_ACCESS_KEY_ID/SECRET 缺失)，跳过发送短信")
+        logger.warning(
+            "阿里云短信未配置 (ALIYUN_SMS_ACCESS_KEY_ID/SECRET 或 "
+            "ALIBABA_CLOUD_ACCESS_KEY_ID/SECRET 缺失)，跳过发送短信"
+        )
         return None
 
     region = os.getenv("ALIYUN_SMS_REGION", "cn-hangzhou")
+    endpoint = os.getenv("ALIYUN_SMS_ENDPOINT", "dysmsapi.aliyuncs.com")
     config = open_api_models.Config(
         access_key_id=access_key_id,
         access_key_secret=access_key_secret,
         region_id=region,
-        endpoint=f"dysmsapi.{region}.aliyuncs.com",
+        endpoint=endpoint,
+        connect_timeout=5_000,
+        read_timeout=10_000,
     )
     return DysmsapiClient(config)
 
@@ -55,7 +67,10 @@ def send_verification_sms(phone: str, code: str) -> bool:
     sign_name = os.getenv("ALIYUN_SMS_SIGN_NAME")
     template_code = os.getenv("ALIYUN_SMS_TEMPLATE_CODE")
     if not sign_name or not template_code:
-        logger.warning("阿里云短信签名/模板未配置 (ALIYUN_SMS_SIGN_NAME/TEMPLATE_CODE 缺失)，跳过发送短信")
+        logger.warning(
+            "阿里云短信签名/模板未配置 "
+            "(ALIYUN_SMS_SIGN_NAME/TEMPLATE_CODE 缺失)，跳过发送短信"
+        )
         return False
 
     request = dysmsapi_models.SendSmsRequest(
@@ -66,11 +81,16 @@ def send_verification_sms(phone: str, code: str) -> bool:
     )
     try:
         response = client.send_sms(request)
-        body = response.body
-        if body.code == "OK":
+        body = getattr(response, "body", None)
+        response_code = getattr(body, "code", None)
+        response_message = getattr(body, "message", None)
+        if response_code == "OK":
             logger.info(f"短信验证码已发送: phone={_mask_phone(phone)}")
             return True
-        logger.error(f"短信发送失败: phone={_mask_phone(phone)}, code={body.code}, message={body.message}")
+        logger.error(
+            f"短信发送失败: phone={_mask_phone(phone)}, "
+            f"code={response_code}, message={response_message}"
+        )
         return False
     except Exception as e:
         logger.error(f"短信发送异常: phone={_mask_phone(phone)}, error={e}")
