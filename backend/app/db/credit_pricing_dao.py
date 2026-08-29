@@ -75,8 +75,33 @@ class CreditPricingDAO:
     # ---- 查询 ----
 
     def get_all(self) -> list[CreditPricing]:
-        stmt = select(CreditPricing).order_by(CreditPricing.id.asc())
-        return list(self.db.execute(stmt).scalars().all())
+        from app.db.models.models import Model
+
+        registered_names = {
+            name for name in self.db.scalars(select(Model.model_name)).all() if name
+        }
+        rows = self.db.scalars(select(CreditPricing).order_by(CreditPricing.id.asc())).all()
+        return [
+            row for row in rows
+            if row.model_name == "__default__" or row.model_name in registered_names
+        ]
+
+    def prune_orphan_model_rates(self) -> int:
+        """删除费率表中已不存在于 models 表的孤儿模型费率。"""
+        from app.db.models.models import Model
+
+        registered_names = {
+            name for name in self.db.scalars(select(Model.model_name)).all() if name
+        }
+        rows = self.db.scalars(select(CreditPricing)).all()
+        orphans = [
+            row for row in rows
+            if row.model_name != "__default__" and row.model_name not in registered_names
+        ]
+        for row in orphans:
+            self.db.delete(row)
+        self.db.commit()
+        return len(orphans)
 
     def get_by_model_name(self, model_name: str) -> Optional[CreditPricing]:
         stmt = select(CreditPricing).where(CreditPricing.model_name == model_name)

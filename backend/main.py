@@ -84,9 +84,11 @@ async def lifespan(app: FastAPI):
         try:
             from app.db.engine import SessionLocal
             from app.db.credit_format_pricing_dao import CreditFormatPricingDAO
+            from app.db.credit_pricing_dao import CreditPricingDAO
             _s = SessionLocal()
             try:
                 CreditFormatPricingDAO(_s).seed_default_if_empty()
+                CreditPricingDAO(_s).prune_orphan_model_rates()
             finally:
                 _s.close()
 
