@@ -270,11 +270,13 @@ def create_alipay_payment(
     db: Session = Depends(get_db),
 ):
     try:
-        payment_url = order_service.create_alipay_payment(
+        order = order_service.create_alipay_payment(
             db, order_no=order_no, current_user_id=current_user.id
         )
+        payment_url = order_service.payment_url_for_order(order)
         db.commit()
-        return R.success({"order_no": order_no, "payment_url": payment_url})
+        db.refresh(order)
+        return R.success(_serialize_order(order, payment_url=payment_url))
     except BillingError as e:
         db.rollback()
         return R.error(msg=e.message, code=e.code, data=e.data)

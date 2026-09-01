@@ -347,6 +347,31 @@ docker compose logs --tail=100 backend
 docker compose logs -f backend
 ```
 
+### 3.5 后端文件日志
+
+后端会把日志同时输出到容器标准输出和持久化日志卷：
+
+- `/app/logs/app.log`：INFO、WARNING、ERROR 等运行日志
+- `/app/logs/error.log`：只记录 ERROR 及异常堆栈，便于线上排查
+- 两类日志每天自动轮转，默认保留 14 天；轮转文件名会带日期
+
+实时查看错误日志：
+
+```bash
+docker compose exec backend tail -f /app/logs/error.log
+```
+
+日志目录、级别和保留天数可以在 `.env` 中调整：
+
+```dotenv
+NOTEFLOW_LOG_DIR=/app/logs
+NOTEFLOW_LOG_LEVEL=INFO
+NOTEFLOW_LOG_RETENTION_DAYS=14
+```
+
+`backend_logs` 是独立的 Docker named volume。不要执行 `docker compose down -v` 来清理日志，
+因为该命令会同时删除数据库及其他正式环境数据。
+
 ## 4. Whisper 模型下载排查
 
 首次使用 `fast-whisper` 时，需要下载所选 Whisper 模型。默认 `tiny` 模型较小，但仍依赖后端容器访问 Hugging Face。

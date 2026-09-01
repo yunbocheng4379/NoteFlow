@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import enterpriseServiceQr from '@/assets/enterprise-service-qr.png'
-import PayDialog from './PayDialog'
+import PayDialog, { PaymentDraft } from './PayDialog'
 import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
 type Tab = 'recharge' | 'subscription'
@@ -34,6 +34,7 @@ const UpgradePage = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [payingOrder, setPayingOrder] = useState<Order | null>(null)
+  const [paymentDraft, setPaymentDraft] = useState<PaymentDraft | null>(null)
   const [refundDialogOpen, setRefundDialogOpen] = useState(false)
   const pendingOrderRedirectedRef = useRef(false)
 
@@ -85,52 +86,75 @@ const UpgradePage = () => {
   }, [])
 
   const showFirstSubHint = useMemo(() => plans.some(p => p.is_first_subscription), [plans])
-  const [lastPurchase, setLastPurchase] = useState<
-    { kind: 'recharge'; id: number } | { kind: 'subscription'; id: number } | null
-  >(null)
-
-  const handleBuyRecharge = async (pkg: RechargePackage) => {
+  const handleBuyRecharge = (pkg: RechargePackage) => {
     trackFeatureSubmit('upgrade_recharge', { package: pkg.code })
-    try {
-      const order = await billingApi.createRechargeOrder(pkg.id, 'ALIPAY')
-      trackFeatureResult('upgrade_recharge', true, { package: pkg.code })
-      setLastPurchase({ kind: 'recharge', id: pkg.id })
-      setPayingOrder(order)
-    } catch (e: any) {
-      trackFeatureResult('upgrade_recharge', false, { package: pkg.code })
-      if (isPendingOrderError(e)) {
-        showPendingOrderNotice()
-      } else {
-        toast.error(e?.msg || '下单失败')
-      }
-    }
+    setPayingOrder(null)
+    setPaymentDraft({
+      kind: 'RECHARGE',
+      itemId: pkg.id,
+      amountCents: pkg.price_cents,
+      creditsAmount: pkg.credits,
+      isFirstSubscription: false,
+    })
   }
 
-  const handleBuySubscription = async (plan: SubscriptionPlan) => {
+  const handleBuySubscription = (plan: SubscriptionPlan) => {
     trackFeatureSubmit('upgrade_subscription', { plan: plan.code })
+    setPayingOrder(null)
+    setPaymentDraft({
+      kind: 'SUBSCRIPTION',
+      itemId: plan.id,
+      amountCents: plan.current_price_cents,
+      creditsAmount: plan.monthly_credits,
+      isFirstSubscription: plan.is_first_subscription,
+    })
+  }
+
+  const handleCreateOrder = async (method: 'ALIPAY' | 'WECHAT') => {
+    if (!paymentDraft) throw new Error('支付信息已失效，请重新选择套餐')
+
     try {
-      const order = await billingApi.createSubscriptionOrder(plan.id, 'ALIPAY')
-      trackFeatureResult('upgrade_subscription', true, { plan: plan.code })
-      setLastPurchase({ kind: 'subscription', id: plan.id })
-      setPayingOrder(order)
-    } catch (e: any) {
-      trackFeatureResult('upgrade_subscription', false, { plan: plan.code })
-      if (isPendingOrderError(e)) {
-        showPendingOrderNotice()
-      } else {
-        toast.error(e?.msg || '下单失败')
+      const order = paymentDraft.kind === 'RECHARGE'
+        ? await billingApi.createRechargeOrder(paymentDraft.itemId, method)
+        : await billingApi.createSubscriptionOrder(paymentDraft.itemId, method)
+      trackFeatureResult(
+        paymentDraft.kind === 'RECHARGE' ? 'upgrade_recharge' : 'upgrade_subscription',
+        true,
+      )
+      // 支付宝需要保持当前弹窗原样，待子组件拿到收银台地址后立即跳转；
+      // 微信则在创单成功后切换到二维码展示。
+      if (method === 'WECHAT') {
+        setPaymentDraft(null)
+        setPayingOrder(order)
       }
+      return order
+    } catch (e) {
+      trackFeatureResult(
+        paymentDraft.kind === 'RECHARGE' ? 'upgrade_recharge' : 'upgrade_subscription',
+        false,
+      )
+      throw e
     }
   }
 
-  // 切换支付渠道需要重新下单 (旧订单二维码已生成, 换渠道走一笔新单据)
-  const handleSwitchMethod = async (method: 'ALIPAY' | 'WECHAT') => {
-    if (!lastPurchase) return
-    const order =
-      lastPurchase.kind === 'recharge'
-        ? await billingApi.createRechargeOrder(lastPurchase.id, method)
-        : await billingApi.createSubscriptionOrder(lastPurchase.id, method)
-    setPayingOrder(order)
+  const handleCreateOrderError = (error: unknown) => {
+    if (isPendingOrderError(error)) {
+      showPendingOrderNotice()
+      return
+    }
+    const detail = error as { msg?: string } | null
+    toast.error(detail?.msg || '下单失败')
+  }
+
+  const handleRegeneratePayment = async (order: Order) => {
+    const refreshed = await billingApi.createAlipayPayment(order.order_no)
+    setPayingOrder(refreshed)
+    return refreshed
+  }
+
+  const closePayDialog = () => {
+    setPaymentDraft(null)
+    setPayingOrder(null)
   }
 
   return (
@@ -208,8 +232,11 @@ const UpgradePage = () => {
 
       <PayDialog
         order={payingOrder}
-        onClose={() => setPayingOrder(null)}
-        onSwitchMethod={handleSwitchMethod}
+        draft={paymentDraft}
+        onClose={closePayDialog}
+        onCreateOrder={handleCreateOrder}
+        onCreateOrderError={handleCreateOrderError}
+        onRegeneratePayment={handleRegeneratePayment}
       />
 
       <RefundInfoDialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen} />

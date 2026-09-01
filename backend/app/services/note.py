@@ -286,7 +286,12 @@ class NoteGenerator:
         :return: GPT 实例
         """
         provider = ProviderService.get_provider_by_id(provider_id)
-        logger.info(f"[_get_gpt] provider_id={provider_id} user_id={self.user_id} provider={provider}")
+        logger.info(
+            f"[_get_gpt] provider_id={provider_id} user_id={self.user_id} "
+            f"provider_name={provider.get('name') if provider else None} "
+            f"base_url={provider.get('base_url') if provider else None} "
+            f"api_key_configured={bool(provider and provider.get('api_key'))}"
+        )
         if not provider:
             logger.error(f"[get_gpt] 未找到模型供应商: provider_id={provider_id}")
             raise ProviderError(code=ProviderErrorEnum.NOT_FOUND,message=ProviderErrorEnum.NOT_FOUND.message)

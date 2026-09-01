@@ -120,7 +120,10 @@ class ProviderService:
             filtered_data = {k: v for k, v in data.items() if v is not None and k != 'id'}
             if 'api_key' in filtered_data and '*' in str(filtered_data.get('api_key', '')):
                 filtered_data.pop('api_key')
-            print('更新模型供应商', filtered_data)
+            log_data = dict(filtered_data)
+            if 'api_key' in log_data:
+                log_data['api_key'] = ProviderService.mask_key(str(log_data['api_key']))
+            print('更新模型供应商', log_data)
             update_provider(id, user_id=user_id, **filtered_data)
             updated_provider = get_provider_by_id(id)
             if not updated_provider:

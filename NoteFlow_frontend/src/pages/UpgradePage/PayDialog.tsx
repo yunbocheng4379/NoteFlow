@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import toast from 'react-hot-toast'
-import { Loader2, Check } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -10,9 +10,20 @@ import { useUserStore } from '@/store/userStore'
 
 interface Props {
   order: Order | null
+  draft?: PaymentDraft | null
   onClose: () => void
   onSuccess?: () => void
-  onSwitchMethod?: (method: 'ALIPAY' | 'WECHAT') => Promise<void>
+  onCreateOrder?: (method: 'ALIPAY' | 'WECHAT') => Promise<Order>
+  onCreateOrderError?: (error: unknown) => void
+  onRegeneratePayment?: (order: Order) => Promise<Order>
+}
+
+export interface PaymentDraft {
+  kind: Order['kind']
+  itemId: number
+  amountCents: number
+  creditsAmount: number
+  isFirstSubscription: boolean
 }
 
 const isMockOrder = (order: Order) => order.pay_method?.startsWith('MOCK_')
@@ -27,18 +38,53 @@ const MOCK_METHODS: Array<{ code: 'MOCK_ALIPAY' | 'MOCK_WECHAT'; label: string; 
   { code: 'MOCK_WECHAT', label: '微信支付', color: 'text-[#07c160]' },
 ]
 
-const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error !== 'object' || error === null || !('msg' in error)) return fallback
+  const message = (error as { msg?: unknown }).msg
+  return typeof message === 'string' && message ? message : fallback
+}
+
+const PayDialog = ({
+  order,
+  draft = null,
+  onClose,
+  onSuccess,
+  onCreateOrder,
+  onCreateOrderError,
+  onRegeneratePayment,
+}: Props) => {
   const [paying, setPaying] = useState(false)
-  const [switching, setSwitching] = useState(false)
+  const [selectedMethod, setSelectedMethod] = useState<'ALIPAY' | 'WECHAT'>('ALIPAY')
+  const [createdOrder, setCreatedOrder] = useState<Order | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const refreshBalance = useUserStore((s) => s.refreshBalance)
   const navigate = useNavigate()
   const onSuccessRef = useRef(onSuccess)
   const redirectedRef = useRef(false)
+  const alipayNavigationStartedRef = useRef(false)
+  const creatingOrderRef = useRef(false)
   onSuccessRef.current = onSuccess
+
+  const activeOrder = order || createdOrder
+  const mock = activeOrder ? isMockOrder(activeOrder) : false
+  const isDraft = !activeOrder && !!draft
+  const isAlipayOrder = !!activeOrder && !mock && activeOrder.pay_method === 'ALIPAY'
+  const hasPagePayment = isAlipayOrder && !!activeOrder?.payment_url
+  const orderNo = activeOrder?.order_no
+  const orderStatus = activeOrder?.status
 
   useEffect(() => {
     redirectedRef.current = false
-  }, [order?.order_no])
+    alipayNavigationStartedRef.current = false
+    setNow(Date.now())
+  }, [order?.order_no, draft?.kind, draft?.itemId])
+
+  useEffect(() => {
+    if (draft) {
+      setSelectedMethod('ALIPAY')
+      setCreatedOrder(null)
+    }
+  }, [draft])
 
   const completePayment = useCallback(async () => {
     if (redirectedRef.current) return
@@ -49,10 +95,11 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
     navigate('/billing?tab=orders', { replace: true })
   }, [navigate, refreshBalance])
 
-  const mock = order ? isMockOrder(order) : true
-  const isAlipayPageOrder = !!order && !mock && order.pay_method === 'ALIPAY'
-  const orderNo = order?.order_no
-  const orderStatus = order?.status
+  useEffect(() => {
+    if (!activeOrder || mock || activeOrder.status !== 'PENDING') return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [activeOrder, mock])
 
   // 真实渠道: 轮询订单状态, notify 到账后自动关闭弹窗
   useEffect(() => {
@@ -71,52 +118,90 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
     return () => clearInterval(timer)
   }, [completePayment, mock, orderNo, orderStatus])
 
-  if (!order) return null
+  if (!activeOrder && !draft) return null
+
+  const amountCents = activeOrder?.amount_cents ?? draft?.amountCents ?? 0
+  const activeMethod = activeOrder?.pay_method ?? selectedMethod
+  const METHODS = activeOrder && mock ? MOCK_METHODS : REAL_METHODS
+  const qrPayload = activeOrder && mock
+    ? `noteflow-mock://order/${activeOrder.order_no}?method=${activeMethod}`
+    : activeOrder?.qrcode_url || ''
+  const qrExpired = !!activeOrder?.expires_at &&
+    activeOrder.status === 'PENDING' &&
+    new Date(activeOrder.expires_at).getTime() <= now
 
   const handlePay = async () => {
-    if (!order.mock_qrcode_token) {
+    if (!activeOrder?.mock_qrcode_token) {
       toast.error('订单缺少支付凭证，无法完成 Mock 支付')
       return
     }
     setPaying(true)
     try {
-      await billingApi.mockPay(order.order_no, order.mock_qrcode_token)
+      await billingApi.mockPay(activeOrder.order_no, activeOrder.mock_qrcode_token)
       await completePayment()
-    } catch (e: any) {
-      toast.error(e?.msg || '支付失败')
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, '支付失败'))
     } finally {
       setPaying(false)
     }
   }
 
-  const handleAlipayPay = () => {
-    if (!order.payment_url) {
-      toast.error('支付宝支付地址缺失，请重新获取')
+  const handleCreateOrder = async () => {
+    if (!draft || !onCreateOrder) return
+    if (creatingOrderRef.current) return
+    creatingOrderRef.current = true
+    const method = selectedMethod
+    const isAlipay = method === 'ALIPAY'
+    if (!isAlipay) setPaying(true)
+    try {
+      const nextOrder = await onCreateOrder(method)
+      if (isAlipay && nextOrder.payment_url) {
+        navigateToAlipay(nextOrder.payment_url)
+        return
+      }
+      if (isAlipay) {
+        toast.error('支付宝支付地址缺失，请重新生成')
+        return
+      }
+      setCreatedOrder(nextOrder)
+    } catch (e: unknown) {
+      if (onCreateOrderError) {
+        onCreateOrderError(e)
+      } else {
+        toast.error(getErrorMessage(e, '下单失败'))
+      }
+    } finally {
+      creatingOrderRef.current = false
+      if (!isAlipay) setPaying(false)
+    }
+  }
+
+  const handleRegeneratePayment = async () => {
+    if (!activeOrder || !onRegeneratePayment) return
+    setPaying(true)
+    try {
+      const refreshedOrder = await onRegeneratePayment(activeOrder)
+      setCreatedOrder(refreshedOrder)
+      setNow(Date.now())
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, '支付凭证重新生成失败'))
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  const navigateToAlipay = (paymentUrl = activeOrder?.payment_url) => {
+    if (!paymentUrl) {
+      toast.error('支付宝支付地址缺失，请重新生成')
       return
     }
-    window.location.assign(order.payment_url)
+    if (alipayNavigationStartedRef.current) return
+    alipayNavigationStartedRef.current = true
+    window.location.replace(paymentUrl)
   }
-
-  const handleSwitchMethod = async (method: 'ALIPAY' | 'WECHAT') => {
-    if (!onSwitchMethod || method === order.pay_method) return
-    setSwitching(true)
-    try {
-      await onSwitchMethod(method)
-    } catch (e: any) {
-      toast.error(e?.msg || '切换支付方式失败')
-    } finally {
-      setSwitching(false)
-    }
-  }
-
-  const activeMethod = order.pay_method
-  const METHODS = mock ? MOCK_METHODS : REAL_METHODS
-  const qrPayload = mock
-    ? `noteflow-mock://order/${order.order_no}?method=${activeMethod}`
-    : order.qrcode_url || ''
 
   return (
-    <Dialog open={!!order} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={!!activeOrder || !!draft} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>确认支付</DialogTitle>
@@ -124,19 +209,23 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
 
         <div className="flex flex-col items-center gap-4 py-2">
           <div className="text-center">
-            <div className="text-3xl font-bold text-neutral-900">¥{formatYuan(order.amount_cents)}</div>
-            <div className="mt-1 text-xs text-neutral-500">
-              订单号 {order.order_no}
-            </div>
+            <div className="text-3xl font-bold text-neutral-900">¥{formatYuan(amountCents)}</div>
+            {activeOrder ? (
+              <div className="mt-1 text-xs text-neutral-500">订单号 {activeOrder.order_no}</div>
+            ) : (
+              <div className="mt-1 text-xs text-neutral-500">请选择支付方式</div>
+            )}
           </div>
 
-          {/* 支付方式 tab (真实渠道下切换需要重新下单, 由 onSwitchMethod 处理) */}
+          {/* 订单创建前可自由选择支付方式，确认支付后才向后端创建对应渠道订单。 */}
           <div className="flex gap-2 rounded-lg bg-neutral-100 p-1">
             {METHODS.map((m) => (
               <button
                 key={m.code}
-                onClick={() => (mock ? undefined : handleSwitchMethod(m.code as 'ALIPAY' | 'WECHAT'))}
-                disabled={!mock && (switching || m.code === activeMethod)}
+                onClick={() => {
+                  if (isDraft && !creatingOrderRef.current) setSelectedMethod(m.code as 'ALIPAY' | 'WECHAT')
+                }}
+                disabled={!isDraft || paying || m.code === activeMethod}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
                   activeMethod === m.code
                     ? `bg-white shadow-sm ${m.color}`
@@ -148,15 +237,34 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
             ))}
           </div>
 
-          {/* 支付宝电脑网站支付不展示二维码, 微信和 MOCK 保持二维码流程 */}
+          {/* 支付宝使用网页收银台，微信使用二维码，Mock 保留测试支付流程。 */}
           <div className="flex h-[232px] w-[232px] items-center justify-center rounded-xl border border-neutral-200 bg-white p-4">
-            {switching ? (
-              <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
-            ) : isAlipayPageOrder ? (
+            {paying ? (
+              <div className="text-sm text-neutral-400">正在创建支付订单…</div>
+            ) : isDraft ? (
+              <div className="text-center text-sm text-neutral-500">
+                <div className={`mb-2 text-4xl ${selectedMethod === 'ALIPAY' ? 'text-[#1677ff]' : 'text-[#07c160]'}`}>
+                  {selectedMethod === 'ALIPAY' ? '支' : '微'}
+                </div>
+                <div>{selectedMethod === 'ALIPAY' ? '支付宝支付' : '微信支付'}</div>
+                <div className="mt-1 text-xs text-neutral-400">点击下方按钮后生成支付凭证</div>
+              </div>
+            ) : qrExpired ? (
+              <div className="text-center text-sm text-neutral-500">
+                <div className="mb-2 text-4xl text-amber-500">!</div>
+                <div>支付凭证已过期</div>
+                <div className="mt-1 text-xs text-neutral-400">请重新生成支付凭证后再支付</div>
+              </div>
+            ) : hasPagePayment ? (
               <div className="text-center text-sm text-neutral-500">
                 <div className="mb-2 text-4xl text-[#1677ff]">支</div>
-                <div>支付宝收银台</div>
-                <div className="mt-1 text-xs text-neutral-400">将在支付宝页面完成支付</div>
+                <div>支付宝网页支付</div>
+                <div className="mt-1 text-xs text-neutral-400">点击下方按钮进入支付宝官方收银台</div>
+              </div>
+            ) : !activeOrder?.qrcode_url ? (
+              <div className="text-center text-sm text-neutral-500">
+                <div>支付二维码暂不可用</div>
+                <div className="mt-1 text-xs text-neutral-400">请稍后重试</div>
               </div>
             ) : (
               <QRCodeCanvas value={qrPayload} size={200} level="H" />
@@ -165,15 +273,25 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
 
           <div className="text-center text-xs text-neutral-500">
             <div>
-              {isAlipayPageOrder
-                ? '请点击下方按钮前往支付宝收银台'
+              {isDraft
+                ? selectedMethod === 'ALIPAY'
+                  ? '点击下方按钮进入支付宝支付'
+                  : '点击下方按钮生成微信支付二维码'
+                : qrExpired
+                ? '支付凭证已过期，请重新生成'
+                : hasPagePayment
+                ? '点击下方按钮进入支付宝官方收银台'
                 : `请使用 ${METHODS.find((m) => m.code === activeMethod)?.label} 扫码支付`}
             </div>
             <div className="mt-1 text-neutral-400">
-              {mock
+              {isDraft
+                ? '订单将在确认支付方式后创建'
+                : mock
                 ? '测试环境：点击下方「我已支付」直接模拟支付成功'
-                : isAlipayPageOrder
-                  ? '支付完成后将自动返回 NoteFlow 并确认到账'
+                : qrExpired
+                  ? '原订单已关闭，重新生成后会创建新的支付订单'
+                  : hasPagePayment
+                    ? '支付完成后请返回 NoteFlow，系统会自动确认到账'
                   : '扫码支付成功后将自动到账，无需手动确认'}
             </div>
           </div>
@@ -182,13 +300,41 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
             <Button variant="outline" className="flex-1" onClick={onClose} disabled={paying}>
               取消
             </Button>
-            {isAlipayPageOrder && (
+            {isDraft && (
+              <Button
+                className={`flex-1 text-white ${selectedMethod === 'ALIPAY' ? 'bg-[#1677ff] hover:bg-[#0f63d6]' : 'bg-[#07c160] hover:bg-[#06a951]'}`}
+                onClick={() => { void handleCreateOrder() }}
+                disabled={paying}
+              >
+                去支付
+              </Button>
+            )}
+            {qrExpired && isAlipayOrder && onRegeneratePayment && (
               <Button
                 className="flex-1 bg-[#1677ff] text-white hover:bg-[#0f63d6]"
-                onClick={handleAlipayPay}
+                onClick={() => { void handleRegeneratePayment() }}
+                disabled={paying}
               >
-                前往支付宝支付
+                重新生成支付凭证
               </Button>
+            )}
+            {hasPagePayment && !qrExpired && activeOrder?.payment_url && (
+              <a
+                href={activeOrder.payment_url}
+                target="_self"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return
+                  event.preventDefault()
+                  navigateToAlipay()
+                }}
+                onClick={(event) => {
+                  event.preventDefault()
+                  navigateToAlipay()
+                }}
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-md bg-[#1677ff] text-sm font-medium text-white outline-none hover:bg-[#0f63d6] focus-visible:ring-2 focus-visible:ring-[#1677ff]/40"
+              >
+                去支付
+              </a>
             )}
             {mock && (
               <Button
@@ -196,8 +342,7 @@ const PayDialog = ({ order, onClose, onSuccess, onSwitchMethod }: Props) => {
                 onClick={handlePay}
                 disabled={paying}
               >
-                {paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                我已支付
+                {paying ? '正在处理…' : <><Check className="mr-2 h-4 w-4" />我已支付</>}
               </Button>
             )}
           </div>

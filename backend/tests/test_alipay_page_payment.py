@@ -33,7 +33,7 @@ def test_alipay_notify_amount_mismatch_is_rejected():
     assert billing_notify._notify_amount_matches_order({"total_amount": "20.00"}, order) is False
 
 
-def test_issue_payment_uses_stored_order_amount(monkeypatch):
+def test_issue_payment_uses_alipay_page_payment_and_stored_order_amount(monkeypatch):
     order = SimpleNamespace(pay_method="ALIPAY", order_no="BN20260819TEST", amount_cents=1999)
     calls = {}
 
@@ -45,12 +45,95 @@ def test_issue_payment_uses_stored_order_amount(monkeypatch):
 
     result = order_service._issue_payment(order, subject="NoteFlow 充值")
 
-    assert result == "https://openapi.alipay.com/gateway.do?demo"
+    assert result is None
+    assert order.qrcode_url is None
+    assert order_service.payment_url_for_order(order) == "https://openapi.alipay.com/gateway.do?demo"
     assert calls == {
         "order_no": "BN20260819TEST",
         "amount_cents": 1999,
         "subject": "NoteFlow 充值",
     }
+
+
+def test_issue_payment_ignores_legacy_qr_mode(monkeypatch):
+    order = SimpleNamespace(pay_method="ALIPAY", order_no="BN20260819PAGE", amount_cents=1999)
+
+    monkeypatch.setenv("ALIPAY_PAYMENT_MODE", "QR")
+    monkeypatch.setattr(
+        alipay_channel,
+        "create_page_payment_url",
+        lambda order, *, subject: "https://openapi.alipay.com/gateway.do?page",
+    )
+
+    result = order_service._issue_payment(order, subject="NoteFlow 充值")
+
+    assert result is None
+    assert order.qrcode_url is None
+    assert order_service.payment_url_for_order(order) == "https://openapi.alipay.com/gateway.do?page"
+
+
+def test_create_alipay_payment_regenerates_pending_page_payment(monkeypatch):
+    order = SimpleNamespace(
+        order_no="BN20260819PENDING",
+        user_id=7,
+        status="PENDING",
+        pay_method="ALIPAY",
+        amount_cents=1999,
+        expires_at=order_service.utcnow_naive() + order_service.timedelta(minutes=5),
+        qrcode_url="old-qr",
+    )
+    calls = {}
+
+    def fake_page_payment(order, *, subject):
+        calls.update(order_no=order.order_no, subject=subject)
+        return "new-page"
+
+    monkeypatch.setattr(alipay_channel, "create_page_payment_url", fake_page_payment)
+    monkeypatch.setattr(order_service, "_subject_for_order", lambda db, order: "NoteFlow 充值")
+
+    result = order_service.create_alipay_payment(_FakeDb(order), order.order_no, order.user_id)
+
+    assert result is order
+    assert order.qrcode_url is None
+    assert order_service.payment_url_for_order(order) == "new-page"
+    assert calls == {"order_no": order.order_no, "subject": "NoteFlow 充值"}
+
+
+def test_create_alipay_payment_replaces_expired_order(monkeypatch):
+    order = SimpleNamespace(
+        order_no="BN20260819EXPIRED",
+        user_id=7,
+        status="CANCELLED",
+        pay_method="ALIPAY",
+        kind="RECHARGE",
+        package_id=3,
+        plan_id=None,
+        is_first_subscription=0,
+        amount_cents=1999,
+        credits_amount=1000,
+        expires_at=order_service.utcnow_naive() - order_service.timedelta(minutes=1),
+        qrcode_url=None,
+    )
+    db = _FakeDb(order)
+
+    monkeypatch.setattr(order_service, "_gen_order_no", lambda: "BN20260819REPLACED")
+    monkeypatch.setattr(order_service, "_subject_for_order", lambda db, order: "NoteFlow 充值")
+    monkeypatch.setattr(
+        alipay_channel,
+        "create_page_payment_url",
+        lambda order, *, subject: f"page-{order.order_no}",
+    )
+
+    result = order_service.create_alipay_payment(db, order.order_no, order.user_id)
+
+    assert result is db.added
+    assert result.order_no == "BN20260819REPLACED"
+    assert result.status == "PENDING"
+    assert result.pay_method == "ALIPAY"
+    assert result.amount_cents == order.amount_cents
+    assert result.credits_amount == order.credits_amount
+    assert result.qrcode_url is None
+    assert order_service.payment_url_for_order(result) == "page-BN20260819REPLACED"
 
 
 class _FakeResult:
@@ -64,9 +147,16 @@ class _FakeResult:
 class _FakeDb:
     def __init__(self, order):
         self.order = order
+        self.added = None
 
     def execute(self, _statement):
         return _FakeResult(self.order)
+
+    def flush(self):
+        return None
+
+    def add(self, order):
+        self.added = order
 
 
 def test_create_alipay_payment_rejects_non_pending_order():

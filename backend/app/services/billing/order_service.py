@@ -215,11 +215,18 @@ def list_user_orders(db: Session, user_id: int, page: int = 1, page_size: int = 
 
 # ---------- 创建订单 ----------
 
+def _issue_alipay_payment(order: Order, *, subject: str) -> None:
+    """为支付宝电脑网站支付生成临时收银台地址。"""
+    from app.services.billing.pay_channels import alipay_channel
+
+    order.qrcode_url = None
+    order._payment_url = alipay_channel.create_page_payment_url(order, subject=subject)
+
+
 def _issue_payment(order: Order, *, subject: str) -> Optional[str]:
-    """为真实支付渠道生成支付凭证; 支付宝返回临时 URL, 微信写入二维码字段."""
+    """为真实支付渠道生成支付凭证；支付宝使用网页收银台，微信使用二维码。"""
     if order.pay_method == "ALIPAY":
-        from app.services.billing.pay_channels import alipay_channel
-        return alipay_channel.create_page_payment_url(order, subject=subject)
+        _issue_alipay_payment(order, subject=subject)
     elif order.pay_method == "WECHAT":
         from app.services.billing.pay_channels import wechat_channel
         order.qrcode_url = wechat_channel.create_qrcode(order, description=subject)
@@ -227,7 +234,7 @@ def _issue_payment(order: Order, *, subject: str) -> Optional[str]:
 
 
 def payment_url_for_order(order: Order) -> Optional[str]:
-    """读取本次创单生成的支付宝 URL; 该值只存在于当前请求内, 不落库."""
+    """读取本次创单生成的支付宝网页支付 URL；该值只存在于当前请求内，不落库。"""
     return getattr(order, "_payment_url", None)
 
 
@@ -241,24 +248,47 @@ def _subject_for_order(db: Session, order: Order) -> str:
     raise OrderStateError(f"未知订单类型: {order.kind}")
 
 
-def create_alipay_payment(db: Session, order_no: str, current_user_id: int) -> str:
-    """为已有的当前用户待支付支付宝订单生成新的收银台 URL."""
+def create_alipay_payment(db: Session, order_no: str, current_user_id: int) -> Order:
+    """为支付宝订单生成临时网页收银台地址；已过期的订单创建一笔替代订单。"""
     order: Order | None = db.execute(
         select(Order).where(Order.order_no == order_no).with_for_update()
     ).scalar_one_or_none()
     if not order or order.user_id != current_user_id:
         raise OrderStateError(f"订单不存在: {order_no}")
-    _close_expired_order(order)
-    if order.status != "PENDING":
-        raise OrderStateError(f"订单状态非 PENDING (当前: {order.status})")
     if order.pay_method != "ALIPAY":
         raise InvalidTransactionError("该订单不是支付宝订单")
 
-    from app.services.billing.pay_channels import alipay_channel
+    now = utcnow_naive()
+    was_expired = bool(_order_expiry(order) and _order_expiry(order) <= now)
+    if order.status == "PENDING":
+        _close_expired_order(order, now=now)
 
-    return alipay_channel.create_page_payment_url(
-        order, subject=_subject_for_order(db, order)
-    )
+    if order.status == "PENDING":
+        _issue_alipay_payment(order, subject=_subject_for_order(db, order))
+        db.flush()
+        return order
+
+    if order.status == "CANCELLED" and was_expired:
+        replacement = Order(
+            order_no=_gen_order_no(),
+            user_id=order.user_id,
+            kind=order.kind,
+            package_id=order.package_id,
+            plan_id=order.plan_id,
+            is_first_subscription=order.is_first_subscription,
+            amount_cents=order.amount_cents,
+            credits_amount=order.credits_amount,
+            status="PENDING",
+            pay_method="ALIPAY",
+            expires_at=now + timedelta(minutes=PENDING_ORDER_TTL_MINUTES),
+        )
+        db.add(replacement)
+        db.flush()
+        _issue_alipay_payment(replacement, subject=_subject_for_order(db, replacement))
+        db.flush()
+        return replacement
+
+    raise OrderStateError(f"订单状态非 PENDING (当前: {order.status})")
 
 
 def create_recharge_order(

@@ -1,5 +1,5 @@
 """
-支付宝当面付 (扫码支付) 封装.
+支付宝电脑网站支付封装.
 
 SDK 在函数内部按需 import, 避免未安装 python-alipay-sdk 时导致整个后端启动失败
 (参考 app/utils/mailer.py 的降级模式, 而不是 app/services/sms_service.py 的顶层 eager import).
@@ -50,26 +50,6 @@ def _get_client():
         sign_type="RSA2",
         debug=sandbox,
     )
-
-
-def create_qrcode(order: Order, *, subject: str) -> str:
-    """
-    调用 alipay.trade.precreate (当面付), 返回二维码内容 (qr_code URL).
-    金额单位: order.amount_cents 是分, 支付宝要求元 (字符串, 两位小数).
-    """
-    client = _get_client()
-    amount_yuan = f"{order.amount_cents / 100:.2f}"
-    result = client.api_alipay_trade_precreate(
-        subject=subject,
-        out_trade_no=order.order_no,
-        total_amount=amount_yuan,
-        notify_url=os.getenv("ALIPAY_NOTIFY_URL") or None,
-    )
-    qr_code = result.get("qr_code")
-    if not qr_code:
-        logger.error(f"[alipay] precreate 未返回 qr_code, order_no={order.order_no}, resp={result}")
-        raise BillingError("支付宝下单失败, 请稍后重试")
-    return qr_code
 
 
 def create_page_payment_url(order: Order, *, subject: str) -> str:

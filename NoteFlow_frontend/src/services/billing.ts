@@ -158,7 +158,7 @@ export const billingApi = {
     ),
 
   createAlipayPayment: (order_no: string) =>
-    request.post<any, { order_no: string; payment_url: string }>(
+    request.post<any, Order>(
       `/billing/order/${order_no}/pay/alipay`,
     ),
 

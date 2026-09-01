@@ -15,13 +15,14 @@ from app.db.recharge_package_dao import seed_default_recharge_packages
 from app.exceptions.exception_handlers import register_exception_handlers
 # from app.db.model_dao import init_model_table
 # from app.db.provider_dao import init_provider_table
-from app.utils.logger import get_logger
+from app.utils.logger import configure_logging, get_logger
 from app import create_app
 from app.services.transcriber_config_manager import TranscriberConfigManager
 from events import register_handler
 from ffmpeg_helper import ensure_ffmpeg_or_raise
 
 logger = get_logger(__name__)
+configure_logging()
 load_dotenv()
 
 # 读取 .env 中的路径
@@ -163,4 +164,5 @@ if __name__ == "__main__":
     port = int(os.getenv("BACKEND_PORT", 8483))
     host = os.getenv("BACKEND_HOST", "0.0.0.0")
     logger.info(f"Starting server on {host}:{port}")
-    uvicorn.run(app, host=host, port=port, reload=False)
+    # 使用应用统一的 root logger，确保 uvicorn access/error 日志也写入日志文件。
+    uvicorn.run(app, host=host, port=port, reload=False, log_config=None)

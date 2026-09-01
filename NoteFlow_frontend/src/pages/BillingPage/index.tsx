@@ -83,8 +83,8 @@ const BillingPage = () => {
   const rePay = async (order: Order) => {
     try {
       if (order.pay_method === 'ALIPAY') {
-        const payment = await billingApi.createAlipayPayment(order.order_no)
-        setPayingOrder({ ...order, payment_url: payment.payment_url })
+        const refreshed = await billingApi.createAlipayPayment(order.order_no)
+        setPayingOrder(refreshed)
         return
       }
 
@@ -97,6 +97,12 @@ const BillingPage = () => {
     } catch (e: any) {
       toast.error(e?.msg || '获取订单失败')
     }
+  }
+
+  const regenerateAlipayPayment = async (order: Order) => {
+    const refreshed = await billingApi.createAlipayPayment(order.order_no)
+    setPayingOrder(refreshed)
+    return refreshed
   }
 
   const cancelOrder = (order: Order) => {
@@ -250,6 +256,7 @@ const BillingPage = () => {
       <PayDialog
         order={payingOrder}
         onClose={() => setPayingOrder(null)}
+        onRegeneratePayment={regenerateAlipayPayment}
         onSuccess={() => {
           setPayingOrder(null)
           setOrderPage(1)
