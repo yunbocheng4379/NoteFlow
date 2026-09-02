@@ -11,6 +11,7 @@ import {
   BarChart3,
   LineChart,
   ShieldAlert,
+  BatteryCharging,
 } from 'lucide-react'
 import MenuBar, { IMenuProps } from '@/pages/SettingPage/components/menuBar.tsx'
 import { useUserStore } from '@/store/userStore'
@@ -77,6 +78,12 @@ const Menu = () => {
             name: '电力规则',
             icon: <Zap />,
             path: '/settings/pricing',
+          },
+          {
+            id: 'credits',
+            name: '电力管理',
+            icon: <BatteryCharging />,
+            path: '/settings/credits',
           },
           {
             id: 'recharge-operations',

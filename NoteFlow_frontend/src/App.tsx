@@ -73,6 +73,7 @@ const Monitor = lazy(() => import('@/pages/SettingPage/Monitor.tsx'))
 const TranscriberPage = lazy(() => import('@/pages/SettingPage/transcriber.tsx'))
 const NoteStylePage = lazy(() => import('@/pages/SettingPage/NoteStylePage.tsx'))
 const UserManagementPage = lazy(() => import('@/pages/SettingPage/UserManagement.tsx'))
+const CreditManagementPage = lazy(() => import('@/pages/SettingPage/CreditManagement.tsx'))
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 const TaskListPage = lazy(() => import('@/pages/TaskListPage'))
 const ExplorePage = lazy(() => import('@/pages/ExplorePage'))
@@ -222,6 +223,7 @@ function App() {
                 <Route path="transcriber" element={<TranscriberPage />} />
                 <Route path="monitor" element={<Monitor />} />
                 <Route path="users" element={<UserManagementPage />} />
+                <Route path="credits" element={<CreditManagementPage />} />
                 <Route path="feedback" element={<FeedbackPage />} />
                 <Route path="cookie-pool" element={<CookiePoolPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />

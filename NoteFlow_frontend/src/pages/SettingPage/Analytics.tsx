@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import {
   Activity,
   AlertTriangle,
@@ -85,6 +85,8 @@ function StatCard({
 }
 
 function TrendChart({ data }: { data: AnalyticsTrendPoint[] }) {
+  const [hovered, setHovered] = useState<{ item: AnalyticsTrendPoint; x: number; y: number } | null>(null)
+  const chartRef = useRef<HTMLDivElement>(null)
   const width = 720
   const height = 240
   const padding = { top: 18, right: 18, bottom: 32, left: 36 }
@@ -100,6 +102,22 @@ function TrendChart({ data }: { data: AnalyticsTrendPoint[] }) {
       })
       .join(' ')
 
+  const pointX = (index: number) =>
+    padding.left + (data.length <= 1 ? innerWidth / 2 : (index / (data.length - 1)) * innerWidth)
+
+  const updateHovered = (event: ReactMouseEvent<SVGGElement>, item: AnalyticsTrendPoint) => {
+    const chart = chartRef.current
+    if (!chart) return
+    const bounds = chart.getBoundingClientRect()
+    const tooltipWidth = 210
+    const x = Math.min(
+      Math.max(8, event.clientX - bounds.left + 14),
+      Math.max(8, bounds.width - tooltipWidth - 8),
+    )
+    const y = Math.max(140, event.clientY - bounds.top - 12)
+    setHovered({ item, x, y })
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-[#e5efeb] bg-white p-5 shadow-[0_8px_24px_rgba(36,52,71,0.04)]">
       <div className="flex items-center justify-between gap-3">
@@ -113,18 +131,50 @@ function TrendChart({ data }: { data: AnalyticsTrendPoint[] }) {
         </div>
       </div>
       <div className="mt-4 w-full overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[560px]" role="img" aria-label="PV UV 趋势图">
-          {[0, 0.5, 1].map(ratio => {
-            const y = padding.top + innerHeight * ratio
-            return <line key={ratio} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#edf3f0" strokeWidth="1" />
-          })}
-          <polyline points={points('pv')} fill="none" stroke="#167a6e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          <polyline points={points('uv')} fill="none" stroke="#74a9e8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          {data.map((item, index) => {
-            const x = padding.left + (data.length <= 1 ? innerWidth / 2 : (index / (data.length - 1)) * innerWidth)
-            return <text key={item.date} x={x} y={height - 8} textAnchor="middle" fill="#9ab1ab" fontSize="10">{item.date.slice(5)}</text>
-          })}
-        </svg>
+        <div ref={chartRef} className="relative min-w-[560px]">
+          <svg viewBox={`0 0 ${width} ${height}`} className="block w-full" role="img" aria-label="PV UV 趋势图">
+            {[0, 0.5, 1].map(ratio => {
+              const y = padding.top + innerHeight * ratio
+              return <line key={ratio} x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="#edf3f0" strokeWidth="1" />
+            })}
+            <polyline points={points('pv')} fill="none" stroke="#167a6e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <polyline points={points('uv')} fill="none" stroke="#74a9e8" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            {data.map((item, index) => {
+              const x = pointX(index)
+              const previousX = index === 0 ? padding.left : pointX(index - 1)
+              const nextX = index === data.length - 1 ? width - padding.right : pointX(index + 1)
+              const hoverStart = index === 0 ? padding.left : (previousX + x) / 2
+              const hoverEnd = index === data.length - 1 ? width - padding.right : (x + nextX) / 2
+              return (
+                <g
+                  key={item.date}
+                  className="cursor-pointer outline-none"
+                  tabIndex={0}
+                  onMouseEnter={event => updateHovered(event, item)}
+                  onMouseMove={event => updateHovered(event, item)}
+                  onMouseLeave={() => setHovered(null)}
+                  onFocus={() => setHovered({ item, x: 8, y: 140 })}
+                  onBlur={() => setHovered(null)}
+                >
+                  <title>{`${item.date}：PV ${item.pv}，总 UV ${item.uv}，登录 UV ${item.logged_in_uv}，匿名 UV ${item.anonymous_uv}`}</title>
+                  <rect x={hoverStart} y={padding.top} width={hoverEnd - hoverStart} height={innerHeight} fill="transparent" />
+                  <circle cx={x} cy={padding.top + innerHeight - (item.pv / max) * innerHeight} r="4" fill="#167a6e" />
+                  <circle cx={x} cy={padding.top + innerHeight - (item.uv / max) * innerHeight} r="4" fill="#74a9e8" />
+                  <text x={x} y={height - 8} textAnchor="middle" fill="#9ab1ab" fontSize="10">{item.date.slice(5)}</text>
+                </g>
+              )
+            })}
+          </svg>
+          {hovered && (
+            <div className="pointer-events-none absolute z-10 w-[210px] rounded-xl border border-[#d9ebe6] bg-white/95 p-3 text-xs shadow-[0_10px_30px_rgba(36,52,71,0.14)] backdrop-blur-sm" style={{ left: hovered.x, top: hovered.y, transform: 'translateY(-100%)' }}>
+              <div className="mb-2 font-semibold text-[#243447]">{hovered.item.date}</div>
+              <div className="flex items-center justify-between gap-5 text-[#56716b]"><span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#167a6e]" />页面 PV</span><strong className="font-mono text-[#167a6e]">{hovered.item.pv.toLocaleString()}</strong></div>
+              <div className="mt-1.5 flex items-center justify-between gap-5 text-[#56716b]"><span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#74a9e8]" />总 UV</span><strong className="font-mono text-[#3578c9]">{hovered.item.uv.toLocaleString()}</strong></div>
+              <div className="mt-1.5 flex items-center justify-between gap-5 text-[#56716b]"><span>登录 UV</span><strong className="font-mono text-[#3578c9]">{hovered.item.logged_in_uv.toLocaleString()}</strong></div>
+              <div className="mt-1.5 flex items-center justify-between gap-5 text-[#56716b]"><span>匿名 UV</span><strong className="font-mono text-[#b67814]">{hovered.item.anonymous_uv.toLocaleString()}</strong></div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
