@@ -7,6 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { billingApi, Order, formatYuan } from '@/services/billing'
 import { useUserStore } from '@/store/userStore'
+import {
+  canCreatePaymentOrder,
+  selectPaymentMethod,
+  WECHAT_UNAVAILABLE_MESSAGE,
+} from './paymentAvailability'
 
 interface Props {
   order: Order | null
@@ -148,6 +153,10 @@ const PayDialog = ({
 
   const handleCreateOrder = async () => {
     if (!draft || !onCreateOrder) return
+    if (!canCreatePaymentOrder(selectedMethod)) {
+      toast.error(WECHAT_UNAVAILABLE_MESSAGE)
+      return
+    }
     if (creatingOrderRef.current) return
     creatingOrderRef.current = true
     const method = selectedMethod
@@ -223,16 +232,26 @@ const PayDialog = ({
               <button
                 key={m.code}
                 onClick={() => {
-                  if (isDraft && !creatingOrderRef.current) setSelectedMethod(m.code as 'ALIPAY' | 'WECHAT')
+                  if (m.code === 'WECHAT') {
+                    toast.error(WECHAT_UNAVAILABLE_MESSAGE)
+                    return
+                  }
+                  if (isDraft && !creatingOrderRef.current) {
+                    setSelectedMethod(selectPaymentMethod(selectedMethod, m.code as 'ALIPAY' | 'WECHAT'))
+                  }
                 }}
                 disabled={!isDraft || paying || m.code === activeMethod}
+                aria-disabled={m.code === 'WECHAT' || undefined}
+                title={m.code === 'WECHAT' ? WECHAT_UNAVAILABLE_MESSAGE : undefined}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition ${
-                  activeMethod === m.code
-                    ? `bg-white shadow-sm ${m.color}`
-                    : 'text-neutral-500 hover:text-neutral-700'
+                  m.code === 'WECHAT'
+                    ? 'cursor-not-allowed text-neutral-400'
+                    : activeMethod === m.code
+                      ? `bg-white shadow-sm ${m.color}`
+                      : 'text-neutral-500 hover:text-neutral-700'
                 }`}
               >
-                {m.label}
+                {m.code === 'WECHAT' ? `${m.label}（即将上线）` : m.label}
               </button>
             ))}
           </div>
