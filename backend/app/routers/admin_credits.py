@@ -15,9 +15,12 @@ from app.db.models.credit_transactions import CREDIT_TX_TYPES, CreditTransaction
 from app.db.models.users import User
 from app.services.billing import credit_ledger
 from app.services.billing.exceptions import InvalidTransactionError
+from app.services.user_notification_service import UserNotificationService
+from app.utils.logger import get_logger
 from app.utils.response import ResponseWrapper as R
 
 router = APIRouter(prefix="/admin/credits", tags=["admin-credits"])
+logger = get_logger(__name__)
 
 _EARNED_TYPES = (
     "RECHARGE",
@@ -129,6 +132,31 @@ def _adjustment_result(tx: CreditTransaction, user: User) -> dict[str, Any]:
 
 def _adjust_error(exc: InvalidTransactionError):
     return R.error(code=400, msg=str(exc))
+
+
+def _publish_credit_adjustment_notification(tx: CreditTransaction, user: User) -> None:
+    delta = int(tx.amount or 0)
+    direction = "增加" if delta > 0 else "扣除"
+    content = (
+        f"管理员已为你的账户{direction} {abs(delta)} 电力。\n"
+        f"调整后余额：{int(tx.balance_after or 0)} 电力\n"
+        f"备注：{tx.note or '管理员未填写备注'}"
+    )
+    try:
+        UserNotificationService.publish(
+            user_id=user.id,
+            category="credit_adjustment",
+            title="电力余额已调整",
+            content=content,
+            source_type="credit_transaction",
+            source_id=str(tx.id),
+            link="/billing?tab=transactions",
+            severity="info" if delta > 0 else "warning",
+        )
+    except Exception:
+        logger.exception(
+            f"管理员电力调整通知写入失败 (user_id={user.id}, transaction_id={tx.id})"
+        )
 
 
 @router.get("/overview")
@@ -289,6 +317,7 @@ def adjust_credits(
         user = db.get(User, body.user_id)
         if user is None:
             raise InvalidTransactionError("用户不存在")
+        _publish_credit_adjustment_notification(tx, user)
         return R.success(_adjustment_result(tx, user), msg="电力调整成功")
     except InvalidTransactionError as exc:
         db.rollback()
@@ -319,6 +348,8 @@ def batch_adjust_credits(
         users = [db.get(User, user_id) for user_id in body.user_ids]
         if any(user is None for user in users):
             raise InvalidTransactionError("存在不存在的用户，批量操作已取消")
+        for tx, user in zip(transactions, users):
+            _publish_credit_adjustment_notification(tx, user)
         return R.success({
             "affected": len(transactions),
             "total_delta": body.delta * len(transactions),
