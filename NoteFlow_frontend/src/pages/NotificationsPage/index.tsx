@@ -15,6 +15,7 @@ const fmt = (value: string | null) => {
 
 const CATEGORY_LABEL: Record<string, string> = {
   note_style_review: '笔记风格审核',
+  credit_adjustment: '电力调整',
 }
 
 const SEVERITY_LABEL: Record<string, string> = {
