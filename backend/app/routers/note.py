@@ -257,6 +257,9 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks,
                   current_user: User = Depends(get_current_user),
                   db: Session = Depends(get_db)):
     try:
+        if "screenshot" in (data.format or []):
+            require_pro(current_user, "原片截图")
+
         if not data.prefetched_transcript:
             from app.db import transcriber_config_dao
             from app.routers.config import _check_whisper_model_exists, _check_mlx_whisper_model_exists, _downloading
@@ -679,6 +682,8 @@ def generate_notes_batch(data: GenerateNotesBatchRequest, background_tasks: Back
     批量提交笔记生成任务：逐条探测时长 -> 计费 -> 扣费 -> 建任务 -> 丢进现有执行队列。
     共享同一 batch_id 分组；遇到余额不足时停止后续处理，剩余项标记为失败。
     """
+    if "screenshot" in (data.format or []):
+        require_pro(current_user, "原片截图")
     require_pro(current_user, "批量模式")
     try:
         from app.db import transcriber_config_dao
