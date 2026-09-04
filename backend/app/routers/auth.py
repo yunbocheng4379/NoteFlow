@@ -46,7 +46,8 @@ class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
-    confirm_password: str
+    # 保留该字段以兼容旧客户端，但注册不再要求或校验二次输入密码。
+    confirm_password: str | None = None
     invite_code: str | None = None  # 可选; 6 位 base32; 大小写不敏感
 
     @field_validator("username")
@@ -70,13 +71,6 @@ class RegisterRequest(BaseModel):
             return None
         v = v.strip().upper()
         return v if v else None
-
-    @model_validator(mode="after")
-    def passwords_match(self):
-        if self.password != self.confirm_password:
-            raise ValueError("两次输入的密码不一致")
-        return self
-
 
 class LoginRequest(BaseModel):
     # 支持用户名/邮箱/手机号登录

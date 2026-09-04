@@ -8,6 +8,7 @@ import { rehydrateTaskStore, useTaskStore } from '@/store/taskStore'
 import BrandLogo from '@/components/BrandLogo'
 import ForgotPasswordDialog from '@/components/ForgotPasswordDialog'
 import WechatLoginDialog from '@/components/WechatLoginDialog'
+import SiteFilingInfo from '@/components/SiteFilingInfo'
 import toast from 'react-hot-toast'
 import { trackFeatureResult, trackFeatureSubmit } from '@/services/analytics'
 
@@ -63,6 +64,85 @@ const AI_TAGS = [
 
 const RESEND_COOLDOWN = 60
 
+type PasswordStrength = {
+  hasMinLength: boolean
+  hasLetter: boolean
+  hasNumber: boolean
+  hasSpecial: boolean
+  score: number
+}
+
+const getPasswordStrength = (password: string): PasswordStrength => {
+  const checks = {
+    hasMinLength: password.length >= 6,
+    hasLetter: /[A-Za-z]/.test(password),
+    hasNumber: /\d/.test(password),
+    hasSpecial: /[^A-Za-z0-9]/.test(password),
+  }
+
+  return {
+    ...checks,
+    score: Object.values(checks).filter(Boolean).length,
+  }
+}
+
+const PASSWORD_STRENGTH_CHECKS: Array<{ key: keyof Omit<PasswordStrength, 'score'>; label: string }> = [
+  { key: 'hasMinLength', label: '至少 6 位' },
+  { key: 'hasLetter', label: '包含字母' },
+  { key: 'hasNumber', label: '包含数字' },
+  { key: 'hasSpecial', label: '存在特殊符号' },
+]
+
+const PASSWORD_STRENGTH_BAR_COLORS = ['#22c55e', '#eab308', '#ef4444', '#991b1b']
+
+function PasswordStrengthPanel({ password }: { password: string }) {
+  const strength = getPasswordStrength(password)
+  const strengthLabel = ['未设置', '较弱', '一般', '较强', '强'][strength.score]
+  const strengthColor = strength.score >= 3 ? '#167a6e' : strength.score >= 2 ? '#d97706' : '#9ca3af'
+
+  return (
+    <div
+      className="mt-1.5 rounded-lg border px-3 py-2"
+      style={{ background: '#f8fafc', borderColor: '#e5e7eb' }}
+      role="status"
+      aria-live="polite"
+    >
+      <p className="text-[11px] leading-4 text-gray-500">
+        建议使用至少 6 位，包含字母、数字和特殊符号的密码
+      </p>
+      <div className="mt-1.5 flex gap-1.5" aria-hidden="true">
+        {[0, 1, 2, 3].map((segment) => (
+          <span
+            key={segment}
+            className="h-1 flex-1 rounded-full transition-colors"
+            style={{
+              background: segment < strength.score ? PASSWORD_STRENGTH_BAR_COLORS[segment] : '#dbe4e7',
+            }}
+          />
+        ))}
+      </div>
+      <p className="mt-1 text-[11px] text-gray-500">
+        密码强度：<span className="font-medium" style={{ color: strengthColor }}>{strengthLabel}</span>
+      </p>
+      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-1">
+        {PASSWORD_STRENGTH_CHECKS.map(({ key, label }) => {
+          const passed = strength[key]
+          return (
+            <span
+              key={key}
+              className="flex items-center gap-1 text-[11px]"
+              style={{ color: passed ? '#167a6e' : '#9ca3af' }}
+            >
+              <span className="text-[10px]" aria-hidden="true">{passed ? '✓' : '○'}</span>
+              {label}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function AuthPage() {
   const navigate = useNavigate()
   const setAuth = useUserStore((s) => s.setAuth)
@@ -74,6 +154,7 @@ export default function AuthPage() {
   const [countdown, setCountdown] = useState(0)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [showWechatLogin, setShowWechatLogin] = useState(false)
+  const [passwordFocused, setPasswordFocused] = useState(false)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // 从 URL ?invite=XXX 预填邀请码, 若存在则自动切到注册 tab
@@ -91,7 +172,6 @@ export default function AuthPage() {
     username: '',
     email: '',
     password: '',
-    confirmPassword: '',
     inviteCode: inviteFromUrl,
     codeTarget: '',
     code: '',
@@ -115,7 +195,8 @@ export default function AuthPage() {
   const switchMode = (m: Mode) => {
     setMode(m)
     // 切换模式时清空密码，避免泄漏/误填
-    setForm((prev) => ({ ...prev, password: '', confirmPassword: '' }))
+    setForm((prev) => ({ ...prev, password: '' }))
+    setPasswordFocused(false)
   }
 
   const startCountdown = () => {
@@ -178,7 +259,7 @@ export default function AuthPage() {
       if (code === AuthErrorCode.ACCOUNT_NOT_FOUND) {
         // 账户不存在 —— 提示并跳转到注册页
         toast.error('账户不存在，请先注册')
-        setForm((prev) => ({ ...prev, username: prev.account, password: '', confirmPassword: '' }))
+        setForm((prev) => ({ ...prev, username: prev.account, password: '' }))
         switchMode('register')
       } else if (code === AuthErrorCode.PASSWORD_INCORRECT) {
         // 密码错误 —— 停留在登录表单，仅清空密码
@@ -234,8 +315,6 @@ export default function AuthPage() {
     if (!form.email.trim()) return toast.error('请填写邮箱')
     if (!form.password) return toast.error('请填写密码')
     if (form.password.length < 6) return toast.error('密码至少 6 位')
-    if (!form.confirmPassword) return toast.error('请再次输入密码')
-    if (form.password !== form.confirmPassword) return toast.error('两次输入的密码不一致')
     trackFeatureSubmit('auth_register')
     setLoading(true)
     try {
@@ -243,12 +322,11 @@ export default function AuthPage() {
         username: form.username.trim(),
         email: form.email.trim(),
         password: form.password,
-        confirm_password: form.confirmPassword,
         invite_code: form.inviteCode.trim() || undefined,
       })
       trackFeatureResult('auth_register', true)
       toast.success('注册成功，请登录')
-      setForm((prev) => ({ ...prev, account: prev.username, email: '', password: '', confirmPassword: '' }))
+      setForm((prev) => ({ ...prev, account: prev.username, email: '', password: '' }))
       setMode('login')
       setTopMode('password')
     } catch (err: any) {
@@ -388,13 +466,24 @@ export default function AuthPage() {
               </span>
             ))}
           </div>
+          <div className="mt-5 border-t border-white/10 pt-4 text-center">
+            <SiteFilingInfo dark />
+          </div>
         </div>
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex min-h-0 flex-col items-center px-8 py-8 bg-white overflow-y-auto">
-        <div className="w-full max-w-[22rem] flex-1 flex flex-col justify-center py-6">
-          <div className="flex items-center justify-center gap-2.5 mb-7">
+      <div
+        className={`flex-1 flex min-h-0 flex-col items-center px-8 bg-white overflow-y-auto ${
+          mode === 'register' ? 'py-4 lg:overflow-hidden' : 'py-8'
+        }`}
+      >
+        <div
+          className={`w-full max-w-[22rem] flex-1 flex flex-col justify-center ${
+            mode === 'register' ? 'py-2' : 'py-6'
+          }`}
+        >
+          <div className={`flex items-center justify-center gap-2.5 ${mode === 'register' ? 'mb-4' : 'mb-7'}`}>
             <BrandLogo className="h-7 w-auto flex-shrink-0" />
             <span className="text-xl font-semibold tracking-tight text-gray-900">NoteFlow</span>
           </div>
@@ -465,7 +554,7 @@ export default function AuthPage() {
             </div>
           )}
 
-          <div className="mb-7">
+          <div className={mode === 'register' ? 'mb-5' : 'mb-7'}>
             <h1
               className="font-bold text-gray-900 mb-1"
               style={{ fontSize: '1.375rem', letterSpacing: '-0.016em' }}
@@ -477,7 +566,7 @@ export default function AuthPage() {
             </p>
           </div>
 
-          <form onSubmit={submit} className="space-y-4">
+          <form onSubmit={submit} className={mode === 'register' ? 'space-y-3' : 'space-y-4'}>
             {mode === 'login' && topMode === 'password' && (
               <div className="space-y-1.5">
                 <Label htmlFor="account" className="text-[13px] font-medium text-gray-600">
@@ -600,28 +689,15 @@ export default function AuthPage() {
                   placeholder={mode === 'register' ? '至少 6 位' : '请输入密码'}
                   value={form.password}
                   onChange={set('password')}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
                   required
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   className="h-10 bg-white border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-lg text-sm focus-visible:ring-1 transition-colors"
                 />
-              </div>
-            )}
-
-            {mode === 'register' && (
-              <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword" className="text-[13px] font-medium text-gray-600">
-                  确认密码
-                </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="请再次输入密码"
-                  value={form.confirmPassword}
-                  onChange={set('confirmPassword')}
-                  required
-                  autoComplete="new-password"
-                  className="h-10 bg-white border-gray-200 text-gray-900 placeholder:text-gray-300 rounded-lg text-sm focus-visible:ring-1 transition-colors"
-                />
+                {mode === 'register' && (passwordFocused || form.password) && (
+                  <PasswordStrengthPanel password={form.password} />
+                )}
               </div>
             )}
 
@@ -662,7 +738,7 @@ export default function AuthPage() {
           </form>
 
           {mode === 'login' && (
-            <div className="mt-6">
+            <div className="hidden mt-6">
               <div className="flex items-center gap-3 text-[11px] text-gray-300">
                 <div className="h-px flex-1 bg-gray-200" />
                 <span>其他登录方式</span>
@@ -724,9 +800,6 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <p className="mt-6 shrink-0 text-[11px] text-gray-300">
-          2026 NoteFlow
-        </p>
       </div>
 
       <ForgotPasswordDialog open={showForgotPassword} onClose={() => setShowForgotPassword(false)} />

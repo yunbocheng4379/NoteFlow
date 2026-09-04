@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import SiteFilingInfo from '@/components/SiteFilingInfo'
 import BrandLogo from '@/components/BrandLogo'
 import { GITHUB_URL } from '../constants'
 
@@ -71,26 +72,8 @@ export default function LandingFooter() {
           <p className="text-lg text-neutral-700">
             专注<span className="text-primary">笔记</span>，服务于每一次观看。
           </p>
-          <p className="mt-6 text-xs text-neutral-400">
-            © {new Date().getFullYear()} NoteFlow. 保留所有权利。
-          </p>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-neutral-400">
-            <a
-              href="https://beian.miit.gov.cn/"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-neutral-700"
-            >
-              ICP主体备案号：京ICP备2025109593号
-            </a>
-            <a
-              href="https://beian.miit.gov.cn/"
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors hover:text-neutral-700"
-            >
-              网站备案号：京ICP备2025109593号-2
-            </a>
+          <div className="mt-6">
+            <SiteFilingInfo />
           </div>
         </div>
       </div>

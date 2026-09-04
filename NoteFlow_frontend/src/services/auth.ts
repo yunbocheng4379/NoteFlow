@@ -9,7 +9,7 @@ export interface RegisterParams {
   username: string
   email: string
   password: string
-  confirm_password: string
+  confirm_password?: string
   invite_code?: string
 }
 
