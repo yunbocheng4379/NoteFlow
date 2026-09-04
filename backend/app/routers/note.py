@@ -257,7 +257,7 @@ def generate_note(data: VideoRequest, background_tasks: BackgroundTasks,
                   current_user: User = Depends(get_current_user),
                   db: Session = Depends(get_db)):
     try:
-        if "screenshot" in (data.format or []):
+        if data.screenshot or "screenshot" in (data.format or []):
             require_pro(current_user, "原片截图")
 
         if not data.prefetched_transcript:
