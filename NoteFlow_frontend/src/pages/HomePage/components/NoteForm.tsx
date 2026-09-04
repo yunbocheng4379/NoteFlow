@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Clock,
   Layers3,
+  LockKeyhole,
   Loader2,
   Sparkles,
   Upload,
@@ -104,12 +105,14 @@ const FormatMultiSelect = ({
   value,
   onChange,
   screenshotDisabled,
+  screenshotProLocked,
   linkDisabled,
   scrollAreaRef,
 }: {
   value: string[]
   onChange: (v: string[]) => void
   screenshotDisabled: boolean
+  screenshotProLocked: boolean
   linkDisabled: boolean
   scrollAreaRef: React.RefObject<HTMLElement | null>
 }) => {
@@ -202,6 +205,30 @@ const FormatMultiSelect = ({
   }
 
   const toggle = (v: string) => {
+    if (v === 'screenshot' && screenshotProLocked) {
+      toast.custom(
+        t => (
+          <div
+            className={cn(
+              'flex max-w-[380px] items-center gap-3 rounded-xl border border-l-4 border-amber-200 border-l-amber-400 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 shadow-lg transition-opacity',
+              t.visible ? 'opacity-100' : 'opacity-0'
+            )}
+          >
+            <LockKeyhole className="h-5 w-5 shrink-0 text-amber-500" />
+            <span className="flex-1">原片截图为 Pro 专属功能</span>
+            <RouterLink
+              to="/upgrade"
+              onClick={() => toast.dismiss(t.id)}
+              className="text-primary shrink-0 font-semibold hover:underline"
+            >
+              升级 Pro
+            </RouterLink>
+          </div>
+        ),
+        { duration: 5000 }
+      )
+      return
+    }
     if (disabledMap[v]) return
     onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v])
   }
@@ -250,7 +277,8 @@ const FormatMultiSelect = ({
                 <button
                   key={v}
                   type="button"
-                  disabled={disabled}
+                  disabled={disabled && !(v === 'screenshot' && screenshotProLocked)}
+                  aria-disabled={disabled}
                   onClick={() => toggle(v)}
                   className={cn(
                     'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors',
@@ -267,7 +295,16 @@ const FormatMultiSelect = ({
                   </div>
                   <span className="flex-1 text-left">{label}</span>
                   {v === 'screenshot' && disabled && (
-                    <span className="text-xs text-amber-500">需开启视频理解</span>
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-500">
+                      {screenshotProLocked ? (
+                        <>
+                          <LockKeyhole className="h-3 w-3" />
+                          Pro 专属
+                        </>
+                      ) : (
+                        '需开启视频理解'
+                      )}
+                    </span>
                   )}
                 </button>
               )
@@ -657,18 +694,17 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
     })
   }, [mode, currentTaskId, modelList.length, currentTask?.formData])
 
-  // When video_understanding is disabled, remove screenshot from format
+  // Free users and non-vision configurations cannot retain screenshot in the form.
   useEffect(() => {
-    if (!videoUnderstandingEnabled) {
-      const fmt = form.getValues('format')
-      if (fmt.includes('screenshot')) {
-        form.setValue(
-          'format',
-          fmt.filter(f => f !== 'screenshot')
-        )
-      }
+    if (videoUnderstandingEnabled && isPro) return
+    const fmt = form.getValues('format')
+    if (fmt.includes('screenshot')) {
+      form.setValue(
+        'format',
+        fmt.filter(f => f !== 'screenshot')
+      )
     }
-  }, [videoUnderstandingEnabled])
+  }, [videoUnderstandingEnabled, isPro, form])
 
   // When the selected model doesn't support vision, force video_understanding off
   useEffect(() => {
@@ -1430,7 +1466,10 @@ const NoteForm = ({ onSubmitSuccess, mode = 'create', prefill }: NoteFormProps) 
                 <FormatMultiSelect
                   value={field.value}
                   onChange={field.onChange}
-                  screenshotDisabled={!videoUnderstandingEnabled || !selectedModelSupportsVision}
+                  screenshotDisabled={
+                    !isPro || !videoUnderstandingEnabled || !selectedModelSupportsVision
+                  }
+                  screenshotProLocked={!isPro}
                   linkDisabled={isLocal}
                   scrollAreaRef={scrollAreaRef}
                 />
