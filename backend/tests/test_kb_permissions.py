@@ -18,3 +18,11 @@ def test_require_pro_raises_for_free_user():
     with pytest.raises(BizException) as exc_info:
         require_pro(_StubUser(active_subscription_id=None))
     assert exc_info.value.code == 40601
+
+
+def test_require_pro_rejects_free_user_for_original_screenshot():
+    with pytest.raises(BizException) as exc_info:
+        require_pro(_StubUser(active_subscription_id=None), "原片截图")
+
+    assert exc_info.value.code == 40601
+    assert exc_info.value.message == "原片截图为会员功能，请升级 Pro"
